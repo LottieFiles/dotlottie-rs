@@ -1,0 +1,63 @@
+{
+  "initial": "left",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "left",
+      "segment": "three",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "pos", "type": "Position", "value": [80, 256] },
+        { "slotId": "color", "type": "Color", "value": [1, 1, 0] }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "right",
+          "duration": 1.0,
+          "easing": [0.42, 0.0, 0.58, 1.0],
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "side",
+              "compareTo": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "right",
+      "segment": "circle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "pos", "type": "Position", "value": [432, 256] },
+        { "slotId": "color", "type": "Color", "value": [0, 1, 0] }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "left",
+          "duration": 1.0,
+          "easing": [0.42, 0.0, 0.58, 1.0],
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "side",
+              "compareTo": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [],
+  "inputs": [{ "type": "Numeric", "name": "side", "value": 0 }]
+}

@@ -1,0 +1,84 @@
+{
+  "initial": "idle",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "idle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "inner_time", "type": "Scalar", "value": 0 }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "sliding",
+          "guards": [{ "type": "Event", "inputName": "grab" }]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "sliding",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "inner_time", "type": "Scalar", "value": "$path_t" }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "unlocked",
+          "duration": 0.3,
+          "easing": [0.25, 0.1, 0.25, 1.0],
+          "guards": [
+            { "type": "Event", "inputName": "release" },
+            { "type": "Numeric", "inputName": "path_t", "conditionType": "GreaterThan", "compareTo": 0.9 }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "idle",
+          "duration": 0.3,
+          "easing": [0.25, 0.1, 0.25, 1.0],
+          "guards": [{ "type": "Event", "inputName": "release" }]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "unlocked",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "inner_time", "type": "Scalar", "value": 1.0 },
+        { "slotId": "thumb_bg", "type": "Color", "value": [0.15, 0.8, 0.35] }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "sliding",
+          "guards": [{ "type": "Event", "inputName": "grab" }]
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "type": "DragAndDrop",
+      "layerName": "thumb",
+      "pathLayerName": "Path 1",
+      "progressInput": "path_t",
+      "onGrab": [{ "type": "Fire", "inputName": "grab" }],
+      "onDrop": [{ "type": "Fire", "inputName": "release" }]
+    }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "path_t", "value": 0 },
+    { "type": "Event", "name": "grab" },
+    { "type": "Event", "name": "release" }
+  ]
+}

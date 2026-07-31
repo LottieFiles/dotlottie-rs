@@ -1,0 +1,58 @@
+{
+  "initial": "board",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "board",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "paused",
+          "guards": [
+            { "type": "Numeric", "conditionType": "Equal", "inputName": "paused", "compareTo": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "paused",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 4284704767,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "board",
+          "guards": [
+            { "type": "Numeric", "conditionType": "Equal", "inputName": "paused", "compareTo": 0 }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "type": "DragAndDrop",
+      "layerName": "Star 2",
+      "slotId": "star_pos",
+      "stateName": "board",
+      "tween": { "duration": 0.25, "easing": [0.25, 0.1, 0.25, 1.0] },
+      "dropZones": [
+        {
+          "layerName": "drop_zone",
+          "actions": [{ "type": "Increment", "inputName": "docked_count" }]
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "paused", "value": 0 },
+    { "type": "Numeric", "name": "docked_count", "value": 0 }
+  ]
+}

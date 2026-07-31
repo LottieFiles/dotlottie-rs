@@ -552,26 +552,21 @@ impl ActionTrait for Action {
                 Ok(())
             }
             Action::SetProgress { value } => {
-                match value {
-                    StringNumber::String(value) => {
-                        let percentage = resolve_numeric_ref(engine, value);
-                        if let Some(percentage) = percentage {
-                            let clamped_value = percentage.clamp(0.0, 100.0);
-                            let new_perc = clamped_value / 100.0;
-                            let frame = (engine.player.total_frames() - 1.0) * new_perc;
-
-                            let _ = engine.player.set_frame(frame);
-                        }
-
-                        return Ok(());
-                    }
-                    StringNumber::F32(value) => {
-                        let clamped_value = value.clamp(0.0, 100.0);
-                        let new_perc = clamped_value / 100.0;
-                        let frame = (engine.player.total_frames() - 1.0) * new_perc;
-
-                        let _ = engine.player.set_frame(frame);
-                    }
+                let percentage = match value {
+                    StringNumber::String(value) => resolve_numeric_ref(engine, value),
+                    StringNumber::F32(value) => Some(*value),
+                };
+                if let Some(percentage) = percentage {
+                    // Progress is relative to the ACTIVE SEGMENT. With no
+                    // segment set, segment() reports the full animation
+                    // (0..total-1), preserving the historical behavior —
+                    // so scrub-style actions never need frame counts.
+                    let progress = percentage.clamp(0.0, 100.0) / 100.0;
+                    let (start, end) = match engine.player.segment() {
+                        Ok(segment) => (segment.start, segment.end),
+                        Err(_) => (0.0, engine.player.total_frames() - 1.0),
+                    };
+                    let _ = engine.player.set_frame(start + (end - start) * progress);
                 }
 
                 Ok(())

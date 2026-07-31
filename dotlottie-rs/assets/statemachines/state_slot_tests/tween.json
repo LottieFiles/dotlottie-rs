@@ -1,0 +1,62 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "a",
+      "animation": "",
+      "autoplay": false,
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "b",
+          "duration": 1.0,
+          "easing": [0.0, 0.0, 1.0, 1.0],
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "b",
+      "animation": "",
+      "autoplay": false,
+      "slots": [
+        { "slotId": "ball_color", "type": "Color", "value": [1, 0, 0] },
+        { "slotId": "ball_opacity", "type": "Scalar", "value": 10 }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "c",
+          "duration": 1.0,
+          "easing": [0.0, 0.0, 1.0, 1.0],
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "c",
+      "animation": "",
+      "autoplay": false,
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [{ "type": "Numeric", "name": "trigger", "value": 0 }]
+}

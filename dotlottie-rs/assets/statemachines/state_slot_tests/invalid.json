@@ -1,0 +1,41 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "a",
+      "animation": "",
+      "autoplay": false,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "broken",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "broken",
+      "animation": "",
+      "autoplay": false,
+      "slots": [
+        { "slotId": "does_not_exist", "type": "Color", "value": [1, 0, 0] },
+        { "slotId": "ball_color", "type": "Scalar", "value": 5 },
+        { "slotId": "ball_opacity", "type": "Scalar", "value": "$missing_input" },
+        { "slotId": "ball_color", "type": "Color", "value": [1, 0] },
+        { "slotId": "ball_opacity", "type": "Scalar", "value": "$@elapsedTime" }
+      ],
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [{ "type": "Numeric", "name": "trigger", "value": 0 }]
+}

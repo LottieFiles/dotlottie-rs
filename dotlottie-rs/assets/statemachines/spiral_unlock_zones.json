@@ -1,0 +1,175 @@
+{
+  "initial": "docked",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "dragging",
+      "animation": "",
+      "segment": "locked",
+      "autoplay": false,
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "unlocked",
+          "duration": 0.4,
+          "easing": [
+            0.42,
+            0,
+            0.58,
+            1
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "release"
+            },
+            {
+              "type": "Numeric",
+              "conditionType": "GreaterThanOrEqual",
+              "inputName": "path_t",
+              "compareTo": 0.95
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "docked",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "release"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "docked",
+      "animation": "",
+      "segment": "locked",
+      "autoplay": false,
+      "entryActions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "scrub",
+          "value": "$path_t"
+        },
+        {
+          "type": "Multiply",
+          "inputName": "scrub",
+          "value": 100
+        },
+        {
+          "type": "SetProgress",
+          "value": "$scrub"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "dragging",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "grab"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "unlocked",
+      "animation": "",
+      "segment": "unlocked",
+      "autoplay": true,
+      "loop": false,
+      "transitions": []
+    }
+  ],
+  "interactions": [
+    {
+      "type": "DragAndDrop",
+      "layerName": "Ellipse 1",
+      "pathLayerName": "Spiral Path",
+      "progressInput": "path_t",
+      "dockFallback": "previous",
+      "tween": {
+        "duration": 0.3,
+        "easing": [
+          0.25,
+          0.1,
+          0.25,
+          1
+        ]
+      },
+      "onGrab": [
+        {
+          "type": "Fire",
+          "inputName": "grab"
+        }
+      ],
+      "onDrag": [
+        {
+          "type": "SetNumeric",
+          "inputName": "scrub",
+          "value": "$path_t"
+        },
+        {
+          "type": "Multiply",
+          "inputName": "scrub",
+          "value": 100
+        },
+        {
+          "type": "SetProgress",
+          "value": "$scrub"
+        }
+      ],
+      "onDrop": [
+        {
+          "type": "Fire",
+          "inputName": "release"
+        }
+      ],
+      "dropZones": [
+        {
+          "layerName": "drop_zone1"
+        },
+        {
+          "layerName": "drop_zone2"
+        },
+        {
+          "layerName": "drop_zone3"
+        },
+        {
+          "layerName": "drop_zone4",
+          "lock": true
+        },
+        {
+          "layerName": "drop_zone0"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "path_t",
+      "value": 0
+    },
+    {
+      "type": "Numeric",
+      "name": "scrub",
+      "value": 0
+    },
+    {
+      "type": "Event",
+      "name": "grab"
+    },
+    {
+      "type": "Event",
+      "name": "release"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "initial": "a",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "a",
+      "animation": "",
+      "autoplay": false,
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "b",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "b",
+      "animation": "",
+      "autoplay": false,
+      "slots": [
+        { "slotId": "ball_color", "type": "Color", "value": [1, 0, 0] },
+        { "slotId": "ball_opacity", "type": "Scalar", "value": "$opacity" }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "c",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "c",
+      "animation": "",
+      "autoplay": false,
+      "slots": [
+        { "slotId": "ball_color", "type": "Color", "value": [0, 1, 0] }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "d",
+          "guards": [
+            {
+              "type": "Numeric",
+              "conditionType": "Equal",
+              "inputName": "trigger",
+              "compareTo": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "d",
+      "animation": "",
+      "autoplay": false,
+      "transitions": []
+    }
+  ],
+  "interactions": [],
+  "inputs": [
+    { "type": "Numeric", "name": "trigger", "value": 0 },
+    { "type": "Numeric", "name": "opacity", "value": 42 }
+  ]
+}

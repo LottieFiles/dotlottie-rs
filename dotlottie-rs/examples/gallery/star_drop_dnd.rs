@@ -31,6 +31,7 @@ use minifb::{Key, MouseButton, Window, WindowOptions};
 use std::ffi::CString;
 use std::fs;
 
+#[path = "../common/mod.rs"]
 mod common;
 
 pub const WIDTH: usize = 512;
@@ -60,17 +61,26 @@ fn main() {
         )
         .unwrap();
 
+    // Optional args: <state machine> <animation>. Defaults to the static
+    // pairing; run the MOVING-zone tracking demo with:
+    //   cargo run --example star_drop_dnd --features dev -- star_drop_track star_drop
+    let sm_name = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "star_drop_dnd".to_string());
+    let anim_name = std::env::args()
+        .nth(2)
+        .unwrap_or_else(|| "star_drop_static".to_string());
+
     let animation_data =
-        fs::read_to_string(format!("{ASSETS_DIR}/animations/lottie/star_drop.json"))
-            .expect("star_drop.json animation should exist");
+        fs::read_to_string(format!("{ASSETS_DIR}/animations/lottie/{anim_name}.json"))
+            .unwrap_or_else(|e| panic!("failed to read animation '{anim_name}': {e}"));
     let c_data = CString::new(animation_data).expect("animation data should be valid");
     player
         .load_animation_data(&c_data)
         .expect("animation should load");
 
-    let definition =
-        fs::read_to_string(format!("{ASSETS_DIR}/statemachines/star_drop_dnd.json"))
-            .expect("star_drop_dnd.json state machine should exist");
+    let definition = fs::read_to_string(format!("{ASSETS_DIR}/statemachines/{sm_name}.json"))
+        .unwrap_or_else(|e| panic!("failed to read state machine '{sm_name}': {e}"));
 
     let mut engine = player
         .state_machine_load_data(&definition)

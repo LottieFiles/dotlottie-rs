@@ -221,53 +221,158 @@ pub fn slots_from_json_string(
     Ok(result)
 }
 
-/// Extract the static authored position of every named top-level layer
-/// (`layers[].nm` -> `layers[].ks.p.k` when it is a plain `[x, y]`).
-/// Used by the DragAndDrop interaction to derive drop-zone snap targets
-/// from the animation itself instead of hardcoded coordinates.
-pub fn extract_layer_positions(animation_json: &str) -> BTreeMap<String, [f32; 2]> {
-    match serde_json::from_str::<serde_json::Value>(animation_json) {
-        Ok(json) => layer_positions_from_value(&json),
-        Err(_) => BTreeMap::new(),
-    }
+/// A named layer's authored bezier path in composition coordinates:
+/// vertices with per-vertex in/out tangents (relative), plus closed flag.
+#[derive(Debug, Clone)]
+pub struct LayerPath {
+    pub verts: Vec<[f32; 2]>,
+    pub in_tangents: Vec<[f32; 2]>,
+    pub out_tangents: Vec<[f32; 2]>,
+    pub closed: bool,
 }
 
-fn layer_positions_from_value(json: &serde_json::Value) -> BTreeMap<String, [f32; 2]> {
+fn points_from(value: Option<&serde_json::Value>) -> Option<Vec<[f32; 2]>> {
+    let arr = value?.as_array()?;
+    let mut out = Vec::with_capacity(arr.len());
+    for p in arr {
+        let p = p.as_array()?;
+        out.push([p.first()?.as_f64()? as f32, p.get(1)?.as_f64()? as f32]);
+    }
+    Some(out)
+}
+
+/// Find the first static "sh" (path) shape in a layer's shape list,
+/// recursing into groups.
+fn first_path_shape(shapes: &[serde_json::Value]) -> Option<&serde_json::Value> {
+    for shape in shapes {
+        match shape.get("ty").and_then(|t| t.as_str()) {
+            Some("sh") => {
+                // Static paths only: ks.a == 0.
+                if shape.pointer("/ks/a").and_then(|a| a.as_i64()) == Some(0) {
+                    return shape.pointer("/ks/k");
+                }
+            }
+            Some("gr") => {
+                if let Some(items) = shape.get("it").and_then(|i| i.as_array()) {
+                    if let Some(found) = first_path_shape(items) {
+                        return Some(found);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Extract authored bezier paths of named layers (main scene AND precomp
+/// assets; main wins on name collision), offset into composition space by
+/// the layer's static position - anchor. Static paths/transforms only.
+fn layer_paths_from_value(json: &serde_json::Value) -> BTreeMap<String, LayerPath> {
     let mut result = BTreeMap::new();
 
-    let Some(layers) = json.get("layers").and_then(|l| l.as_array()) else {
-        return result;
-    };
+    let mut layer_lists: Vec<&Vec<serde_json::Value>> = Vec::new();
+    if let Some(layers) = json.get("layers").and_then(|l| l.as_array()) {
+        layer_lists.push(layers);
+    }
+    if let Some(assets) = json.get("assets").and_then(|a| a.as_array()) {
+        for asset in assets {
+            if let Some(layers) = asset.get("layers").and_then(|l| l.as_array()) {
+                layer_lists.push(layers);
+            }
+        }
+    }
 
-    for layer in layers {
-        let Some(name) = layer.get("nm").and_then(|n| n.as_str()) else {
-            continue;
-        };
-        let Some(k) = layer
-            .pointer("/ks/p/k")
-            .and_then(|k| k.as_array())
-            .filter(|arr| arr.len() >= 2)
-        else {
-            continue;
-        };
-        if let (Some(x), Some(y)) = (k[0].as_f64(), k[1].as_f64()) {
-            result.insert(name.to_string(), [x as f32, y as f32]);
+    for layers in layer_lists {
+        for layer in layers {
+            let Some(name) = layer.get("nm").and_then(|n| n.as_str()) else {
+                continue;
+            };
+            if result.contains_key(name) {
+                continue;
+            }
+            let Some(shapes) = layer.get("shapes").and_then(|s| s.as_array()) else {
+                continue;
+            };
+            let Some(path_k) = first_path_shape(shapes) else {
+                continue;
+            };
+            let (Some(mut verts), Some(in_tangents), Some(out_tangents)) = (
+                points_from(path_k.get("v")),
+                points_from(path_k.get("i")),
+                points_from(path_k.get("o")),
+            ) else {
+                continue;
+            };
+            if verts.is_empty()
+                || verts.len() != in_tangents.len()
+                || verts.len() != out_tangents.len()
+            {
+                continue;
+            }
+
+            // Static layer transform: comp = R(rot) * (S * (v - anchor)) + pos.
+            // Scale/rotation matter when the path is resized via its layer
+            // transform (a 260%-scaled spiral) rather than re-drawn.
+            let read2 = |ptr: &str, default: [f32; 2]| -> [f32; 2] {
+                layer
+                    .pointer(ptr)
+                    .and_then(|k| k.as_array())
+                    .filter(|a| a.len() >= 2)
+                    .and_then(|a| Some([a[0].as_f64()? as f32, a[1].as_f64()? as f32]))
+                    .unwrap_or(default)
+            };
+            let pos = read2("/ks/p/k", [0.0, 0.0]);
+            let anchor = read2("/ks/a/k", [0.0, 0.0]);
+            let scale = read2("/ks/s/k", [100.0, 100.0]);
+            let (sx, sy) = (scale[0] / 100.0, scale[1] / 100.0);
+            let rot = layer
+                .pointer("/ks/r/k")
+                .and_then(|r| r.as_f64())
+                .unwrap_or(0.0) as f32;
+            let (sin, cos) = rot.to_radians().sin_cos();
+
+            for v in &mut verts {
+                let (lx, ly) = ((v[0] - anchor[0]) * sx, (v[1] - anchor[1]) * sy);
+                *v = [lx * cos - ly * sin + pos[0], lx * sin + ly * cos + pos[1]];
+            }
+            // Tangents are vectors relative to their vertex: linear part
+            // only (scale + rotate, no translation).
+            let mut in_tangents = in_tangents;
+            let mut out_tangents = out_tangents;
+            for t in in_tangents.iter_mut().chain(out_tangents.iter_mut()) {
+                let (lx, ly) = (t[0] * sx, t[1] * sy);
+                *t = [lx * cos - ly * sin, lx * sin + ly * cos];
+            }
+
+            result.insert(
+                name.to_string(),
+                LayerPath {
+                    verts,
+                    in_tangents,
+                    out_tangents,
+                    closed: path_k.get("c").and_then(|c| c.as_bool()).unwrap_or(false),
+                },
+            );
         }
     }
 
     result
 }
 
+/// Everything extracted from the animation JSON at load time:
+/// (authored slot defaults, named-layer paths).
+pub(crate) type AuthoredExtraction = (BTreeMap<String, SlotType>, BTreeMap<String, LayerPath>);
+
 /// One-pass extraction of everything the renderer wants from the animation
-/// JSON at load time: authored slot defaults + named-layer positions.
-/// Parses the JSON once, unlike calling the standalone extractors.
-pub(crate) fn extract_authored_from_animation(
-    animation_json: &str,
-) -> (BTreeMap<String, SlotType>, BTreeMap<String, [f32; 2]>) {
+/// JSON at load time: authored slot defaults + named-layer bezier paths.
+/// Parses the JSON once. Layer positions are NOT extracted here: current
+/// layer geometry is read from the rendered scene via `layer_bounds`.
+pub(crate) fn extract_authored_from_animation(animation_json: &str) -> AuthoredExtraction {
     let Ok(json) = serde_json::from_str::<serde_json::Value>(animation_json) else {
         return (BTreeMap::new(), BTreeMap::new());
     };
-    (slots_from_value(&json), layer_positions_from_value(&json))
+    (slots_from_value(&json), layer_paths_from_value(&json))
 }
 
 pub fn extract_slots_from_animation(animation_json: &str) -> BTreeMap<String, SlotType> {

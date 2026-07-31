@@ -16,6 +16,7 @@ pub mod errors;
 pub mod events;
 pub mod inputs;
 pub mod interactions;
+pub mod path_drag;
 pub mod security;
 pub mod state_machine;
 pub mod state_slots;
@@ -43,6 +44,7 @@ use crate::{
 };
 
 use self::drag_and_drop::{DndPhase, DndRuntime};
+use self::path_drag::{PathDragRuntime, PathSnap};
 use self::state_machine::state_machine_parse;
 use self::state_slots::{SlotLerp, StateSlot};
 use self::{events::Event, states::State};
@@ -155,6 +157,9 @@ pub struct StateMachineEngine<'a> {
 
     // DragAndDrop gesture runtimes (one per DragAndDrop interaction).
     dnd_runtimes: Vec<DndRuntime>,
+
+    // PathDrag gesture runtimes (one per PathDrag interaction).
+    pathdrag_runtimes: Vec<PathDragRuntime>,
 
     elapsed_time: f32,
     elapsed_time_states: FxHashSet<DotString>,
@@ -414,6 +419,7 @@ impl<'a> StateMachineEngine<'a> {
             slot_lerps: Vec::new(),
             slot_snap_releases: Vec::new(),
             dnd_runtimes: Vec::new(),
+            pathdrag_runtimes: Vec::new(),
             elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
@@ -542,6 +548,23 @@ impl<'a> StateMachineEngine<'a> {
             .flatten()
             .filter_map(DndRuntime::from_interaction)
             .collect();
+
+        // Build PathDrag gesture runtimes + their arc-length sample tables
+        // (paths come from the load-time extraction of authored beziers).
+        self.pathdrag_runtimes = self
+            .state_machine
+            .interactions
+            .iter()
+            .flatten()
+            .filter_map(PathDragRuntime::from_interaction)
+            .collect();
+        let mut runtimes = std::mem::take(&mut self.pathdrag_runtimes);
+        for rt in &mut runtimes {
+            if let Some(path) = self.player.layer_path(&rt.path_layer_name) {
+                rt.build_samples(&path);
+            }
+        }
+        self.pathdrag_runtimes = runtimes;
 
         let initial = &self.state_machine.initial.clone();
 
@@ -967,6 +990,90 @@ impl<'a> StateMachineEngine<'a> {
         (comps.len() == 2).then(|| [comps[0], comps[1]])
     }
 
+    /// Canvas-pixel pointer -> COMPOSITION units, the space of slots,
+    /// layer transforms, and extracted paths. All gesture math runs in
+    /// comp units; only scene queries (hit tests) take raw canvas pixels.
+    fn to_comp(&self, x: f32, y: f32) -> [f32; 2] {
+        self.player.canvas_to_comp(x, y)
+    }
+
+    /// A layer's current transform position (matrix translation, comp
+    /// units, parent chain composed) — exact when the anchor is zero.
+    fn layer_position(&self, layer_name: &str) -> Option<[f32; 2]> {
+        let m = self.player.layer_transform(layer_name)?;
+        Some([m[2], m[5]])
+    }
+
+    /// Center of a layer's current rendered bounds, converted to comp
+    /// units (as of the last render).
+    fn layer_center(&self, layer_name: &str) -> Option<[f32; 2]> {
+        let obb = self.player.layer_bounds(layer_name)?;
+        Some(self.player.canvas_to_comp(
+            (obb[0].x + obb[1].x + obb[2].x + obb[3].x) / 4.0,
+            (obb[0].y + obb[1].y + obb[2].y + obb[3].y) / 4.0,
+        ))
+    }
+
+    /// A layer's rendered OBB corners converted to comp units.
+    fn layer_bounds_comp(&self, layer_name: &str) -> Option<[[f32; 2]; 4]> {
+        let obb = self.player.layer_bounds(layer_name)?;
+        Some([
+            self.player.canvas_to_comp(obb[0].x, obb[0].y),
+            self.player.canvas_to_comp(obb[1].x, obb[1].y),
+            self.player.canvas_to_comp(obb[2].x, obb[2].y),
+            self.player.canvas_to_comp(obb[3].x, obb[3].y),
+        ])
+    }
+
+    /// Clamp a held object's transform position so its VISUAL rect stays
+    /// inside the boundary layer's current rendered bounds. Works on the
+    /// OBB's own axes (projections onto its edge vectors), so rotated
+    /// boundaries clamp correctly too. No boundary layer or degenerate
+    /// bounds = no constraint.
+    fn dnd_clamp_to_boundary(&self, rt: &DndRuntime, pos: [f32; 2]) -> [f32; 2] {
+        let Some(boundary) = rt.boundary.as_deref() else {
+            return pos;
+        };
+        let Some(obb) = self.layer_bounds_comp(boundary) else {
+            return pos;
+        };
+
+        let (e1x, e1y) = (obb[1][0] - obb[0][0], obb[1][1] - obb[0][1]);
+        let (e2x, e2y) = (obb[3][0] - obb[0][0], obb[3][1] - obb[0][1]);
+        let e1_len_sq = e1x * e1x + e1y * e1y;
+        let e2_len_sq = e2x * e2x + e2y * e2y;
+        if e1_len_sq == 0.0 || e2_len_sq == 0.0 {
+            return pos;
+        }
+
+        // Clamp the object's visual center, then restore the anchor offset.
+        let center = [pos[0] - rt.anchor_offset[0], pos[1] - rt.anchor_offset[1]];
+        let (ox, oy) = (center[0] - obb[0][0], center[1] - obb[0][1]);
+        let u = (ox * e1x + oy * e1y) / e1_len_sq;
+        let v = (ox * e2x + oy * e2y) / e2_len_sq;
+
+        // Inset by the object's half-extents (normalized to each edge) so
+        // the whole object fits; a boundary smaller than the object pins
+        // the center to the middle.
+        let inset_u = rt.half_extents[0] / e1_len_sq.sqrt();
+        let inset_v = rt.half_extents[1] / e2_len_sq.sqrt();
+        let u = if inset_u >= 0.5 {
+            0.5
+        } else {
+            u.clamp(inset_u, 1.0 - inset_u)
+        };
+        let v = if inset_v >= 0.5 {
+            0.5
+        } else {
+            v.clamp(inset_v, 1.0 - inset_v)
+        };
+
+        [
+            obb[0][0] + u * e1x + v * e2x + rt.anchor_offset[0],
+            obb[0][1] + u * e1y + v * e2y + rt.anchor_offset[1],
+        ]
+    }
+
     fn dnd_write_slot(&mut self, slot_id: &str, pos: [f32; 2]) {
         let _ = self
             .player
@@ -988,6 +1095,14 @@ impl<'a> StateMachineEngine<'a> {
     /// Cancel an in-flight drag back to its rest position (no zone actions,
     /// no lock) — used when the gesture's owning state is exited mid-drag.
     fn dnd_cancel_to_rest(&mut self, rt: &mut DndRuntime) {
+        if rt.ghost_active {
+            // The original never moved: just discard the ghost.
+            self.player.renderer.ghost_end(&rt.layer_name);
+            rt.ghost_active = false;
+            rt.ghost_land = None;
+            rt.phase = DndPhase::Idle;
+            return;
+        }
         let Some(rest) = rt.rest else {
             rt.phase = DndPhase::Idle;
             return;
@@ -1030,8 +1145,25 @@ impl<'a> StateMachineEngine<'a> {
                             self.dnd_cancel_to_rest(rt);
                             continue;
                         }
-                        let slot_id = rt.slot_id.clone();
-                        self.dnd_write_slot(&slot_id, [x + offset[0], y + offset[1]]);
+                        if rt.ghost_active {
+                            // The ghost rides the pointer in canvas pixels;
+                            // the original (and its slot) stays parked.
+                            self.player.renderer.ghost_offset(
+                                &rt.layer_name,
+                                x - rt.ghost_origin[0],
+                                y - rt.ghost_origin[1],
+                            );
+                        } else {
+                            let slot_id = rt.slot_id.clone();
+                            let [cx, cy] = self.to_comp(x, y);
+                            let pos =
+                                self.dnd_clamp_to_boundary(rt, [cx + offset[0], cy + offset[1]]);
+                            self.dnd_write_slot(&slot_id, pos);
+                        }
+                        let on_drag = rt.on_drag.clone();
+                        for action in on_drag {
+                            let _ = action.execute(self, true, false);
+                        }
                     }
                 }
             }
@@ -1062,10 +1194,12 @@ impl<'a> StateMachineEngine<'a> {
             return;
         }
 
+        // Pickup uses the SHAPE-accurate hit test: a star is not grabbed
+        // by the empty corners of its bounding box.
         let hit = self
             .player
             .renderer
-            .hit_test(Point { x, y }, &rt.layer_name)
+            .hit_test_precise(Point { x, y }, &rt.layer_name)
             .unwrap_or(false);
         if !hit {
             return;
@@ -1074,28 +1208,100 @@ impl<'a> StateMachineEngine<'a> {
         let Some(current) = self.dnd_slot_position(&rt.slot_id) else {
             return;
         };
+        // All gesture math runs in comp units; the pointer arrives in
+        // canvas pixels and is converted exactly once.
+        let pointer = self.to_comp(x, y);
 
-        // First grab captures the rest position (where a miss returns to).
+        // First grab captures the rest position (where a miss returns to),
+        // the anchor offset (transform position minus rendered center,
+        // used by the boundary clamp to keep the VISUAL rect inside), and
+        // the half extents. First grab only: the object is guaranteed
+        // settled in the rendered scene then, whereas bounds lag slot
+        // writes by one canvas update on later grabs.
         if rt.rest.is_none() {
             rt.rest = Some(current);
+            rt.anchor_offset = self
+                .layer_center(&rt.layer_name)
+                .map(|c| [current[0] - c[0], current[1] - c[1]])
+                .unwrap_or([0.0, 0.0]);
+            rt.half_extents = self
+                .layer_bounds_comp(&rt.layer_name)
+                .map(|c| {
+                    [
+                        ((c[1][0] - c[0][0]).hypot(c[1][1] - c[0][1])) / 2.0,
+                        ((c[3][0] - c[0][0]).hypot(c[3][1] - c[0][1])) / 2.0,
+                    ]
+                })
+                .unwrap_or([0.0, 0.0]);
         }
 
-        // Grabbing mid-snap cancels the tween; the object continues from
-        // wherever the glide left it.
-        let offset = if rt.use_grab_offset {
-            [current[0] - x, current[1] - y]
-        } else {
-            [0.0, 0.0]
-        };
+        // A ghost mid-glide finishes before it can be grabbed again.
+        if rt.ghost_active && matches!(rt.phase, DndPhase::Snapping { .. }) {
+            return;
+        }
+
+        // Grabbing mid-snap cancels the tween, and grabbing a tracked
+        // object un-docks it; either way the object continues from
+        // wherever it currently is.
+        rt.tracking = None;
+
+        // Ghost mode: park the original, drag a frozen duplicate. The
+        // slot is untouched until the ghost lands. Falls back to a normal
+        // slot drag if the duplicate cannot be created.
+        if rt.ghost {
+            rt.ghost_active = self.player.renderer.ghost_begin(&rt.layer_name);
+            if rt.ghost_active {
+                rt.ghost_origin = [x, y];
+                rt.phase = DndPhase::Held { offset: [0.0, 0.0] };
+                let on_grab = rt.on_grab.clone();
+                for action in on_grab {
+                    let _ = action.execute(self, true, false);
+                }
+                return;
+            }
+        }
+
+        // The pointer-to-object offset is always preserved, so the object
+        // never jumps to center itself on the pointer at pickup.
+        let offset = [current[0] - pointer[0], current[1] - pointer[1]];
         rt.phase = DndPhase::Held { offset };
 
-        if !rt.use_grab_offset {
-            let slot_id = rt.slot_id.clone();
-            self.dnd_write_slot(&slot_id, [x, y]);
+        // onGrab hooks: let the state machine react to the gesture starting
+        // (e.g. Fire an event that transitions into a "dragging" state).
+        let on_grab = rt.on_grab.clone();
+        for action in on_grab {
+            let _ = action.execute(self, true, false);
         }
     }
 
     fn dnd_resolve_drop(&mut self, rt: &mut DndRuntime, x: f32, y: f32) {
+        // onDrop hooks run first, regardless of the drop outcome — this is
+        // where "released" events belong (threshold-style release logic
+        // lives in transition guards, not zones).
+        let on_drop = rt.on_drop.clone();
+        for action in on_drop {
+            let _ = action.execute(self, true, false);
+        }
+
+        // No drop zones = lifecycle-only gesture: no snap, no return. The
+        // object stays wherever the release (or a live binding) leaves it.
+        // With a ghost, "wherever" is the release point: the slot is
+        // written once and the ghost retires.
+        if rt.zones.is_empty() {
+            if rt.ghost_active {
+                let pos = self.to_comp(x, y);
+                let slot_id = rt.slot_id.clone();
+                self.dnd_write_slot(&slot_id, pos);
+                self.player.renderer.ghost_end(&rt.layer_name);
+                rt.ghost_active = false;
+                rt.rest = Some(pos);
+            } else {
+                rt.rest = self.dnd_slot_position(&rt.slot_id).or(rt.rest);
+            }
+            rt.phase = DndPhase::Idle;
+            return;
+        }
+
         let zone_hit = rt.zones.iter().position(|zone| {
             self.player
                 .renderer
@@ -1103,59 +1309,70 @@ impl<'a> StateMachineEngine<'a> {
                 .unwrap_or(false)
         });
 
-        // Tracking zones bind the slot to the zone layer via a Lottie
-        // expression evaluated renderer-side each frame — the object follows
-        // the zone even while it animates, and no coordinates are needed
-        // engine-side. The release point becomes the static fallback for
-        // players without expression support. Tracking docks are locked:
-        // once expression-driven, the engine no longer knows the object's
-        // visual position, so re-grabbing can't behave correctly.
-        if let Some(zi) = zone_hit {
-            if rt.zones[zi].track {
-                let slot_id = rt.slot_id.clone();
-                // ThorVG follows the bodymovin convention: the expression's
-                // result is read from the `$bm_rt` global, not the eval value.
-                let expression = format!(
-                    "var $bm_rt = thisComp.layer('{}').transform.position;",
-                    rt.zones[zi].layer_name
-                );
-                let _ = self.player.set_position_slot(
-                    &slot_id,
-                    PositionSlot::static_value([x, y]).with_expression(expression),
-                );
+        let miss_pos = || rt.rest.unwrap_or_else(|| self.to_comp(x, y));
+        let (target, zone_index) = match zone_hit {
+            Some(zi) => {
+                // Snap target: explicit override, else the zone layer's
+                // CURRENT transform position (matrix translation — exact
+                // authored semantics, animated/parented zones included),
+                // with the rendered-bounds center as fallback.
+                let target = rt.zones[zi].snap.or_else(|| {
+                    self.layer_position(&rt.zones[zi].layer_name)
+                        .or_else(|| self.layer_center(&rt.zones[zi].layer_name))
+                });
+                match target {
+                    Some(t) => (t, Some(zi)),
+                    // Zone hit but no derivable snap target: treat as miss.
+                    None => (miss_pos(), None),
+                }
+            }
+            None => (miss_pos(), None),
+        };
 
-                rt.rest = Some([x, y]);
-                rt.phase = DndPhase::Idle;
-                rt.locked = true;
+        // Track zones dock INSTANTLY: an engine tween cannot chase a moving
+        // endpoint, and the per-tick follow takes over from the next tick.
+        let tracked = zone_index.is_some_and(|zi| rt.zones[zi].track);
 
-                let actions = rt.zones[zi].actions.clone();
-                for action in actions {
-                    let _ = action.execute(self, true, false);
+        // Ghost mode. Dock: the ghost retires at the release point and
+        // the ORIGINAL glides rest -> dock through the normal slot tween
+        // below — the visible "item travels to its destination" beat.
+        // Miss: the ghost glides back over the parked original (canvas
+        // offset -> zero) and nothing else moves.
+        if rt.ghost_active {
+            if zone_index.is_some() {
+                self.player.renderer.ghost_end(&rt.layer_name);
+                rt.ghost_active = false;
+                rt.ghost_land = None;
+                // Fall through to the slot glide: from = the slot's
+                // current (rest) position, to = the dock target.
+            } else {
+                let from = [x - rt.ghost_origin[0], y - rt.ghost_origin[1]];
+                match rt.tween {
+                    Some((duration, easing)) if duration > 0.0 => {
+                        rt.ghost_land = Some(target);
+                        rt.phase = DndPhase::Snapping {
+                            from,
+                            to: [0.0, 0.0],
+                            elapsed: 0.0,
+                            duration,
+                            easing,
+                            zone_index: None,
+                        };
+                    }
+                    _ => {
+                        self.player.renderer.ghost_end(&rt.layer_name);
+                        rt.ghost_active = false;
+                        self.dnd_finalize(rt, target, None);
+                    }
                 }
                 return;
             }
         }
 
-        let (target, zone_index) = match zone_hit {
-            Some(zi) => {
-                // Snap target: explicit override, else the zone layer's
-                // authored position from the animation itself.
-                let target = rt.zones[zi]
-                    .snap
-                    .or_else(|| self.player.layer_position(&rt.zones[zi].layer_name));
-                match target {
-                    Some(t) => (t, Some(zi)),
-                    // Zone hit but no derivable snap target: treat as miss.
-                    None => (rt.rest.unwrap_or([x, y]), None),
-                }
-            }
-            None => (rt.rest.unwrap_or([x, y]), None),
-        };
-
         let from = self.dnd_slot_position(&rt.slot_id).unwrap_or(target);
 
         match rt.tween {
-            Some((duration, easing)) if duration > 0.0 => {
+            Some((duration, easing)) if duration > 0.0 && !tracked => {
                 rt.phase = DndPhase::Snapping {
                     from,
                     to: target,
@@ -1179,6 +1396,9 @@ impl<'a> StateMachineEngine<'a> {
 
         if let Some(zi) = zone_index {
             rt.locked = rt.locked || rt.zones[zi].lock;
+            if rt.zones[zi].track {
+                rt.tracking = Some(zi);
+            }
             let actions = rt.zones[zi].actions.clone();
             for action in actions {
                 let _ = action.execute(self, true, false);
@@ -1202,6 +1422,28 @@ impl<'a> StateMachineEngine<'a> {
                 continue;
             }
 
+            // Tracking dock: follow the zone by reading its rendered
+            // center each tick and rewriting the slot. A static zone costs
+            // nothing (unchanged target skips the write); a moving zone is
+            // followed one canvas update behind, with no expression engine
+            // involved.
+            if let (DndPhase::Idle, Some(zi)) = (rt.phase, rt.tracking) {
+                if self.dnd_state_active(rt) {
+                    let zone_name = &rt.zones[zi].layer_name;
+                    if let Some(target) = self
+                        .layer_position(zone_name)
+                        .or_else(|| self.layer_center(zone_name))
+                    {
+                        if rt.rest != Some(target) {
+                            let slot_id = rt.slot_id.clone();
+                            self.dnd_write_slot(&slot_id, target);
+                            rt.rest = Some(target);
+                        }
+                    }
+                }
+                continue;
+            }
+
             let DndPhase::Snapping {
                 from,
                 to,
@@ -1216,13 +1458,31 @@ impl<'a> StateMachineEngine<'a> {
 
             let elapsed = elapsed + dt;
             if elapsed >= duration {
-                self.dnd_finalize(rt, to, zone_index);
+                if rt.ghost_active {
+                    // The ghost lands: retire it and write the slot once.
+                    self.player.renderer.ghost_end(&rt.layer_name);
+                    rt.ghost_active = false;
+                    let land = rt
+                        .ghost_land
+                        .take()
+                        .or(rt.rest)
+                        .unwrap_or(to);
+                    self.dnd_finalize(rt, land, zone_index);
+                } else {
+                    self.dnd_finalize(rt, to, zone_index);
+                }
             } else {
-                let progress =
-                    crate::tween::TweenState::eased_progress(elapsed / duration, easing);
+                let progress = crate::tween::TweenState::eased_progress(elapsed / duration, easing);
                 let pos = drag_and_drop::lerp2(from, to, progress);
-                let slot_id = rt.slot_id.clone();
-                self.dnd_write_slot(&slot_id, pos);
+                if rt.ghost_active {
+                    // from/to are canvas-pixel OFFSETS in ghost mode.
+                    self.player
+                        .renderer
+                        .ghost_offset(&rt.layer_name, pos[0], pos[1]);
+                } else {
+                    let slot_id = rt.slot_id.clone();
+                    self.dnd_write_slot(&slot_id, pos);
+                }
                 rt.phase = DndPhase::Snapping {
                     from,
                     to,
@@ -1234,6 +1494,258 @@ impl<'a> StateMachineEngine<'a> {
             }
         }
         self.dnd_runtimes = runtimes;
+    }
+
+    // ── PathDrag interaction runtime (prototype) ──────────────────────
+
+    fn path_drag_state_active(&self, rt: &PathDragRuntime) -> bool {
+        match &rt.state_name {
+            Some(state_name) => self
+                .current_state
+                .as_ref()
+                .is_some_and(|s| s.name().as_str() == state_name),
+            None => true,
+        }
+    }
+
+    /// Project the pointer onto the path (windowed, branch-local) and
+    /// publish progress as an input write (run_pipeline = true, so
+    /// bindings and guards react). Returns the published progress.
+    fn path_drag_publish(&mut self, rt: &mut PathDragRuntime, x: f32, y: f32) -> Option<f32> {
+        let (_point, progress) = rt.project_windowed([x, y])?;
+        let name = rt.progress_input.clone();
+        let _ = self.set_numeric_input(&name, progress, true, false);
+        Some(progress)
+    }
+
+    /// Half of a layer's larger rendered dimension in comp units — the
+    /// "radius" used for arc-proximity capture.
+    fn layer_half_extent(&self, layer_name: &str) -> f32 {
+        self.layer_bounds_comp(layer_name)
+            .map(|c| {
+                let w = (c[1][0] - c[0][0]).hypot(c[1][1] - c[0][1]);
+                let h = (c[3][0] - c[0][0]).hypot(c[3][1] - c[0][1]);
+                w.max(h) / 2.0
+            })
+            .unwrap_or(0.0)
+    }
+
+    /// Advance in-flight dock glides: eased progress from the release
+    /// point to the zone's on-path position, published as ordinary input
+    /// writes with onDrag running each tick — the same pipeline as a live
+    /// drag, so whatever converts progress to visuals keeps working.
+    fn advance_path_drag(&mut self, dt: f32) {
+        if self.pathdrag_runtimes.is_empty() {
+            return;
+        }
+
+        let mut runtimes = std::mem::take(&mut self.pathdrag_runtimes);
+
+        for rt in &mut runtimes {
+            let Some(mut snap) = rt.snapping else {
+                continue;
+            };
+            // A scoped gesture whose owning state exited drops the glide,
+            // mirroring the drag-cancel semantics.
+            if !self.path_drag_state_active(rt) {
+                rt.snapping = None;
+                continue;
+            }
+
+            snap.elapsed += dt;
+            let done = snap.elapsed >= snap.duration;
+            let t = if done {
+                snap.to
+            } else {
+                let p = crate::tween::TweenState::eased_progress(
+                    snap.elapsed / snap.duration,
+                    snap.easing,
+                );
+                snap.from + (snap.to - snap.from) * p
+            };
+            rt.snapping = if done { None } else { Some(snap) };
+
+            let name = rt.progress_input.clone();
+            let _ = self.set_numeric_input(&name, t, true, false);
+            let on_drag = rt.on_drag.clone();
+            for action in on_drag {
+                let _ = action.execute(self, true, false);
+            }
+        }
+
+        self.pathdrag_runtimes = runtimes;
+    }
+
+    fn manage_path_drag(&mut self, event: &Event, x: f32, y: f32) {
+        if self.pathdrag_runtimes.is_empty() {
+            return;
+        }
+
+        let mut runtimes = std::mem::take(&mut self.pathdrag_runtimes);
+
+        match event {
+            Event::PointerDown { .. } => {
+                for rt in &mut runtimes {
+                    if rt.held || rt.locked || !self.path_drag_state_active(rt) {
+                        continue;
+                    }
+                    // Pickup uses the SHAPE-accurate hit test (raw canvas
+                    // pixels; projection math below runs in comp units).
+                    let hit = self
+                        .player
+                        .renderer
+                        .hit_test_precise(Point { x, y }, &rt.layer_name)
+                        .unwrap_or(false);
+                    if !hit || rt.samples.is_empty() {
+                        continue;
+                    }
+                    rt.held = true;
+                    // Grabbing cancels an in-flight dock glide and un-docks.
+                    // Re-seed branch locality at the grab point, then
+                    // publish BEFORE onGrab so a state entered by the hook
+                    // binds against fresh values.
+                    rt.snapping = None;
+                    let pointer = self.to_comp(x, y);
+                    rt.seed(pointer);
+                    self.path_drag_publish(rt, pointer[0], pointer[1]);
+                    let on_grab = rt.on_grab.clone();
+                    for action in on_grab {
+                        let _ = action.execute(self, true, false);
+                    }
+                }
+            }
+            Event::PointerMove { .. } => {
+                for rt in &mut runtimes {
+                    if !rt.held {
+                        continue;
+                    }
+                    if !self.path_drag_state_active(rt) {
+                        rt.held = false; // cancelled by state exit: no hooks
+                        continue;
+                    }
+                    // onDrag runs after the publish, so its actions read
+                    // the fresh progress.
+                    let pointer = self.to_comp(x, y);
+                    self.path_drag_publish(rt, pointer[0], pointer[1]);
+                    let on_drag = rt.on_drag.clone();
+                    for action in on_drag {
+                        let _ = action.execute(self, true, false);
+                    }
+                }
+            }
+            Event::PointerUp { .. } => {
+                for rt in &mut runtimes {
+                    if !rt.held {
+                        continue;
+                    }
+                    rt.held = false;
+                    if !self.path_drag_state_active(rt) {
+                        continue; // cancelled: no final publish, no hooks
+                    }
+                    let pointer = self.to_comp(x, y);
+                    let final_t = self.path_drag_publish(rt, pointer[0], pointer[1]);
+
+                    // Path-mode drop zones are dock points ON the path,
+                    // captured by ARC PROXIMITY, not pointer hit-testing:
+                    // the pointer may sit far off the path while the object
+                    // rides its projection (and dots may be tiny), so what
+                    // matters is whether the OBJECT stopped within reach of
+                    // a dot. Reach = object half-size + zone half-size
+                    // (rendered bounds), measured along the path — which
+                    // also means a dot on an adjacent turn of a spiral can
+                    // never falsely capture. Nearest qualifying zone wins;
+                    // progress snaps to the zone's own on-path position.
+                    let mut zone_hit: Option<(usize, f32, f32)> = None; // (zi, zone_t, arc_dist)
+                    if let Some(t) = final_t {
+                        let zone_ts: Vec<(usize, f32)> = rt
+                            .zones
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(zi, zone)| {
+                                self.layer_position(&zone.layer_name)
+                                    .or_else(|| self.layer_center(&zone.layer_name))
+                                    .and_then(|c| rt.progress_at_point(c))
+                                    .map(|zone_t| (zi, zone_t))
+                            })
+                            .collect();
+
+                        let reach_base = self.layer_half_extent(&rt.layer_name);
+                        for &(zi, zone_t) in &zone_ts {
+                            let arc_dist = (t - zone_t).abs() * rt.total_len;
+                            let reach =
+                                reach_base + self.layer_half_extent(&rt.zones[zi].layer_name);
+                            if arc_dist <= reach
+                                && zone_hit.is_none_or(|(_, _, best)| arc_dist < best)
+                            {
+                                zone_hit = Some((zi, zone_t, arc_dist));
+                            }
+                        }
+
+                        // Uncaptured release: dockFallback ratchets to a
+                        // zone anyway — "previous" to the nearest one at
+                        // or behind the release progress, "nearest" to
+                        // the closest in either direction. No candidate
+                        // (e.g. released before the first dock point)
+                        // leaves zone = 0 and the machine decides.
+                        if zone_hit.is_none() {
+                            let mode = rt.dock_fallback.as_deref();
+                            for &(zi, zone_t) in &zone_ts {
+                                let arc_dist = match mode {
+                                    Some("previous") if zone_t <= t => (t - zone_t) * rt.total_len,
+                                    Some("nearest") => (t - zone_t).abs() * rt.total_len,
+                                    _ => continue,
+                                };
+                                if zone_hit.is_none_or(|(_, _, best)| arc_dist < best) {
+                                    zone_hit = Some((zi, zone_t, arc_dist));
+                                }
+                            }
+                        }
+                    }
+                    if let Some((_, zone_t, _)) = zone_hit {
+                        match (rt.tween, final_t) {
+                            // Glide ALONG THE PATH into the dock:
+                            // advance_path_drag animates the progress
+                            // input and runs onDrag each tick, so the
+                            // object slides rather than teleports.
+                            (Some((duration, easing)), Some(from))
+                                if duration > 0.0 && from != zone_t =>
+                            {
+                                rt.snapping = Some(PathSnap {
+                                    from,
+                                    to: zone_t,
+                                    elapsed: 0.0,
+                                    duration,
+                                    easing,
+                                });
+                            }
+                            _ => {
+                                let name = rt.progress_input.clone();
+                                let _ = self.set_numeric_input(&name, zone_t, true, false);
+                            }
+                        }
+                    }
+                    let zone_hit = zone_hit.map(|(zi, _, _)| zi);
+
+                    // onDrop hooks run after the progress publish (so a
+                    // Fired event's guards see the snapped value), then
+                    // the zone's own actions, mirroring free mode.
+                    let on_drop = rt.on_drop.clone();
+                    for action in on_drop {
+                        let _ = action.execute(self, true, false);
+                    }
+                    if let Some(zi) = zone_hit {
+                        rt.locked = rt.locked || rt.zones[zi].lock;
+                        let actions = rt.zones[zi].actions.clone();
+                        for action in actions {
+                            let _ = action.execute(self, true, false);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        self.pathdrag_runtimes = runtimes;
     }
 
     // Set the current state to the target state
@@ -1375,8 +1887,7 @@ impl<'a> StateMachineEngine<'a> {
 
                 // Apply the state's declared slots (after enter, so a
                 // changed animation is already loaded and reseeded).
-                let declared: Vec<StateSlot> =
-                    state.state_slots().cloned().unwrap_or_default();
+                let declared: Vec<StateSlot> = state.state_slots().cloned().unwrap_or_default();
                 self.apply_state_slots(&declared);
 
                 // Don't forget to put things back
@@ -1681,7 +2192,22 @@ impl<'a> StateMachineEngine<'a> {
             let pointer_move_interactions = self.interactions(Some(event_type_name!(PointerMove)));
 
             for interaction in pointer_move_interactions {
-                if let Interaction::PointerMove { actions } = interaction {
+                if let Interaction::PointerMove {
+                    state_name,
+                    actions,
+                } = interaction
+                {
+                    // State-scoped move handlers (OnComplete-style) are
+                    // inert outside their owning state.
+                    if let Some(state_name) = state_name {
+                        let active = self
+                            .current_state
+                            .as_ref()
+                            .is_some_and(|s| s.name() == state_name);
+                        if !active {
+                            continue;
+                        }
+                    }
                     actions_to_execute.extend(actions.clone());
                 }
             }
@@ -1783,8 +2309,9 @@ impl<'a> StateMachineEngine<'a> {
         self.pointer_management.pointer_x = x;
         self.pointer_management.pointer_y = y;
 
-        // DragAndDrop gesture runtimes see every pointer event first.
+        // Gesture runtimes see every pointer event first.
         self.manage_drag_and_drop(event, x, y);
+        self.manage_path_drag(event, x, y);
 
         // This will handle PointerDown, PointerUp, PointerEnter, PointerExit, Click
         if event.type_name() != "PointerMove" {
@@ -2005,6 +2532,7 @@ impl<'a> StateMachineEngine<'a> {
         // depends on the rendered scene being current).
         if self.status != StateMachineEngineStatus::Stopped {
             self.advance_drag_and_drop(dt);
+            self.advance_path_drag(dt);
         }
 
         let ticked = self.player.tick(dt);

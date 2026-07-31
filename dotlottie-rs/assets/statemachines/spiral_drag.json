@@ -1,0 +1,27 @@
+{
+  "initial": "board",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "board",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "inner_time", "type": "Scalar", "value": "$path_t" }
+      ],
+      "transitions": []
+    }
+  ],
+  "interactions": [
+    {
+      "type": "DragAndDrop",
+      "layerName": "knob",
+      "pathLayerName": "track",
+      "progressInput": "path_t"
+    }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "path_t", "value": 0 }
+  ]
+}

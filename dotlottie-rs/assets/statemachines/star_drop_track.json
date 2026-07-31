@@ -1,0 +1,30 @@
+{
+  "initial": "board",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "board",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "transitions": []
+    }
+  ],
+  "interactions": [
+    {
+      "type": "DragAndDrop",
+      "layerName": "Star 2",
+      "slotId": "star_pos",
+      "tween": { "duration": 0.25, "easing": [0.25, 0.1, 0.25, 1.0] },
+      "dropZones": [
+        {
+          "layerName": "drop_zone",
+          "track": true,
+          "actions": [{ "type": "Increment", "inputName": "docked_count" }]
+        }
+      ]
+    }
+  ],
+  "inputs": [{ "type": "Numeric", "name": "docked_count", "value": 0 }]
+}

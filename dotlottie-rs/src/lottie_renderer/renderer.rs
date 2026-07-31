@@ -267,6 +267,21 @@ pub trait Animation: Default {
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
 
+    /// Shape-accurate hit test: the point against the layer's actual
+    /// filled area (not its bounding box). Valid after a render.
+    fn hit_test_precise(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
+
+    /// Current oriented bounding box of a named layer in canvas space
+    /// (4 corners, valid after the scene has been rendered), or `None`
+    /// if no layer with that name exists.
+    fn layer_bounds(&self, layer_name: &str) -> Result<Option<[Point; 4]>, Self::Error>;
+
+    /// Current transform matrix of a named layer (row-major 3x3), in
+    /// COMPOSITION units, parent chain composed. The translation column is
+    /// the image of the layer's local origin — its transform position when
+    /// the anchor point is zero.
+    fn layer_transform(&self, layer_name: &str) -> Result<Option<[f32; 9]>, Self::Error>;
+
     fn get_size(&self) -> Result<(f32, f32), Self::Error>;
 
     fn set_size(&mut self, width: f32, height: f32) -> Result<(), Self::Error>;
@@ -356,6 +371,22 @@ pub trait Renderer: Sized + 'static {
     fn clear(&self) -> Result<(), Self::Error>;
 
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), Self::Error>;
+
+    /// Create a frozen duplicate ("ghost") of a named layer, parked on the
+    /// canvas ABOVE the animation. Returns false if the layer has no
+    /// rendered paint. Canvas children survive the Lottie builder's
+    /// per-frame scene regeneration, so no re-application is needed.
+    fn ghost_begin(
+        &mut self,
+        animation: &Self::Animation,
+        layer_name: &str,
+    ) -> Result<bool, Self::Error>;
+
+    /// Move a ghost by a CANVAS-pixel offset from where it was created.
+    fn ghost_offset(&mut self, layer_name: &str, dx: f32, dy: f32) -> Result<(), Self::Error>;
+
+    /// Remove a ghost from the canvas.
+    fn ghost_end(&mut self, layer_name: &str) -> Result<(), Self::Error>;
 
     /// Insert `drawable` immediately before `at` in the scene.
     fn insert(&mut self, drawable: Drawable<Self>, at: Drawable<Self>) -> Result<(), Self::Error>;

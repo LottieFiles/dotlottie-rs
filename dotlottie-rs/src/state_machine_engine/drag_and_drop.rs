@@ -42,14 +42,42 @@ pub(crate) struct DndRuntime {
     /// When set, the gesture only operates while this state is current;
     /// leaving the state mid-drag cancels back to the rest position.
     pub state_name: Option<String>,
-    pub use_grab_offset: bool,
+    /// Layer whose rendered bounds constrain the drag (center clamped
+    /// inside, inset by the object's half-extents).
+    pub boundary: Option<String>,
     /// (duration ms, easing); None = snap instantly.
     pub tween: Option<(f32, [f32; 4])>,
+    pub on_grab: Vec<Action>,
+    pub on_drag: Vec<Action>,
+    pub on_drop: Vec<Action>,
     pub zones: Vec<DndZone>,
     pub phase: DndPhase,
     /// Where the object returns on a missed drop. Captured at first grab,
     /// updated to the snap target on every dock.
     pub rest: Option<[f32; 2]>,
+    /// Transform position minus rendered visual center, captured at grab.
+    /// Snapping adds it back so the object CENTERS on the zone even when
+    /// its anchor point is off-center.
+    pub anchor_offset: [f32; 2],
+    /// Half width/height of the object's rendered bounds, captured at
+    /// first grab; insets the boundary clamp so the whole object fits.
+    pub half_extents: [f32; 2],
+    /// Zone index being FOLLOWED while docked on a `track` zone: each tick
+    /// the engine reads the zone's rendered center and rewrites the slot.
+    /// No expressions involved, and the engine always knows the object's
+    /// position — so re-grabbing works (grab clears this).
+    pub tracking: Option<usize>,
+    /// Ghost mode requested (free mode only).
+    pub ghost: bool,
+    /// A ghost duplicate is currently on the canvas; while true, the drag
+    /// moves the ghost (canvas-pixel offsets) and the slot is untouched
+    /// until landing.
+    pub ghost_active: bool,
+    /// Canvas-pixel pointer position at ghost grab (offsets are relative
+    /// to it).
+    pub ghost_origin: [f32; 2],
+    /// Where (comp units) the slot lands when the ghost glide completes.
+    pub ghost_land: Option<[f32; 2]>,
     pub locked: bool,
 }
 
@@ -58,22 +86,38 @@ impl DndRuntime {
         let Interaction::DragAndDrop {
             layer_name,
             slot_id,
+            path_layer_name,
             state_name,
-            grab_offset,
+            boundary_layer_name,
+            ghost,
             tween,
+            on_grab,
+            on_drag,
+            on_drop,
             drop_zones,
+            ..
         } = interaction
         else {
             return None;
         };
 
+        // Path mode routes to PathDragRuntime instead; free/bounded mode
+        // is inert without a slot to write.
+        if path_layer_name.is_some() {
+            return None;
+        }
+        let slot_id = slot_id.as_ref()?;
+
         Some(DndRuntime {
             layer_name: layer_name.as_str().to_owned(),
             slot_id: slot_id.as_str().to_owned(),
             state_name: state_name.as_ref().map(|s| s.as_str().to_owned()),
-            use_grab_offset: grab_offset.unwrap_or(true),
+            boundary: boundary_layer_name.as_ref().map(|s| s.as_str().to_owned()),
             // Seconds -> milliseconds, same convention as Tweened transitions.
             tween: tween.as_ref().map(|t| (t.duration * 1000.0, t.easing)),
+            on_grab: on_grab.clone().unwrap_or_default(),
+            on_drag: on_drag.clone().unwrap_or_default(),
+            on_drop: on_drop.clone().unwrap_or_default(),
             zones: drop_zones
                 .iter()
                 .map(|z| DndZone {
@@ -86,6 +130,13 @@ impl DndRuntime {
                 .collect(),
             phase: DndPhase::Idle,
             rest: None,
+            anchor_offset: [0.0, 0.0],
+            half_extents: [0.0, 0.0],
+            tracking: None,
+            ghost: ghost.unwrap_or(false),
+            ghost_active: false,
+            ghost_origin: [0.0, 0.0],
+            ghost_land: None,
             locked: false,
         })
     }

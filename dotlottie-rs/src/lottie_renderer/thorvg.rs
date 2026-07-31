@@ -98,6 +98,43 @@ static RENDERERS_COUNT: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
 
 pub struct TvgRenderer {
     raw_canvas: Option<tvg::Tvg_Canvas>,
+    /// Active drag ghosts by layer name: a frozen duplicate of a layer's
+    /// paint parked directly on the CANVAS (above the picture), with its
+    /// fully composed base transform. Canvas children are not touched by
+    /// the Lottie builder's per-frame scene regeneration, so ghosts
+    /// survive frame changes without re-application.
+    ghosts: RefCell<FxHashMap<String, Ghost>>,
+}
+
+struct Ghost {
+    paint: tvg::Tvg_Paint,
+    base: tvg::Tvg_Matrix,
+}
+
+const TVG_IDENTITY: tvg::Tvg_Matrix = tvg::Tvg_Matrix {
+    e11: 1.0,
+    e12: 0.0,
+    e13: 0.0,
+    e21: 0.0,
+    e22: 1.0,
+    e23: 0.0,
+    e31: 0.0,
+    e32: 0.0,
+    e33: 1.0,
+};
+
+fn tvg_mat_mul(a: &tvg::Tvg_Matrix, b: &tvg::Tvg_Matrix) -> tvg::Tvg_Matrix {
+    tvg::Tvg_Matrix {
+        e11: a.e11 * b.e11 + a.e12 * b.e21 + a.e13 * b.e31,
+        e12: a.e11 * b.e12 + a.e12 * b.e22 + a.e13 * b.e32,
+        e13: a.e11 * b.e13 + a.e12 * b.e23 + a.e13 * b.e33,
+        e21: a.e21 * b.e11 + a.e22 * b.e21 + a.e23 * b.e31,
+        e22: a.e21 * b.e12 + a.e22 * b.e22 + a.e23 * b.e32,
+        e23: a.e21 * b.e13 + a.e22 * b.e23 + a.e23 * b.e33,
+        e31: a.e31 * b.e11 + a.e32 * b.e21 + a.e33 * b.e31,
+        e32: a.e31 * b.e12 + a.e32 * b.e22 + a.e33 * b.e32,
+        e33: a.e31 * b.e13 + a.e32 * b.e23 + a.e33 * b.e33,
+    }
 }
 
 impl TvgRenderer {
@@ -116,7 +153,10 @@ impl TvgRenderer {
 
         *count += 1;
 
-        TvgRenderer { raw_canvas: None }
+        TvgRenderer {
+            raw_canvas: None,
+            ghosts: RefCell::new(FxHashMap::default()),
+        }
     }
 
     pub fn create_sw_canvas(&mut self) -> Result<(), TvgError> {
@@ -303,9 +343,73 @@ impl Renderer for TvgRenderer {
 
     fn clear(&self) -> Result<(), TvgError> {
         if let Some(raw_canvas) = self.raw_canvas {
+            // Removes every canvas child, ghosts included.
+            self.ghosts.borrow_mut().clear();
             unsafe { tvg::tvg_canvas_remove(raw_canvas, ptr::null_mut()).into_result() }
         } else {
             Err(TvgError::InvalidArgument)
+        }
+    }
+
+    fn ghost_begin(&mut self, animation: &TvgAnimation, layer_name: &str) -> Result<bool, TvgError> {
+        if self.ghosts.borrow().contains_key(layer_name) {
+            return Ok(true);
+        }
+        let Some(raw_canvas) = self.raw_canvas else {
+            return Err(TvgError::InvalidArgument);
+        };
+        let layer_id = animation.layer_id_map.get_or_insert(layer_name)?;
+        unsafe {
+            let layer_paint = tvg::tvg_picture_get_paint(animation.raw_paint, layer_id);
+            if layer_paint.is_null() {
+                return Ok(false);
+            }
+            let ghost = tvg::tvg_paint_duplicate(layer_paint as tvg::Tvg_Paint);
+            if ghost.is_null() {
+                return Ok(false);
+            }
+            // The clone leaves the picture's subtree, so its base bakes the
+            // full chain: picture (layout) transform x layer matrix. Offsets
+            // composed onto it act in CANVAS pixels.
+            let mut picture_m = TVG_IDENTITY;
+            tvg::tvg_paint_get_transform(animation.raw_paint, &mut picture_m).into_result()?;
+            let mut layer_m = TVG_IDENTITY;
+            tvg::tvg_paint_get_transform(layer_paint as tvg::Tvg_Paint, &mut layer_m)
+                .into_result()?;
+            let base = tvg_mat_mul(&picture_m, &layer_m);
+            tvg::tvg_paint_set_transform(ghost, &base).into_result()?;
+            tvg::tvg_canvas_add(raw_canvas, ghost).into_result()?;
+            self.ghosts.borrow_mut().insert(
+                layer_name.to_owned(),
+                Ghost {
+                    paint: ghost,
+                    base,
+                },
+            );
+        }
+        Ok(true)
+    }
+
+    fn ghost_offset(&mut self, layer_name: &str, dx: f32, dy: f32) -> Result<(), TvgError> {
+        let ghosts = self.ghosts.borrow();
+        let Some(ghost) = ghosts.get(layer_name) else {
+            return Ok(());
+        };
+        // Canvas-pixel translation premultiplied onto the baked base.
+        let mut m = ghost.base;
+        m.e13 += dx;
+        m.e23 += dy;
+        unsafe { tvg::tvg_paint_set_transform(ghost.paint, &m).into_result() }
+    }
+
+    fn ghost_end(&mut self, layer_name: &str) -> Result<(), TvgError> {
+        let Some(ghost) = self.ghosts.borrow_mut().remove(layer_name) else {
+            return Ok(());
+        };
+        if let Some(raw_canvas) = self.raw_canvas {
+            unsafe { tvg::tvg_canvas_remove(raw_canvas, ghost.paint).into_result() }
+        } else {
+            Ok(())
         }
     }
 
@@ -668,6 +772,56 @@ impl Animation for TvgAnimation {
             Ok((0.0..=1.0).contains(&v))
         } else {
             Ok(false)
+        }
+    }
+
+    fn hit_test_precise(&self, point: Point, layer_name: &str) -> Result<bool, TvgError> {
+        let layer_id = self.layer_id_map.get_or_insert(layer_name)?;
+        unsafe {
+            let layer_paint = tvg::tvg_picture_get_paint(self.raw_paint, layer_id);
+            if layer_paint.is_null() {
+                return Ok(false);
+            }
+            // Point test = 1x1 region against the paint's rendered
+            // coverage (fills and strokes), not its bounding box.
+            Ok(tvg::tvg_paint_intersects(
+                layer_paint as tvg::Tvg_Paint,
+                point.x.round() as i32,
+                point.y.round() as i32,
+                1,
+                1,
+            ))
+        }
+    }
+
+    fn layer_bounds(&self, layer_name: &str) -> Result<Option<[Point; 4]>, TvgError> {
+        Ok(self
+            .get_layer_obb(layer_name)?
+            .map(|obb| obb.map(|p| Point { x: p.x, y: p.y })))
+    }
+
+    fn layer_transform(&self, layer_name: &str) -> Result<Option<[f32; 9]>, TvgError> {
+        let layer_id = self.layer_id_map.get_or_insert(layer_name)?;
+        unsafe {
+            let layer_paint = tvg::tvg_picture_get_paint(self.raw_paint, layer_id);
+            if layer_paint.is_null() {
+                return Ok(None);
+            }
+            let mut m = tvg::Tvg_Matrix {
+                e11: 1.0,
+                e12: 0.0,
+                e13: 0.0,
+                e21: 0.0,
+                e22: 1.0,
+                e23: 0.0,
+                e31: 0.0,
+                e32: 0.0,
+                e33: 1.0,
+            };
+            tvg::tvg_paint_get_transform(layer_paint as tvg::Tvg_Paint, &mut m).into_result()?;
+            Ok(Some([
+                m.e11, m.e12, m.e13, m.e21, m.e22, m.e23, m.e31, m.e32, m.e33,
+            ]))
         }
     }
 

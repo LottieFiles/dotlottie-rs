@@ -166,9 +166,42 @@ pub trait LottieRenderer {
     /// Current tracked value of a slot (authored default until overwritten).
     fn slot_value(&self, slot_id: &str) -> Option<SlotType>;
 
-    /// Authored static position of a named top-level layer, extracted from
-    /// the animation JSON at load time.
-    fn layer_position(&self, layer_name: &str) -> Option<[f32; 2]>;
+    /// Current oriented bounding box of a named layer in canvas space,
+    /// read from the rendered scene (valid after a render; reflects
+    /// animation, parenting, and slot overrides).
+    fn layer_bounds(&self, layer_name: &str) -> Option<[Point; 4]>;
+
+    /// Shape-accurate hit test against a named layer's actual rendered
+    /// coverage (fills and strokes), not its bounding box. Canvas space.
+    fn hit_test_precise(&self, point: Point, layer_name: &str) -> Result<bool, LottieRendererError>;
+
+    /// Current transform matrix of a named layer (row-major 3x3, parent
+    /// chain composed), in COMPOSITION units.
+    fn layer_transform(&self, layer_name: &str) -> Option<[f32; 9]>;
+
+    /// Map a canvas-pixel point into composition units — the inverse of
+    /// the layout + user transform applied to the picture. Identity when
+    /// canvas size equals the composition size at 1:1 fit.
+    fn canvas_to_comp(&self, point: Point) -> Point;
+
+    /// Map a composition-unit point into canvas pixels (the forward
+    /// layout + user transform).
+    fn comp_to_canvas(&self, point: Point) -> Point;
+
+    /// Transient drag ghost: a frozen duplicate of a named layer drawn
+    /// above the animation. Purely visual — no slot or input state is
+    /// involved, and the ghost never persists.
+    fn ghost_begin(&mut self, layer_name: &str) -> bool;
+
+    /// Offset an active ghost in canvas pixels from its resting pose.
+    fn ghost_offset(&mut self, layer_name: &str, dx: f32, dy: f32);
+
+    /// Remove an active ghost.
+    fn ghost_end(&mut self, layer_name: &str);
+
+    /// Authored bezier path of a named layer (main scene or precomp
+    /// assets), extracted from the animation JSON at load time.
+    fn layer_path(&self, layer_name: &str) -> Option<slots::LayerPath>;
 
     fn get_slot_type(&self, slot_id: &str) -> String;
 
@@ -233,7 +266,7 @@ impl dyn LottieRenderer {
             slot_json_buffer: Vec::with_capacity(512),
             slot_values: BTreeMap::new(),
             default_slots: BTreeMap::new(),
-            layer_positions: BTreeMap::new(),
+            layer_paths: BTreeMap::new(),
         })
     }
 }
@@ -261,8 +294,8 @@ struct LottieRendererImpl<R: Renderer> {
     /// Maps slot_id -> SlotType for value retrieval (get operations)
     slot_values: BTreeMap<String, SlotType>,
     default_slots: BTreeMap<String, SlotType>,
-    /// Authored static positions of named top-level layers (for snap targets)
-    layer_positions: BTreeMap<String, [f32; 2]>,
+    /// Authored bezier paths of named layers (for path-constrained gestures)
+    layer_paths: BTreeMap<String, slots::LayerPath>,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -279,7 +312,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         self.slot_json_buffer.clear();
         self.slot_values.clear();
         self.default_slots.clear();
-        self.layer_positions.clear();
+        self.layer_paths.clear();
         Ok(())
     }
 
@@ -553,7 +586,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         // Extract default slot values BEFORE passing to ThorVG, because
         // ThorVG's load_data with copy=false may parse the JSON in-place
         // and mutate the buffer (nulling out string terminators).
-        let (default_slots, layer_positions) = data
+        let (default_slots, layer_paths) = data
             .to_str()
             .map(slots::extract_authored_from_animation)
             .unwrap_or_default();
@@ -573,7 +606,7 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.updated = true;
 
         self.store_default_slots(default_slots);
-        self.layer_positions = layer_positions;
+        self.layer_paths = layer_paths;
 
         Ok(())
     }
@@ -801,8 +834,86 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.slot_values.get(slot_id).cloned()
     }
 
-    fn layer_position(&self, layer_name: &str) -> Option<[f32; 2]> {
-        self.layer_positions.get(layer_name).copied()
+    fn layer_bounds(&self, layer_name: &str) -> Option<[Point; 4]> {
+        self.animation
+            .as_ref()?
+            .layer_bounds(layer_name)
+            .ok()
+            .flatten()
+    }
+
+    fn hit_test_precise(&self, point: Point, layer_name: &str) -> Result<bool, LottieRendererError> {
+        self.get_animation()?
+            .hit_test_precise(point, layer_name)
+            .map_err(into_lottie::<R>)
+    }
+
+    fn layer_transform(&self, layer_name: &str) -> Option<[f32; 9]> {
+        self.animation
+            .as_ref()?
+            .layer_transform(layer_name)
+            .ok()
+            .flatten()
+    }
+
+    fn canvas_to_comp(&self, point: Point) -> Point {
+        let layout_matrix = self.layout.to_transform_matrix(
+            self.width as f32,
+            self.height as f32,
+            self.picture_width,
+            self.picture_height,
+        );
+        let combined = multiply_matrices(&self.user_transform, &layout_matrix);
+        match invert_matrix3(&combined) {
+            Some(inv) => Point {
+                x: inv[0] * point.x + inv[1] * point.y + inv[2],
+                y: inv[3] * point.x + inv[4] * point.y + inv[5],
+            },
+            None => point,
+        }
+    }
+
+    fn comp_to_canvas(&self, point: Point) -> Point {
+        let layout_matrix = self.layout.to_transform_matrix(
+            self.width as f32,
+            self.height as f32,
+            self.picture_width,
+            self.picture_height,
+        );
+        let m = multiply_matrices(&self.user_transform, &layout_matrix);
+        Point {
+            x: m[0] * point.x + m[1] * point.y + m[2],
+            y: m[3] * point.x + m[4] * point.y + m[5],
+        }
+    }
+
+    fn ghost_begin(&mut self, layer_name: &str) -> bool {
+        let Some(animation) = self.animation.as_ref() else {
+            return false;
+        };
+        let ok = self
+            .renderer
+            .ghost_begin(animation, layer_name)
+            .unwrap_or(false);
+        if ok {
+            self.updated = true;
+        }
+        ok
+    }
+
+    fn ghost_offset(&mut self, layer_name: &str, dx: f32, dy: f32) {
+        if self.renderer.ghost_offset(layer_name, dx, dy).is_ok() {
+            self.updated = true;
+        }
+    }
+
+    fn ghost_end(&mut self, layer_name: &str) {
+        let _ = self.renderer.ghost_end(layer_name);
+        self.updated = true;
+    }
+
+    fn layer_path(&self, layer_name: &str) -> Option<slots::LayerPath> {
+        self.layer_paths.get(layer_name).cloned()
     }
 
     fn get_slot_type(&self, slot_id: &str) -> String {
@@ -939,6 +1050,27 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn segment(&self) -> Result<Segment, LottieRendererError> {
         self.get_animation()?.segment().map_err(into_lottie::<R>)
     }
+}
+
+/// General 3x3 inverse (row-major); None when singular.
+fn invert_matrix3(m: &[f32; 9]) -> Option<[f32; 9]> {
+    let det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6])
+        + m[2] * (m[3] * m[7] - m[4] * m[6]);
+    if det.abs() < f32::EPSILON {
+        return None;
+    }
+    let inv_det = 1.0 / det;
+    Some([
+        (m[4] * m[8] - m[5] * m[7]) * inv_det,
+        (m[2] * m[7] - m[1] * m[8]) * inv_det,
+        (m[1] * m[5] - m[2] * m[4]) * inv_det,
+        (m[5] * m[6] - m[3] * m[8]) * inv_det,
+        (m[0] * m[8] - m[2] * m[6]) * inv_det,
+        (m[2] * m[3] - m[0] * m[5]) * inv_det,
+        (m[3] * m[7] - m[4] * m[6]) * inv_det,
+        (m[1] * m[6] - m[0] * m[7]) * inv_det,
+        (m[0] * m[4] - m[1] * m[3]) * inv_det,
+    ])
 }
 
 fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {

@@ -1,0 +1,97 @@
+{
+  "initial": "idle",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "idle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "slots": [
+        { "slotId": "star_pos", "type": "Position", "value": ["$star_x", "$star_y"] }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "dragging",
+          "guards": [{ "type": "Event", "inputName": "grab" }]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "dragging",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        { "type": "SetBoolean", "inputName": "over_zone", "value": false }
+      ],
+      "slots": [
+        { "slotId": "star_pos", "type": "Position", "value": ["$cursor_x", "$cursor_y"] }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "docking",
+          "duration": 0.25,
+          "easing": [0.25, 0.1, 0.25, 1.0],
+          "guards": [
+            { "type": "Event", "inputName": "released" },
+            { "type": "Boolean", "inputName": "over_zone", "conditionType": "Equal", "compareTo": true }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "idle",
+          "duration": 0.25,
+          "easing": [0.25, 0.1, 0.25, 1.0],
+          "guards": [{ "type": "Event", "inputName": "released" }]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "docking",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        { "type": "SetNumeric", "inputName": "star_x", "value": 159.5 },
+        { "type": "SetNumeric", "inputName": "star_y", "value": 110.5 }
+      ],
+      "slots": [
+        { "slotId": "star_pos", "type": "Position", "value": [159.5, 110.5] }
+      ],
+      "transitions": [{ "type": "Transition", "toState": "idle" }]
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerUp",
+      "layerName": "drop_zone",
+      "actions": [{ "type": "SetBoolean", "inputName": "over_zone", "value": true }]
+    },
+    {
+      "type": "PointerUp",
+      "actions": [{ "type": "Fire", "inputName": "released" }]
+    },
+    {
+      "type": "PointerDown",
+      "layerName": "Star 2",
+      "actions": [{ "type": "Fire", "inputName": "grab" }]
+    }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "cursor_x", "value": 256 },
+    { "type": "Numeric", "name": "cursor_y", "value": 256 },
+    { "type": "Numeric", "name": "star_x", "value": 138.5 },
+    { "type": "Numeric", "name": "star_y", "value": 392.5 },
+    { "type": "Boolean", "name": "over_zone", "value": false },
+    { "type": "Event", "name": "grab" },
+    { "type": "Event", "name": "released" }
+  ]
+}

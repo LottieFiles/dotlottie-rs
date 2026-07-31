@@ -1,0 +1,199 @@
+{
+  "initial": "idle",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "idle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        {
+          "slotId": "inner_time",
+          "type": "Scalar",
+          "value": 0
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "sliding",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "grab"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "sliding",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        {
+          "slotId": "inner_time",
+          "type": "Scalar",
+          "value": "$inner_t"
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "unlocked",
+          "duration": 0.3,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "release"
+            },
+            {
+              "type": "Numeric",
+              "inputName": "inner_t",
+              "conditionType": "GreaterThan",
+              "compareTo": 3.6
+            }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "idle",
+          "duration": 0.3,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "release"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "unlocked",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        {
+          "slotId": "inner_time",
+          "type": "Scalar",
+          "value": 4.0
+        },
+        {
+          "slotId": "main_bg",
+          "type": "Color",
+          "value": [
+            0.15,
+            0.6,
+            0.35
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "sliding",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "grab"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerDown",
+      "layerName": "thumb",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "grab"
+        }
+      ]
+    },
+    {
+      "type": "PointerDown",
+      "layerName": "track",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "grab"
+        }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "release"
+        }
+      ]
+    },
+    {
+      "type": "PointerMove",
+      "actions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "inner_t",
+          "value": "$cursor_x"
+        },
+        {
+          "type": "Increment",
+          "inputName": "inner_t",
+          "value": -61
+        },
+        {
+          "type": "Multiply",
+          "inputName": "inner_t",
+          "value": 0.01
+        },
+        {
+          "type": "Clamp",
+          "inputName": "inner_t",
+          "min": 0,
+          "max": 4
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "cursor_x",
+      "value": 61
+    },
+    {
+      "type": "Numeric",
+      "name": "inner_t",
+      "value": 0
+    },
+    {
+      "type": "Event",
+      "name": "grab"
+    },
+    {
+      "type": "Event",
+      "name": "release"
+    }
+  ]
+}

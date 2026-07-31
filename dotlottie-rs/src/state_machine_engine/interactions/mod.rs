@@ -45,6 +45,9 @@ pub struct DropZone {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all_fields = "camelCase")]
 #[serde(tag = "type")]
+// The DragAndDrop variant is much larger than the pointer variants, but
+// interactions are parsed once into a small list — not worth boxing.
+#[allow(clippy::large_enum_variant)]
 pub enum Interaction {
     PointerUp {
         layer_name: Option<DotString>,
@@ -59,6 +62,9 @@ pub enum Interaction {
         actions: Vec<Action>,
     },
     PointerMove {
+        /// Scope to a state (OnComplete-style): actions only run while the
+        /// named state is current. Omitted = active in every state.
+        state_name: Option<DotString>,
         actions: Vec<Action>,
     },
     PointerExit {
@@ -77,22 +83,70 @@ pub enum Interaction {
         state_name: DotString,
         actions: Vec<Action>,
     },
-    /// Stateful drag & drop gesture: `layer_name` is the draggable layer
-    /// (engine hit-tests pickup), `slot_id` the Position slot written while
-    /// held. Releasing over a drop zone snaps to it and runs its actions;
-    /// releasing elsewhere returns to the pre-drag rest position.
+    /// Stateful drag gesture. The constraint fields select the mode:
+    ///
+    /// - **Free** (default): the object follows the pointer; `slot_id`
+    ///   (required in this mode) is the Position slot written while held.
+    ///   Releasing over a drop zone snaps to it and runs its actions;
+    ///   releasing elsewhere returns to the pre-drag rest position.
+    /// - **Bounded** (`boundary_layer_name`): free, but the object is
+    ///   clamped inside that layer's rendered bounds.
+    /// - **Path** (`path_layer_name`): the pointer is projected onto that
+    ///   layer's bezier path and the gesture becomes a pure progress
+    ///   sensor writing `progress_input` — no slot writes, and drop zones
+    ///   and boundary are ignored (the path is the constraint; visuals
+    ///   come from whatever consumes the progress).
     DragAndDrop {
         layer_name: DotString,
-        slot_id: DotString,
+        /// Position slot written while dragging (free/bounded modes).
+        slot_id: Option<DotString>,
+        /// Layer whose first shape path is the constraint curve; selects
+        /// path mode.
+        path_layer_name: Option<DotString>,
+        /// Numeric input receiving arc-length progress in [0, 1]
+        /// (path mode).
+        progress_input: Option<DotString>,
+        /// Path mode: where an UNCAPTURED release docks. "previous" =
+        /// nearest zone at or behind the release progress (ratchet);
+        /// "nearest" = nearest zone in either direction. Omitted = no
+        /// fallback (zone output stays 0 and the machine decides).
+        dock_fallback: Option<DotString>,
         /// Scope the gesture to a state (like OnComplete): grabbing only
         /// works while this state is current, and leaving it mid-drag
         /// cancels the gesture back to the rest position. Omitted = active
         /// in every state.
         state_name: Option<DotString>,
-        /// Preserve the pointer-to-object offset from grab (default true).
-        grab_offset: Option<bool>,
+        /// Constrain the drag to a layer's rendered bounds: while held, the
+        /// object's center is clamped into this layer's current oriented
+        /// bounding box, inset by the object's own half-extents so the
+        /// whole object stays inside. Read from the scene every move, so
+        /// scaled/animated boundaries are honored.
+        boundary_layer_name: Option<DotString>,
+        /// Free mode: drag a frozen GHOST duplicate of the layer instead of
+        /// the object itself. The original stays parked; on release the
+        /// ghost glides to the dock (or back home on a miss) and the slot
+        /// is written once at landing. Purely visual — state still flows
+        /// only through the slot.
+        ghost: Option<bool>,
         /// Snap/return glide; omitted = instant.
         tween: Option<DragTween>,
+        /// Actions executed when the object is grabbed (e.g. Fire an event
+        /// so states can react to the gesture starting).
+        on_grab: Option<Vec<Action>>,
+        /// Actions executed on every held pointer move, AFTER the gesture's
+        /// sensor publishes — so a `$progressInput` ref reads the fresh
+        /// value (e.g. converting path progress to a timeline scrub via
+        /// SetProgress).
+        on_drag: Option<Vec<Action>>,
+        /// Actions executed when the object is released, before drop-zone
+        /// resolution and regardless of its outcome. Not executed when a
+        /// state-bound gesture is cancelled by leaving its owning state.
+        on_drop: Option<Vec<Action>>,
+        /// Drop zones to resolve against on release. EMPTY (or omitted)
+        /// means the gesture is lifecycle-only: no snap, no return — the
+        /// object stays wherever the release (or any live slot binding)
+        /// leaves it. Ignored in path mode.
+        #[serde(default)]
         drop_zones: Vec<DropZone>,
     },
 }
@@ -124,8 +178,8 @@ impl InteractionTrait for Interaction {
             Interaction::OnComplete { actions, .. } => actions,
             Interaction::OnLoopComplete { actions, .. } => actions,
             Interaction::Click { actions, .. } => actions,
-            // DragAndDrop actions live per drop zone and are executed by the
-            // gesture runtime, never by the generic interaction path.
+            // DragAndDrop actions live in gesture hooks and are executed
+            // by the gesture runtimes, never by the generic path.
             Interaction::DragAndDrop { .. } => &EMPTY_ACTIONS,
         }
     }
@@ -156,8 +210,8 @@ impl InteractionTrait for Interaction {
             Interaction::OnComplete { .. } => "OnComplete",
             Interaction::OnLoopComplete { .. } => "OnLoopComplete",
             Interaction::Click { .. } => "Click",
-            // Never matches a pointer event type name, so the generic
-            // explicit-event path ignores DragAndDrop entirely.
+            // Never match pointer event type names, so the generic
+            // explicit-event path ignores gesture interactions entirely.
             Interaction::DragAndDrop { .. } => "DragAndDrop",
         }
     }
@@ -195,7 +249,13 @@ impl Interaction {
                     a.intern_identifiers(interner);
                 }
             }
-            Interaction::PointerMove { actions } => {
+            Interaction::PointerMove {
+                state_name,
+                actions,
+            } => {
+                if let Some(name) = state_name {
+                    *name = interner.intern(name.as_str());
+                }
                 for a in actions {
                     a.intern_identifiers(interner);
                 }
@@ -216,14 +276,35 @@ impl Interaction {
             Interaction::DragAndDrop {
                 layer_name,
                 slot_id,
+                path_layer_name,
+                progress_input,
+                dock_fallback,
                 state_name,
+                boundary_layer_name,
+                on_grab,
+                on_drag,
+                on_drop,
                 drop_zones,
                 ..
             } => {
                 *layer_name = interner.intern(layer_name.as_str());
-                *slot_id = interner.intern(slot_id.as_str());
-                if let Some(state) = state_name {
-                    *state = interner.intern(state.as_str());
+                for name in [
+                    slot_id,
+                    path_layer_name,
+                    progress_input,
+                    dock_fallback,
+                    state_name,
+                    boundary_layer_name,
+                ]
+                .into_iter()
+                .flatten()
+                {
+                    *name = interner.intern(name.as_str());
+                }
+                for actions in [on_grab, on_drag, on_drop].into_iter().flatten() {
+                    for a in actions {
+                        a.intern_identifiers(interner);
+                    }
                 }
                 for zone in drop_zones {
                     zone.layer_name = interner.intern(zone.layer_name.as_str());

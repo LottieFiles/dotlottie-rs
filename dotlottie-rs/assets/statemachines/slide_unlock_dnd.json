@@ -1,0 +1,103 @@
+{
+  "initial": "idle",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "idle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "thumb_pos", "type": "Position", "value": [137, 433] },
+        { "slotId": "slide_bg", "type": "Color", "value": [1.0, 0.0, 0.25] }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "sliding",
+          "guards": [{ "type": "Event", "inputName": "grab" }]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "sliding",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "thumb_pos", "type": "Position", "value": ["$thumb_x", 433] },
+        { "slotId": "slide_bg", "type": "Color", "value": ["$inv", "$progress", 0.25] }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "unlocked",
+          "duration": 0.3,
+          "easing": [0.25, 0.1, 0.25, 1.0],
+          "guards": [
+            { "type": "Event", "inputName": "release" },
+            { "type": "Numeric", "inputName": "progress", "conditionType": "GreaterThan", "compareTo": 0.9 }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "idle",
+          "duration": 0.3,
+          "easing": [0.25, 0.1, 0.25, 1.0],
+          "guards": [{ "type": "Event", "inputName": "release" }]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "unlocked",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "slots": [
+        { "slotId": "thumb_pos", "type": "Position", "value": [387, 433] },
+        { "slotId": "slide_bg", "type": "Color", "value": [0.0, 1.0, 0.25] },
+        { "slotId": "main_bg", "type": "Color", "value": [0.15, 0.6, 0.35] }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "sliding",
+          "guards": [{ "type": "Event", "inputName": "grab" }]
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "type": "DragAndDrop",
+      "layerName": "Slider Thumb",
+      "slotId": "thumb_pos",
+      "onGrab": [{ "type": "Fire", "inputName": "grab" }],
+      "onDrop": [{ "type": "Fire", "inputName": "release" }],
+      "dropZones": []
+    },
+    {
+      "type": "PointerMove",
+      "actions": [
+        { "type": "SetNumeric", "inputName": "thumb_x", "value": "$cursor_x" },
+        { "type": "Clamp", "inputName": "thumb_x", "min": 137, "max": 387 },
+        { "type": "SetNumeric", "inputName": "progress", "value": "$thumb_x" },
+        { "type": "Increment", "inputName": "progress", "value": -137 },
+        { "type": "Multiply", "inputName": "progress", "value": 0.004 },
+        { "type": "SetNumeric", "inputName": "inv", "value": "$progress" },
+        { "type": "Multiply", "inputName": "inv", "value": -1 },
+        { "type": "Increment", "inputName": "inv", "value": 1 }
+      ]
+    }
+  ],
+  "inputs": [
+    { "type": "Numeric", "name": "cursor_x", "value": 137 },
+    { "type": "Numeric", "name": "thumb_x", "value": 137 },
+    { "type": "Numeric", "name": "progress", "value": 0 },
+    { "type": "Numeric", "name": "inv", "value": 1 },
+    { "type": "Event", "name": "grab" },
+    { "type": "Event", "name": "release" }
+  ]
+}

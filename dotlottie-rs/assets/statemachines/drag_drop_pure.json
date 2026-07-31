@@ -1,0 +1,940 @@
+{
+  "initial": "idle",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "idle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            "$circle_x",
+            "$circle_y"
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            "$triangle_x",
+            "$triangle_y"
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            "$rect_x",
+            "$rect_y"
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            "$square_x",
+            "$square_y"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "dragging_circle",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "grab_circle"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "dragging_triangle",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "grab_triangle"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "dragging_rect",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "grab_rect"
+            }
+          ]
+        },
+        {
+          "type": "Transition",
+          "toState": "dragging_square",
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "grab_square"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "dragging_circle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "over_circle",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_triangle",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_rect",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_square",
+          "value": false
+        }
+      ],
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            "$cursor_x",
+            "$cursor_y"
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            "$triangle_x",
+            "$triangle_y"
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            "$rect_x",
+            "$rect_y"
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            "$square_x",
+            "$square_y"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "docking_circle",
+          "duration": 0.25,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "released"
+            },
+            {
+              "type": "Boolean",
+              "inputName": "over_circle",
+              "conditionType": "Equal",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "idle",
+          "duration": 0.25,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "released"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "docking_circle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "circle_x",
+          "value": 57.5
+        },
+        {
+          "type": "SetNumeric",
+          "inputName": "circle_y",
+          "value": 77.5
+        }
+      ],
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            57.5,
+            77.5
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            "$triangle_x",
+            "$triangle_y"
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            "$rect_x",
+            "$rect_y"
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            "$square_x",
+            "$square_y"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "idle"
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "dragging_triangle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "over_circle",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_triangle",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_rect",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_square",
+          "value": false
+        }
+      ],
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            "$circle_x",
+            "$circle_y"
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            "$cursor_x",
+            "$cursor_y"
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            "$rect_x",
+            "$rect_y"
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            "$square_x",
+            "$square_y"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "docking_triangle",
+          "duration": 0.25,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "released"
+            },
+            {
+              "type": "Boolean",
+              "inputName": "over_triangle",
+              "conditionType": "Equal",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "idle",
+          "duration": 0.25,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "released"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "docking_triangle",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "triangle_x",
+          "value": 180.5
+        },
+        {
+          "type": "SetNumeric",
+          "inputName": "triangle_y",
+          "value": 192.5
+        }
+      ],
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            "$circle_x",
+            "$circle_y"
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            180.5,
+            192.5
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            "$rect_x",
+            "$rect_y"
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            "$square_x",
+            "$square_y"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "idle"
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "dragging_rect",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "over_circle",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_triangle",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_rect",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_square",
+          "value": false
+        }
+      ],
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            "$circle_x",
+            "$circle_y"
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            "$triangle_x",
+            "$triangle_y"
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            "$cursor_x",
+            "$cursor_y"
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            "$square_x",
+            "$square_y"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "docking_rect",
+          "duration": 0.25,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "released"
+            },
+            {
+              "type": "Boolean",
+              "inputName": "over_rect",
+              "conditionType": "Equal",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "idle",
+          "duration": 0.25,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "released"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "docking_rect",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "rect_x",
+          "value": 301.5
+        },
+        {
+          "type": "SetNumeric",
+          "inputName": "rect_y",
+          "value": 96.0
+        }
+      ],
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            "$circle_x",
+            "$circle_y"
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            "$triangle_x",
+            "$triangle_y"
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            301.5,
+            96.0
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            "$square_x",
+            "$square_y"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "idle"
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "dragging_square",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "over_circle",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_triangle",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_rect",
+          "value": false
+        },
+        {
+          "type": "SetBoolean",
+          "inputName": "over_square",
+          "value": false
+        }
+      ],
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            "$circle_x",
+            "$circle_y"
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            "$triangle_x",
+            "$triangle_y"
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            "$rect_x",
+            "$rect_y"
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            "$cursor_x",
+            "$cursor_y"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Tweened",
+          "toState": "docking_square",
+          "duration": 0.25,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "released"
+            },
+            {
+              "type": "Boolean",
+              "inputName": "over_square",
+              "conditionType": "Equal",
+              "compareTo": true
+            }
+          ]
+        },
+        {
+          "type": "Tweened",
+          "toState": "idle",
+          "duration": 0.25,
+          "easing": [
+            0.25,
+            0.1,
+            0.25,
+            1.0
+          ],
+          "guards": [
+            {
+              "type": "Event",
+              "inputName": "released"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PlaybackState",
+      "name": "docking_square",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "backgroundColor": 2916673279,
+      "entryActions": [
+        {
+          "type": "SetNumeric",
+          "inputName": "square_x",
+          "value": 430.5
+        },
+        {
+          "type": "SetNumeric",
+          "inputName": "square_y",
+          "value": 145.5
+        }
+      ],
+      "slots": [
+        {
+          "slotId": "circle_pos",
+          "type": "Position",
+          "value": [
+            "$circle_x",
+            "$circle_y"
+          ]
+        },
+        {
+          "slotId": "triangle_pos",
+          "type": "Position",
+          "value": [
+            "$triangle_x",
+            "$triangle_y"
+          ]
+        },
+        {
+          "slotId": "rect_pos",
+          "type": "Position",
+          "value": [
+            "$rect_x",
+            "$rect_y"
+          ]
+        },
+        {
+          "slotId": "square_pos",
+          "type": "Position",
+          "value": [
+            430.5,
+            145.5
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "Transition",
+          "toState": "idle"
+        }
+      ]
+    }
+  ],
+  "interactions": [
+    {
+      "type": "PointerUp",
+      "layerName": "circle_drop",
+      "actions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "over_circle",
+          "value": true
+        }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "layerName": "triangle_drop",
+      "actions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "over_triangle",
+          "value": true
+        }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "layerName": "rect_drop",
+      "actions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "over_rect",
+          "value": true
+        }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "layerName": "square_drop",
+      "actions": [
+        {
+          "type": "SetBoolean",
+          "inputName": "over_square",
+          "value": true
+        }
+      ]
+    },
+    {
+      "type": "PointerUp",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "released"
+        }
+      ]
+    },
+    {
+      "type": "PointerDown",
+      "layerName": "Ellipse 2",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "grab_circle"
+        }
+      ]
+    },
+    {
+      "type": "PointerDown",
+      "layerName": "Polygon 2",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "grab_triangle"
+        }
+      ]
+    },
+    {
+      "type": "PointerDown",
+      "layerName": "Rectangle 5",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "grab_rect"
+        }
+      ]
+    },
+    {
+      "type": "PointerDown",
+      "layerName": "Rectangle 2",
+      "actions": [
+        {
+          "type": "Fire",
+          "inputName": "grab_square"
+        }
+      ]
+    }
+  ],
+  "inputs": [
+    {
+      "type": "Numeric",
+      "name": "cursor_x",
+      "value": 256
+    },
+    {
+      "type": "Numeric",
+      "name": "cursor_y",
+      "value": 256
+    },
+    {
+      "type": "Event",
+      "name": "released"
+    },
+    {
+      "type": "Numeric",
+      "name": "circle_x",
+      "value": 64.5
+    },
+    {
+      "type": "Numeric",
+      "name": "circle_y",
+      "value": 299.5
+    },
+    {
+      "type": "Boolean",
+      "name": "over_circle",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "grab_circle"
+    },
+    {
+      "type": "Numeric",
+      "name": "triangle_x",
+      "value": 137.5
+    },
+    {
+      "type": "Numeric",
+      "name": "triangle_y",
+      "value": 424.5
+    },
+    {
+      "type": "Boolean",
+      "name": "over_triangle",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "grab_triangle"
+    },
+    {
+      "type": "Numeric",
+      "name": "rect_x",
+      "value": 256.0
+    },
+    {
+      "type": "Numeric",
+      "name": "rect_y",
+      "value": 370.0
+    },
+    {
+      "type": "Boolean",
+      "name": "over_rect",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "grab_rect"
+    },
+    {
+      "type": "Numeric",
+      "name": "square_x",
+      "value": 381.5
+    },
+    {
+      "type": "Numeric",
+      "name": "square_y",
+      "value": 402.5
+    },
+    {
+      "type": "Boolean",
+      "name": "over_square",
+      "value": false
+    },
+    {
+      "type": "Event",
+      "name": "grab_square"
+    }
+  ]
+}

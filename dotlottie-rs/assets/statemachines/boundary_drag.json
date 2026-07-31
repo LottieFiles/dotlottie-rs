@@ -1,0 +1,23 @@
+{
+  "initial": "playground",
+  "states": [
+    {
+      "type": "PlaybackState",
+      "name": "playground",
+      "animation": "",
+      "autoplay": true,
+      "loop": true,
+      "transitions": []
+    }
+  ],
+  "interactions": [
+    {
+      "type": "DragAndDrop",
+      "layerName": "Ellipse 1",
+      "slotId": "circle_pos",
+      "boundaryLayerName": "Rectangle 1",
+      "dropZones": []
+    }
+  ],
+  "inputs": []
+}

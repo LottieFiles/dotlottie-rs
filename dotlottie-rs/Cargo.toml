@@ -119,13 +119,24 @@ required-features = ["state-machines"]
 name = "sm_playground"
 required-features = ["state-machines"]
 
-
 [[example]]
-name = "star_drop"
+name = "star_drop_dnd"
+path = "examples/gallery/star_drop_dnd.rs"
 required-features = ["state-machines"]
 
 [[example]]
-name = "star_drop_dnd"
+name = "spiral_unlock"
+path = "examples/gallery/spiral_unlock.rs"
+required-features = ["state-machines"]
+
+[[example]]
+name = "boundary_drag"
+path = "examples/gallery/boundary_drag.rs"
+required-features = ["state-machines"]
+
+[[example]]
+name = "gallery"
+path = "examples/gallery/main.rs"
 required-features = ["state-machines"]
 
 [[example]]

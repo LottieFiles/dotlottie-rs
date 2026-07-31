@@ -121,12 +121,16 @@ pub(crate) fn build_slot(slot_type: StateSlotType, comps: &[f32]) -> Option<Slot
         StateSlotType::Scalar if comps.len() == 1 => {
             Some(SlotType::Scalar(ScalarSlot::new(comps[0])))
         }
-        StateSlotType::Vector if comps.len() == 2 => Some(SlotType::Vector(
-            VectorSlot::static_value([comps[0], comps[1]]),
-        )),
-        StateSlotType::Position if comps.len() == 2 => Some(SlotType::Position(
-            PositionSlot::static_value([comps[0], comps[1]]),
-        )),
+        StateSlotType::Vector if comps.len() == 2 => {
+            Some(SlotType::Vector(VectorSlot::static_value([
+                comps[0], comps[1],
+            ])))
+        }
+        StateSlotType::Position if comps.len() == 2 => {
+            Some(SlotType::Position(PositionSlot::static_value([
+                comps[0], comps[1],
+            ])))
+        }
         _ => None,
     }
 }

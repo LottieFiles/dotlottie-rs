@@ -1274,16 +1274,45 @@ impl Player {
         self.renderer.slot_value(slot_id)
     }
 
-    /// Authored static position of a named top-level layer.
-    pub fn layer_position(&self, layer_name: &str) -> Option<[f32; 2]> {
-        self.renderer.layer_position(layer_name)
+    /// Current oriented bounding box of a named layer in canvas space
+    /// (4 corners), read from the rendered scene — reflects animation,
+    /// parenting, and slot overrides as of the last render.
+    pub fn layer_bounds(&self, layer_name: &str) -> Option<[crate::Point; 4]> {
+        self.renderer.layer_bounds(layer_name)
     }
 
-    /// Hit-test a point against a named layer in the rendered scene.
+    /// Authored bezier path of a named layer.
+    pub fn layer_path(&self, layer_name: &str) -> Option<crate::lottie_renderer::slots::LayerPath> {
+        self.renderer.layer_path(layer_name)
+    }
+
+    /// Hit-test a point against a named layer in the rendered scene
+    /// (bounding-box based). Canvas pixels.
     pub fn hit_check(&self, layer_name: &str, x: f32, y: f32) -> bool {
         self.renderer
             .hit_test(crate::Point { x, y }, layer_name)
             .unwrap_or(false)
+    }
+
+    /// Shape-accurate hit-test against a named layer's actual rendered
+    /// coverage. Canvas pixels.
+    pub fn hit_check_precise(&self, layer_name: &str, x: f32, y: f32) -> bool {
+        self.renderer
+            .hit_test_precise(crate::Point { x, y }, layer_name)
+            .unwrap_or(false)
+    }
+
+    /// Current transform matrix of a named layer (row-major 3x3, parent
+    /// chain composed), in composition units.
+    pub fn layer_transform(&self, layer_name: &str) -> Option<[f32; 9]> {
+        self.renderer.layer_transform(layer_name)
+    }
+
+    /// Map a canvas-pixel point into composition units (inverse of the
+    /// layout + user transform).
+    pub fn canvas_to_comp(&self, x: f32, y: f32) -> [f32; 2] {
+        let p = self.renderer.canvas_to_comp(crate::Point { x, y });
+        [p.x, p.y]
     }
 
     /// Set a single slot from an already-typed value.

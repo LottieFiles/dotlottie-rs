@@ -26,6 +26,15 @@ mod tvg {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+extern "C" {
+    // src/cpp/tvg_layers.cpp — enumerates authored layer names from the loader model
+    fn dotlottie_layer_names(
+        animation: tvg::Tvg_Animation,
+        cb: unsafe extern "C" fn(ctx: *mut std::ffi::c_void, name: *const c_char, depth: u32),
+        ctx: *mut std::ffi::c_void,
+    ) -> i32;
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum TvgError {
     #[error("invalid argument")]
@@ -940,6 +949,29 @@ impl Animation for TvgAnimation {
                 result.into_result()
             }
         }
+    }
+
+    fn layer_names(&self) -> Vec<String> {
+        unsafe extern "C" fn push_name(
+            ctx: *mut std::ffi::c_void,
+            name: *const c_char,
+            _depth: u32,
+        ) {
+            let names = unsafe { &mut *(ctx as *mut Vec<String>) };
+            if let Ok(name) = unsafe { CStr::from_ptr(name) }.to_str() {
+                names.push(name.to_owned());
+            }
+        }
+
+        let mut names: Vec<String> = Vec::new();
+        unsafe {
+            dotlottie_layer_names(
+                self.raw_animation,
+                push_name,
+                (&mut names) as *mut Vec<String> as *mut std::ffi::c_void,
+            );
+        }
+        names
     }
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, TvgError> {

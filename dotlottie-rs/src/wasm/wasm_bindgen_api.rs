@@ -851,6 +851,10 @@ impl DotLottiePlayerWasm {
         self.player.reset_nodes().is_ok()
     }
 
+    pub fn layers(&self) -> Vec<String> {
+        self.player.layers()
+    }
+
     pub fn animation_pause(&mut self, id: f64) {
         self.player.animation_pause(id as u64);
     }

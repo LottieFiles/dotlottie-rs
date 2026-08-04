@@ -165,6 +165,9 @@ pub trait LottieRenderer {
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Error>;
 
+    /// Authored layer names in document order (precomp children depth-first).
+    fn layers(&self) -> Vec<String>;
+
     // ── Node overrides (motion API) ──────────────────────────────────────
 
     /// Merge the `Some` fields of `props` into the named node's overrides.
@@ -893,6 +896,13 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.get_animation()?
             .hit_test(point, layer_name)
             .map_err(into_lottie::<R>)
+    }
+
+    fn layers(&self) -> Vec<String> {
+        self.animation
+            .as_ref()
+            .map(Animation::layer_names)
+            .unwrap_or_default()
     }
 
     fn set_node_props(&mut self, name: &str, props: &NodeProps) -> Result<(), Error> {

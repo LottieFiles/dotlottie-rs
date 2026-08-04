@@ -28,6 +28,8 @@ New player surface:
   namespace; duplicates animate like any node (ghost trails, stamps).
 - `animate_value` / `animation_value` — raw driver-clocked values for syncing DOM or
   app state with canvas motion.
+- `layers()` — authored layer names in document order (precomp children depth-first),
+  enumerated from ThorVG's Lottie model; every name is a valid node target.
 
 The wasm bindings expose the full surface with JS-object keyframes/options
 (`player.animate("arm", { rotate: 30 }, { type: "spring", bounce: 0.3 })`). A 12-demo

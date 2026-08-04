@@ -48,6 +48,13 @@
       .scrollbox .inner { height: 700px; position: relative; }
       .scrollbox canvas { position: sticky; top: 0; display: block; }
       .hint { font-size: 11px; color: #5b6070; }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .chip {
+        font: 11px/1 ui-monospace, monospace; color: #9aa3c0;
+        background: #171a26; border: 1px solid #2a2f42; border-radius: 999px;
+        padding: 5px 10px; cursor: pointer;
+      }
+      .chip:hover { color: #e8ebf5; border-color: #4a5578; }
     </style>
   </head>
   <body>
@@ -252,16 +259,28 @@ onRelease: player.animate("knob", { x: 0, y: 0 },
         });
         const hint = document.createElement("div");
         hint.className = "hint";
-        hint.textContent = "scroll inside the box ↑↓";
+        hint.textContent = "scroll inside the box ↑↓ · click a layer chip to pulse it";
+        const chips = document.createElement("div");
+        chips.className = "chips";
+        for (const name of p.layers()) {
+          const chip = document.createElement("button");
+          chip.className = "chip";
+          chip.textContent = name;
+          chip.addEventListener("click", () =>
+            p.animate(name, { scale: [1.25, 1] }, { type: "spring", stiffness: 500, damping: 11 }));
+          chips.appendChild(chip);
+        }
+        const extra = document.createElement("div");
+        extra.append(chips, hint);
         card({
-          title: "5 · Scroll-linked",
-          note: "Scroll scrubs the authored timeline (the sun arcs) while the clouds get parallax offsets driven on top.",
-          snippet: `onScroll: {
+          title: "5 · Scroll-linked + discovery",
+          note: "Scroll scrubs the authored timeline (the sun arcs) while the clouds get parallax offsets driven on top. The chips are player.layers() — every discovered name is a live animate() target.",
+          snippet: `player.layers()  // ["sky", "sun", "cloud-1", ...]
+onScroll: {
   player.set_frame(progress * player.total_frames());
   player.set_node("cloud-1", { x: progress * 260 });
-  player.set_node("cloud-2", { x: progress * -200 });
 }`,
-          stage: box, extra: hint,
+          stage: box, extra,
         });
       }
 

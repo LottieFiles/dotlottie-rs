@@ -363,6 +363,7 @@ mod thorvg {
 
         // Source directories (identical for all targets)
         let mut src = vec![
+            "src/cpp",
             "deps/thorvg/inc",
             "deps/thorvg/src/common",
             "deps/thorvg/src/bindings/capi",

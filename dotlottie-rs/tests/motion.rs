@@ -374,3 +374,34 @@ fn animate_value_ticks_and_reads() {
     let events = drain(&mut player);
     assert!(events.contains(&PlayerEvent::MotionComplete { id }));
 }
+
+#[test]
+fn layers_lists_authored_names() {
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+    let player = loaded_player(&mut buffer);
+    assert_eq!(player.layers(), ["R", "E", "B"]);
+}
+
+#[test]
+fn layers_recurses_into_precomps() {
+    let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+    let mut player = Player::new();
+    player
+        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .unwrap();
+
+    let data = r#"{"v":"5.7.4","fr":30,"ip":0,"op":30,"w":100,"h":100,
+        "assets":[{"id":"pc1","layers":[
+            {"ddd":0,"ind":1,"ty":4,"nm":"inner","sr":1,"ks":{},"ip":0,"op":30,"st":0,
+             "shapes":[{"ty":"rc","p":{"a":0,"k":[50,50]},"s":{"a":0,"k":[40,40]},"r":{"a":0,"k":0}},
+                       {"ty":"fl","c":{"a":0,"k":[1,0,0,1]},"o":{"a":0,"k":100}}]}]}],
+        "layers":[
+            {"ddd":0,"ind":1,"ty":0,"nm":"comp","refId":"pc1","sr":1,"ks":{},
+             "w":100,"h":100,"ip":0,"op":30,"st":0},
+            {"ddd":0,"ind":2,"ty":4,"nm":"front","sr":1,"ks":{},"ip":0,"op":30,"st":0,
+             "shapes":[]}]}"#;
+    let data = CString::new(data).unwrap();
+    player.load_animation_data(&data).unwrap();
+
+    assert_eq!(player.layers(), ["comp", "inner", "front"]);
+}

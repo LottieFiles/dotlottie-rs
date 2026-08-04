@@ -644,6 +644,12 @@ impl Player {
         self.renderer.get_node_props(name)
     }
 
+    /// Authored layer names in document order (precomp children depth-first).
+    /// Every name is a valid target for the node and motion APIs.
+    pub fn layers(&self) -> Vec<String> {
+        self.renderer.layers()
+    }
+
     pub fn reset_node(&mut self, name: &str) -> Result<()> {
         self.motion.interrupt_target(name);
         self.renderer.reset_node(name)?;

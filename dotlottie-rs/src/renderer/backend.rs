@@ -463,6 +463,10 @@ pub trait Animation: Default {
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
 
+    /// Authored layer names in document order; precomp children follow their
+    /// instance depth-first. Every name is a valid node target.
+    fn layer_names(&self) -> Vec<String>;
+
     /// Compose `props` onto the named layer's pristine base values. The base is
     /// captured per paint pointer: a rebuilt layer scene carries fresh authored
     /// values, while a stable pointer keeps the cached base valid — recapturing on a

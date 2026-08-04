@@ -206,8 +206,15 @@ impl Driver {
 
             let solver = match &options.transition {
                 Transition::Spring(params) => {
+                    // Like tweens, a multi-value entry's first value is an explicit
+                    // start; springs ignore intermediate waypoints.
+                    let from = if entry.values.len() > 1 {
+                        entry.values[0]
+                    } else {
+                        start
+                    };
                     let to = *entry.values.last().unwrap();
-                    Solver::Spring(Spring::new(start, to, velocity, *params))
+                    Solver::Spring(Spring::new(from, to, velocity, *params))
                 }
                 Transition::Tween { duration, easing } => {
                     let mut values = entry.values.clone();
@@ -424,6 +431,30 @@ mod tests {
             }
         }
         assert!((max - 1.3).abs() < 0.02, "peak {max}");
+    }
+
+    #[test]
+    fn spring_honors_explicit_start_value() {
+        let mut driver = Driver::default();
+        driver.animate(
+            "n",
+            vec![PropKeyframes {
+                prop: Prop::X,
+                values: vec![50.0, 100.0],
+                times: None,
+            }],
+            AnimateOptions {
+                transition: Transition::Spring(SpringParams::default()),
+                delay: 0.0,
+            },
+            no_current,
+        );
+        let first = collect(&mut driver, 1.0 / 240.0);
+        let (_, _, value) = first[0];
+        assert!(
+            (50.0..70.0).contains(&value),
+            "spring should start near the explicit 50, got {value}"
+        );
     }
 
     #[test]

@@ -5,9 +5,10 @@ use js_sys::Uint8Array;
 use js_sys::{Array, Float32Array, Object};
 use wasm_bindgen::prelude::*;
 
+use crate::motion::{AnimateOptions, PropKeyframes};
 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
 use crate::ColorSpace;
-use crate::{Fit, Layout, Mode as PlayerMode, Player, Rgba, Segment};
+use crate::{Fit, Layout, Mode as PlayerMode, NodeProps, Player, Rgba, Segment};
 
 // ─── Renderer mode ───────────────────────────────────────────────────────────
 
@@ -187,6 +188,262 @@ fn vec_to_f32array(v: Vec<f32>) -> Float32Array {
         arr.set_index(i as u32, x);
     }
     arr
+}
+
+// ─── Motion API parsing ───────────────────────────────────────────────────────
+
+fn js_get(obj: &JsValue, key: &str) -> Option<JsValue> {
+    let v = js_sys::Reflect::get(obj, &key.into()).ok()?;
+    if v.is_undefined() || v.is_null() {
+        None
+    } else {
+        Some(v)
+    }
+}
+
+fn js_f32(obj: &JsValue, key: &str) -> Option<f32> {
+    js_get(obj, key)?.as_f64().map(|v| v as f32)
+}
+
+/// A keyframes entry value: a number or an array of numbers.
+fn js_waypoints(value: &JsValue) -> Option<Vec<f32>> {
+    if let Some(n) = value.as_f64() {
+        return Some(vec![n as f32]);
+    }
+    if Array::is_array(value) {
+        let arr = Array::from(value);
+        let mut out = Vec::with_capacity(arr.length() as usize);
+        for v in arr.iter() {
+            out.push(v.as_f64()? as f32);
+        }
+        return Some(out);
+    }
+    None
+}
+
+fn parse_keyframes(obj: &JsValue) -> Vec<PropKeyframes> {
+    use crate::motion::Prop;
+    let mut entries = Vec::new();
+    let mut push = |prop: Prop, values: Vec<f32>| {
+        entries.push(PropKeyframes {
+            prop,
+            values,
+            times: None,
+        });
+    };
+    for (key, prop) in [
+        ("x", Prop::X),
+        ("y", Prop::Y),
+        ("rotate", Prop::Rotate),
+        ("scaleX", Prop::ScaleX),
+        ("scaleY", Prop::ScaleY),
+        ("opacity", Prop::Opacity),
+        ("blur", Prop::Blur),
+        ("tint.intensity", Prop::TintIntensity),
+        ("spot.cx", Prop::SpotCx),
+        ("spot.cy", Prop::SpotCy),
+        ("spot.r", Prop::SpotRadius),
+        ("spot.feather", Prop::SpotFeather),
+        ("clip.cx", Prop::ClipCx),
+        ("clip.cy", Prop::ClipCy),
+        ("clip.r", Prop::ClipRadius),
+    ] {
+        if let Some(values) = js_get(obj, key).and_then(|v| js_waypoints(&v)) {
+            push(prop, values);
+        }
+    }
+    // Uniform scale sugar lowers to both axes.
+    if let Some(values) = js_get(obj, "scale").and_then(|v| js_waypoints(&v)) {
+        push(Prop::ScaleX, values.clone());
+        push(Prop::ScaleY, values);
+    }
+    entries
+}
+
+fn ease_preset(name: &str) -> [f32; 4] {
+    use crate::motion as m;
+    match name {
+        "linear" => m::EASE_LINEAR,
+        "easeIn" => m::EASE_IN,
+        "easeOut" => m::EASE_OUT,
+        "easeInOut" => m::EASE_IN_OUT,
+        _ => m::EASE,
+    }
+}
+
+fn parse_animate_options(obj: &JsValue) -> AnimateOptions {
+    use crate::motion::{SpringParams, Transition};
+
+    let is_spring = js_get(obj, "type")
+        .and_then(|v| v.as_string())
+        .is_some_and(|s| s == "spring");
+
+    let transition = if is_spring {
+        let params = if js_get(obj, "bounce").is_some() || js_get(obj, "visualDuration").is_some() {
+            SpringParams::from_bounce(
+                js_f32(obj, "visualDuration").unwrap_or(0.5),
+                js_f32(obj, "bounce").unwrap_or(0.2),
+            )
+        } else {
+            let defaults = SpringParams::default();
+            SpringParams {
+                stiffness: js_f32(obj, "stiffness").unwrap_or(defaults.stiffness),
+                damping: js_f32(obj, "damping").unwrap_or(defaults.damping),
+                mass: js_f32(obj, "mass").unwrap_or(defaults.mass),
+            }
+        };
+        Transition::Spring(params)
+    } else {
+        let easing = match js_get(obj, "ease") {
+            Some(v) if Array::is_array(&v) => {
+                let arr = Array::from(&v);
+                let mut e = crate::motion::EASE;
+                for (i, slot) in e.iter_mut().enumerate() {
+                    if let Some(n) = arr.get(i as u32).as_f64() {
+                        *slot = n as f32;
+                    }
+                }
+                e
+            }
+            Some(v) => ease_preset(&v.as_string().unwrap_or_default()),
+            None => crate::motion::EASE,
+        };
+        Transition::Tween {
+            duration: js_f32(obj, "duration").unwrap_or(0.3),
+            easing,
+        }
+    };
+
+    AnimateOptions {
+        transition,
+        delay: js_f32(obj, "delay").unwrap_or(0.0),
+    }
+}
+
+fn parse_hex_rgb(v: &JsValue) -> Option<[u8; 3]> {
+    let s = v.as_string()?;
+    let hex = s.strip_prefix('#')?;
+    if hex.len() < 6 {
+        return None;
+    }
+    let n = u32::from_str_radix(&hex[..6], 16).ok()?;
+    Some([(n >> 16) as u8, (n >> 8) as u8, n as u8])
+}
+
+fn hex_rgb(c: [u8; 3]) -> String {
+    format!("#{:02x}{:02x}{:02x}", c[0], c[1], c[2])
+}
+
+fn blend_name(mode: u8) -> &'static str {
+    [
+        "normal",
+        "multiply",
+        "screen",
+        "overlay",
+        "darken",
+        "lighten",
+        "colorDodge",
+        "colorBurn",
+        "hardLight",
+        "softLight",
+        "difference",
+        "exclusion",
+        "hue",
+        "saturation",
+        "color",
+        "luminosity",
+        "add",
+    ]
+    .get(mode as usize)
+    .copied()
+    .unwrap_or("normal")
+}
+
+fn parse_blend(v: &JsValue) -> Option<u8> {
+    let s = v.as_string()?;
+    Some(match s.as_str() {
+        "normal" => 0,
+        "multiply" => 1,
+        "screen" => 2,
+        "overlay" => 3,
+        "darken" => 4,
+        "lighten" => 5,
+        "colorDodge" => 6,
+        "colorBurn" => 7,
+        "hardLight" => 8,
+        "softLight" => 9,
+        "difference" => 10,
+        "exclusion" => 11,
+        "hue" => 12,
+        "saturation" => 13,
+        "color" => 14,
+        "luminosity" => 15,
+        "add" => 16,
+        _ => return None,
+    })
+}
+
+fn parse_node_props(obj: &JsValue) -> NodeProps {
+    use crate::{ClipRegion, SpotMask, Tint};
+    let mut props = NodeProps {
+        x: js_f32(obj, "x"),
+        y: js_f32(obj, "y"),
+        rotate: js_f32(obj, "rotate"),
+        scale_x: js_f32(obj, "scaleX"),
+        scale_y: js_f32(obj, "scaleY"),
+        opacity: js_f32(obj, "opacity"),
+        visible: js_get(obj, "visible").and_then(|v| v.as_bool()),
+        blur: js_f32(obj, "blur"),
+        blend_mode: js_get(obj, "blend").and_then(|v| parse_blend(&v)),
+        ..Default::default()
+    };
+    if let Some(scale) = js_f32(obj, "scale") {
+        props.scale_x = Some(scale);
+        props.scale_y = Some(scale);
+    }
+    if let Some(anchor) = js_get(obj, "anchor") {
+        if let (Some(ax), Some(ay)) = (js_f32(&anchor, "x"), js_f32(&anchor, "y")) {
+            props.anchor = Some((ax, ay));
+        }
+    }
+    if let Some(tint) = js_get(obj, "tint") {
+        let defaults = Tint::default();
+        props.tint = Some(Tint {
+            black: js_get(&tint, "black")
+                .and_then(|v| parse_hex_rgb(&v))
+                .unwrap_or(defaults.black),
+            white: js_get(&tint, "white")
+                .and_then(|v| parse_hex_rgb(&v))
+                .unwrap_or(defaults.white),
+            intensity: js_f32(&tint, "intensity").unwrap_or(1.0),
+        });
+    }
+    if let Some(spot) = js_get(obj, "spot") {
+        props.spot = Some(SpotMask {
+            cx: js_f32(&spot, "cx").unwrap_or(0.0),
+            cy: js_f32(&spot, "cy").unwrap_or(0.0),
+            radius: js_f32(&spot, "r").unwrap_or(0.0),
+            feather: js_f32(&spot, "feather").unwrap_or(0.4),
+        });
+    }
+    if let Some(clip) = js_get(obj, "clip") {
+        let kind = js_get(&clip, "type").and_then(|v| v.as_string());
+        props.clip = match kind.as_deref() {
+            Some("rect") => Some(ClipRegion::Rect {
+                x: js_f32(&clip, "x").unwrap_or(0.0),
+                y: js_f32(&clip, "y").unwrap_or(0.0),
+                w: js_f32(&clip, "w").unwrap_or(0.0),
+                h: js_f32(&clip, "h").unwrap_or(0.0),
+                r: js_f32(&clip, "r").unwrap_or(0.0),
+            }),
+            _ => Some(ClipRegion::Circle {
+                cx: js_f32(&clip, "cx").unwrap_or(0.0),
+                cy: js_f32(&clip, "cy").unwrap_or(0.0),
+                r: js_f32(&clip, "r").unwrap_or(0.0),
+            }),
+        };
+    }
+    props
 }
 
 fn fit_from_str(s: &str) -> Fit {
@@ -495,6 +752,142 @@ impl DotLottiePlayerWasm {
     }
     pub fn set_frame(&mut self, no: f32) -> bool {
         self.player.set_frame(no).is_ok()
+    }
+
+    // ── Motion API ────────────────────────────────────────────────────────────
+
+    /// `animate("arm", { rotate: 30, x: [0, 40] }, { type: "spring", bounce: 0.3 })`
+    /// Returns an animation id for the `animation_*` controls; a `MotionComplete`
+    /// event carries the id when every property settles.
+    pub fn animate(&mut self, target: &str, keyframes: &JsValue, options: &JsValue) -> f64 {
+        let entries = parse_keyframes(keyframes);
+        let opts = parse_animate_options(options);
+        self.player.animate(target, entries, opts) as f64
+    }
+
+    /// Instantly set override props: `set_node("arm", { rotate: 30, opacity: 0.5 })`.
+    pub fn set_node(&mut self, target: &str, props: &JsValue) -> bool {
+        self.player
+            .set_node_props(target, parse_node_props(props))
+            .is_ok()
+    }
+
+    /// Current override props as a plain object, or null when none are set.
+    pub fn get_node(&self, target: &str) -> JsValue {
+        let Some(props) = self.player.get_node_props(target) else {
+            return JsValue::null();
+        };
+        let obj = Object::new();
+        for (key, value) in [
+            ("x", props.x),
+            ("y", props.y),
+            ("rotate", props.rotate),
+            ("scaleX", props.scale_x),
+            ("scaleY", props.scale_y),
+            ("opacity", props.opacity),
+        ] {
+            if let Some(v) = value {
+                set_f64(&obj, key, v as f64);
+            }
+        }
+        if let Some(v) = props.visible {
+            set_bool(&obj, "visible", v);
+        }
+        if let Some(v) = props.blur {
+            set_f64(&obj, "blur", v as f64);
+        }
+        if let Some((ax, ay)) = props.anchor {
+            let anchor = Object::new();
+            set_f64(&anchor, "x", ax as f64);
+            set_f64(&anchor, "y", ay as f64);
+            let _ = js_sys::Reflect::set(&obj, &"anchor".into(), &anchor);
+        }
+        if let Some(mode) = props.blend_mode {
+            set_str(&obj, "blend", blend_name(mode));
+        }
+        if let Some(t) = props.tint {
+            let tint = Object::new();
+            set_str(&tint, "black", &hex_rgb(t.black));
+            set_str(&tint, "white", &hex_rgb(t.white));
+            set_f64(&tint, "intensity", t.intensity as f64);
+            let _ = js_sys::Reflect::set(&obj, &"tint".into(), &tint);
+        }
+        if let Some(s) = props.spot {
+            let spot = Object::new();
+            set_f64(&spot, "cx", s.cx as f64);
+            set_f64(&spot, "cy", s.cy as f64);
+            set_f64(&spot, "r", s.radius as f64);
+            set_f64(&spot, "feather", s.feather as f64);
+            let _ = js_sys::Reflect::set(&obj, &"spot".into(), &spot);
+        }
+        if let Some(region) = props.clip {
+            let clip = Object::new();
+            match region {
+                crate::ClipRegion::Circle { cx, cy, r } => {
+                    set_str(&clip, "type", "circle");
+                    set_f64(&clip, "cx", cx as f64);
+                    set_f64(&clip, "cy", cy as f64);
+                    set_f64(&clip, "r", r as f64);
+                }
+                crate::ClipRegion::Rect { x, y, w, h, r } => {
+                    set_str(&clip, "type", "rect");
+                    set_f64(&clip, "x", x as f64);
+                    set_f64(&clip, "y", y as f64);
+                    set_f64(&clip, "w", w as f64);
+                    set_f64(&clip, "h", h as f64);
+                    set_f64(&clip, "r", r as f64);
+                }
+            }
+            let _ = js_sys::Reflect::set(&obj, &"clip".into(), &clip);
+        }
+        obj.into()
+    }
+
+    pub fn reset_node(&mut self, target: &str) -> bool {
+        self.player.reset_node(target).is_ok()
+    }
+
+    pub fn reset_nodes(&mut self) -> bool {
+        self.player.reset_nodes().is_ok()
+    }
+
+    pub fn animation_pause(&mut self, id: f64) {
+        self.player.animation_pause(id as u64);
+    }
+
+    pub fn animation_resume(&mut self, id: f64) {
+        self.player.animation_resume(id as u64);
+    }
+
+    pub fn animation_stop(&mut self, id: f64) {
+        self.player.animation_stop(id as u64);
+    }
+
+    pub fn animation_cancel(&mut self, id: f64) {
+        self.player.animation_cancel(id as u64);
+    }
+
+    pub fn animation_set_speed(&mut self, id: f64, speed: f32) {
+        self.player.animation_set_speed(id as u64, speed);
+    }
+
+    /// Deep-copy a named layer at its current pose into the node namespace.
+    pub fn duplicate_node(&mut self, source: &str, as_name: &str) -> bool {
+        self.player.duplicate_node(source, as_name).is_ok()
+    }
+
+    pub fn remove_node(&mut self, name: &str) -> bool {
+        self.player.remove_node(name).is_ok()
+    }
+
+    /// Animate a raw value on the driver clock; read with `animation_value`.
+    pub fn animate_value(&mut self, from: f32, to: f32, options: &JsValue) -> f64 {
+        self.player
+            .animate_value(from, to, parse_animate_options(options)) as f64
+    }
+
+    pub fn animation_value(&self, id: f64) -> f32 {
+        self.player.animation_value(id as u64).unwrap_or(f32::NAN)
     }
 
     // ── Duration / loop queries ───────────────────────────────────────────────
@@ -822,6 +1215,11 @@ impl DotLottiePlayerWasm {
             crate::PlayerEvent::Pause => js_obj_with_type("Pause").into(),
             crate::PlayerEvent::Stop => js_obj_with_type("Stop").into(),
             crate::PlayerEvent::Complete => js_obj_with_type("Complete").into(),
+            crate::PlayerEvent::MotionComplete { id } => {
+                let obj = js_obj_with_type("MotionComplete");
+                set_f64(&obj, "animationId", id as f64);
+                obj.into()
+            }
             crate::PlayerEvent::Frame { frame_no } => {
                 let obj = js_obj_with_type("Frame");
                 set_f64(&obj, "frameNo", frame_no as f64);

@@ -171,12 +171,14 @@ pub enum DotLottiePlayerEventType {
     Render = 6,
     Loop = 7,
     Complete = 8,
+    MotionComplete = 9,
 }
 
 #[repr(C)]
 pub union DotLottiePlayerEventData {
-    pub frame_no: f32,   // For Frame and Render events
-    pub loop_count: u32, // For Loop event
+    pub frame_no: f32,     // For Frame and Render events
+    pub loop_count: u32,   // For Loop event
+    pub animation_id: u64, // For MotionComplete events
 }
 
 #[repr(C)]
@@ -222,6 +224,10 @@ impl From<crate::PlayerEvent> for DotLottiePlayerEvent {
             crate::PlayerEvent::Complete => DotLottiePlayerEvent {
                 event_type: DotLottiePlayerEventType::Complete,
                 data: DotLottiePlayerEventData { frame_no: 0.0 },
+            },
+            crate::PlayerEvent::MotionComplete { id } => DotLottiePlayerEvent {
+                event_type: DotLottiePlayerEventType::MotionComplete,
+                data: DotLottiePlayerEventData { animation_id: id },
             },
         }
     }

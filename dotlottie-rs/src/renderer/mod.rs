@@ -1,3 +1,4 @@
+use crate::motion::Prop as MotionProp;
 use crate::Layout;
 use std::ffi::CStr;
 
@@ -12,8 +13,9 @@ mod thorvg;
 
 pub(crate) use backend::Point;
 pub use backend::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Renderer, Rgba,
-    Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ClipRegion, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker,
+    NodeProps, Renderer, Rgba, Segment, Shape, SpotMask, Tint, WgpuDevice, WgpuInstance,
+    WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 pub use backend::{AudioEvent, AudioResolver, AudioSource};
@@ -163,6 +165,30 @@ pub trait LottieRenderer {
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Error>;
 
+    // ── Node overrides (motion API) ──────────────────────────────────────
+
+    /// Merge the `Some` fields of `props` into the named node's overrides.
+    fn set_node_props(&mut self, name: &str, props: &NodeProps) -> Result<(), Error>;
+
+    /// Driver hot path: write one scalar override.
+    fn set_node_scalar(&mut self, name: &str, prop: MotionProp, value: f32) -> Result<(), Error>;
+
+    /// Clear one scalar override (back to the authored value).
+    fn clear_node_scalar(&mut self, name: &str, prop: MotionProp) -> Result<(), Error>;
+
+    fn get_node_props(&self, name: &str) -> Option<NodeProps>;
+
+    /// Drop all overrides for the node, restoring authored values.
+    fn reset_node(&mut self, name: &str) -> Result<(), Error>;
+
+    fn reset_nodes(&mut self) -> Result<(), Error>;
+
+    /// Deep-copy a named layer at its current pose into the node namespace.
+    fn duplicate_node(&mut self, source: &str, as_name: &str) -> Result<(), Error>;
+
+    /// Remove a duplicate created by `duplicate_node` and its overrides.
+    fn remove_node(&mut self, name: &str) -> Result<(), Error>;
+
     fn updated(&self) -> bool;
 
     fn tween_to(&mut self, to: f32) -> Result<(), Error>;
@@ -208,6 +234,7 @@ impl dyn LottieRenderer {
             slot_json_buffer: Vec::with_capacity(512),
             slot_values: BTreeMap::new(),
             default_slots: BTreeMap::new(),
+            node_props: BTreeMap::new(),
         })
     }
 }
@@ -235,6 +262,8 @@ struct LottieRendererImpl<R: Renderer> {
     /// Maps slot_id -> SlotType for value retrieval (get operations)
     slot_values: BTreeMap<String, SlotType>,
     default_slots: BTreeMap<String, SlotType>,
+    /// User node overrides, re-composed onto the rebuilt layer paints every render.
+    node_props: BTreeMap<String, NodeProps>,
 }
 
 impl<R: Renderer> LottieRendererImpl<R> {
@@ -251,6 +280,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
         self.slot_json_buffer.clear();
         self.slot_values.clear();
         self.default_slots.clear();
+        self.node_props.clear();
         Ok(())
     }
 
@@ -418,14 +448,7 @@ impl<R: Renderer> LottieRendererImpl<R> {
             return Ok(());
         }
 
-        let layout_matrix = self.layout.to_transform_matrix(
-            self.width as f32,
-            self.height as f32,
-            self.picture_width,
-            self.picture_height,
-        );
-
-        let combined_matrix = multiply_matrices(&self.user_transform, &layout_matrix);
+        let combined_matrix = multiply_matrices(&self.user_transform, &self.layout_matrix());
 
         self.get_animation_mut()?
             .set_transform(&combined_matrix)
@@ -433,6 +456,42 @@ impl<R: Renderer> LottieRendererImpl<R> {
 
         self.updated = true;
         Ok(())
+    }
+
+    fn layout_matrix(&self) -> [f32; 9] {
+        self.layout.to_transform_matrix(
+            self.width as f32,
+            self.height as f32,
+            self.picture_width,
+            self.picture_height,
+        )
+    }
+
+    /// Re-compose user node props onto the freshly rebuilt layer paints, then poke the
+    /// picture once so the mutated subtree re-prepares (`PictureImpl::skip` short-circuit).
+    fn flush_node_props(&mut self) -> Result<(), Error> {
+        if self.node_props.is_empty() {
+            return Ok(());
+        }
+
+        let canvas_to_comp = invert_affine(&multiply_matrices(
+            &self.user_transform,
+            &self.layout_matrix(),
+        ))
+        .unwrap_or([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
+
+        let animation = self.animation.as_mut().ok_or(Error::AnimationNotLoaded)?;
+        for (name, props) in &self.node_props {
+            animation
+                .apply_node_props(name, props, &canvas_to_comp)
+                .map_err(into_lottie::<R>)?;
+        }
+
+        // Restore entries have re-applied the animated base; drop them so playback
+        // stops paying the per-layer cost.
+        self.node_props.retain(|_, p| !p.restore);
+
+        self.apply_user_transform()
     }
 }
 
@@ -585,6 +644,8 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         self.flush_slots()?;
 
         if self.updated {
+            self.flush_node_props()?;
+
             // Sync before update to ensure previous frame's rendering is complete
             // This is crucial for async renderers like WebGL
             self.renderer.sync().map_err(into_lottie::<R>)?;
@@ -834,6 +895,79 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
             .map_err(into_lottie::<R>)
     }
 
+    fn set_node_props(&mut self, name: &str, props: &NodeProps) -> Result<(), Error> {
+        self.node_props
+            .entry(name.to_owned())
+            .or_default()
+            .merge(props);
+        self.updated = true;
+        Ok(())
+    }
+
+    fn set_node_scalar(&mut self, name: &str, prop: MotionProp, value: f32) -> Result<(), Error> {
+        let entry = self.node_props.entry(name.to_owned()).or_default();
+        entry.set_scalar(prop, value);
+        self.updated = true;
+        Ok(())
+    }
+
+    fn clear_node_scalar(&mut self, name: &str, prop: MotionProp) -> Result<(), Error> {
+        if let Some(entry) = self.node_props.get_mut(name) {
+            entry.clear_scalar(prop);
+            if !entry.has_overrides() {
+                entry.restore = true;
+            }
+            self.updated = true;
+        }
+        Ok(())
+    }
+
+    fn get_node_props(&self, name: &str) -> Option<NodeProps> {
+        self.node_props.get(name).cloned()
+    }
+
+    fn reset_node(&mut self, name: &str) -> Result<(), Error> {
+        if let Some(entry) = self.node_props.get_mut(name) {
+            *entry = NodeProps {
+                restore: true,
+                ..Default::default()
+            };
+            self.updated = true;
+        }
+        Ok(())
+    }
+
+    fn reset_nodes(&mut self) -> Result<(), Error> {
+        for entry in self.node_props.values_mut() {
+            *entry = NodeProps {
+                restore: true,
+                ..Default::default()
+            };
+        }
+        if !self.node_props.is_empty() {
+            self.updated = true;
+        }
+        Ok(())
+    }
+
+    fn duplicate_node(&mut self, source: &str, as_name: &str) -> Result<(), Error> {
+        let comp_to_canvas = multiply_matrices(&self.user_transform, &self.layout_matrix());
+        self.get_animation_mut()?
+            .duplicate_node(source, as_name, &comp_to_canvas)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        self.apply_user_transform()
+    }
+
+    fn remove_node(&mut self, name: &str) -> Result<(), Error> {
+        self.node_props.remove(name);
+        self.get_animation_mut()?
+            .remove_node(name)
+            .map_err(into_lottie::<R>)?;
+        self.updated = true;
+        self.apply_user_transform()
+    }
+
     fn get_transform(&self) -> Result<[f32; 9], Error> {
         Ok(self.user_transform)
     }
@@ -870,6 +1004,30 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn segment(&self) -> Result<Segment, Error> {
         self.get_animation()?.segment().map_err(into_lottie::<R>)
     }
+}
+
+/// Inverse of an affine 3×3 (row-major, translation in [2] and [5]).
+fn invert_affine(m: &[f32; 9]) -> Option<[f32; 9]> {
+    let det = m[0] * m[4] - m[1] * m[3];
+    if det.abs() < 1e-12 {
+        return None;
+    }
+    let inv_det = 1.0 / det;
+    let a = m[4] * inv_det;
+    let b = -m[1] * inv_det;
+    let c = -m[3] * inv_det;
+    let d = m[0] * inv_det;
+    Some([
+        a,
+        b,
+        -(a * m[2] + b * m[5]),
+        c,
+        d,
+        -(c * m[2] + d * m[5]),
+        0.0,
+        0.0,
+        1.0,
+    ])
 }
 
 fn multiply_matrices(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {

@@ -5,6 +5,7 @@ pub mod dotlottie;
 mod event_queue;
 pub(crate) mod json;
 mod layout;
+pub mod motion;
 pub mod player;
 mod player_state;
 mod poll_events;
@@ -43,11 +44,11 @@ pub use layout::{Fit, Layout};
 pub use player::{CompletionEvent, Mode, Player, Status};
 pub use poll_events::PlayerEvent;
 pub use renderer::{
-    slots_from_json_string, Animation, Bezier, BezierValue, ColorSlot, ColorSpace, ColorValue,
-    Drawable, GlContext, GlDisplay, GlSurface, GradientSlot, GradientStop, ImageSlot,
-    LottieKeyframe, LottieProperty, Marker, PositionSlot, Renderer, Rgba, ScalarSlot, ScalarValue,
-    Segment, Shape, SlotType, TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot,
-    VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    slots_from_json_string, Animation, Bezier, BezierValue, ClipRegion, ColorSlot, ColorSpace,
+    ColorValue, Drawable, GlContext, GlDisplay, GlSurface, GradientSlot, GradientStop, ImageSlot,
+    LottieKeyframe, LottieProperty, Marker, NodeProps, PositionSlot, Renderer, Rgba, ScalarSlot,
+    ScalarValue, Segment, Shape, SlotType, SpotMask, TextCaps, TextDocument, TextJustify,
+    TextKeyframe, TextSlot, Tint, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "tvg")]
 pub use renderer::{TvgAnimation, TvgRenderer, TvgShape};

@@ -59,6 +59,7 @@ mod tests {
                     PlayerEvent::Render { frame_no } => format!("on_render: {frame_no}"),
                     PlayerEvent::Loop { loop_count } => format!("on_loop: {loop_count}"),
                     PlayerEvent::Complete => "on_complete".to_string(),
+                    PlayerEvent::MotionComplete { id } => format!("on_motion_complete: {id}"),
                 });
             }
         };

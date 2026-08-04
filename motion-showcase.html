@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dotLottie Motion API — Showcase</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 0; padding: 24px;
+        background: #0e0f13; color: #e8e9ed;
+      }
+      h1 { margin: 0 0 4px; font-size: 26px; }
+      .subtitle { color: #8a8f9c; margin-bottom: 24px; font-size: 14px; }
+      .grid {
+        display: grid; gap: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        max-width: 1200px;
+      }
+      .card {
+        background: #171922; border: 1px solid #262a38; border-radius: 12px;
+        padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      }
+      .card h2 { margin: 0; font-size: 15px; }
+      .card p { margin: 0; color: #8a8f9c; font-size: 12.5px; line-height: 1.5; }
+      .stage {
+        position: relative; border-radius: 8px; background: #f6f7f9;
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden; touch-action: none;
+      }
+      .stage canvas { display: block; }
+      pre {
+        margin: 0; padding: 10px 12px; border-radius: 8px;
+        background: #0b0c10; color: #9fd6a1; font-size: 11px;
+        line-height: 1.55; overflow-x: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      button {
+        align-self: flex-start;
+        background: #2b6ef4; color: white; border: 0;
+        padding: 6px 14px; border-radius: 6px; font-size: 12.5px; cursor: pointer;
+      }
+      button:active { transform: translateY(1px); }
+      .scrollbox {
+        height: 220px; overflow-y: scroll; border-radius: 8px; background: #f6f7f9;
+      }
+      .scrollbox .inner { height: 700px; position: relative; }
+      .scrollbox canvas { position: sticky; top: 0; display: block; }
+      .hint { font-size: 11px; color: #5b6070; }
+    </style>
+  </head>
+  <body>
+    <h1>dotLottie Motion API</h1>
+    <div class="subtitle">
+      Lottie is the document — the Motion API animates and styles it at runtime.
+      Springs, keyframes, staggers and gestures over named layers, driven by the Rust core.
+    </div>
+    <div class="grid" id="grid"></div>
+
+    <script type="module">
+      const mod = await import("./release/wasm/dotlottie_rs.js");
+      await mod.default();
+
+      // ── tiny harness ─────────────────────────────────────────────────────
+      const players = [];
+      const finishedResolvers = new Map();
+
+      async function createPlayer(canvas, src, { loop = true, autoplay = true } = {}) {
+        const p = new mod.DotLottiePlayerWasm();
+        p.setup_sw_target(canvas.width, canvas.height);
+        p.set_loop(loop);
+        p.set_autoplay(autoplay);
+        const data = await (await fetch(src)).text();
+        p.load_animation(data);
+        const ctx = canvas.getContext("2d");
+        players.push({ p, canvas, ctx });
+        return p;
+      }
+
+      function whenDone(p, id) {
+        return new Promise((resolve) => {
+          finishedResolvers.set(`${players.findIndex(e => e.p === p)}:${id}`, resolve);
+        });
+      }
+
+      window.__mp = players;
+      let last = 0;
+      function loop(ts) {
+        requestAnimationFrame(loop);
+        const dt = last ? ts - last : 0;
+        last = ts;
+        for (let i = 0; i < players.length; i++) {
+          const { p, canvas, ctx } = players[i];
+          const rendered = p.tick(dt);
+          let evt;
+          while ((evt = p.poll_event()) && evt !== null) {
+            if (evt.type === "MotionComplete") {
+              const key = `${i}:${evt.animationId}`;
+              finishedResolvers.get(key)?.();
+              finishedResolvers.delete(key);
+            }
+          }
+          if (rendered) {
+            const px = p.get_pixel_buffer();
+            ctx.putImageData(
+              new ImageData(new Uint8ClampedArray(px.buffer, px.byteOffset, px.byteLength),
+                canvas.width, canvas.height), 0, 0);
+          }
+        }
+      }
+      requestAnimationFrame(loop);
+
+      function card({ title, note, snippet, stage, extra }) {
+        const el = document.createElement("div");
+        el.className = "card";
+        const h = document.createElement("h2");
+        h.textContent = title;
+        const n = document.createElement("p");
+        n.textContent = note;
+        el.append(h, n);
+        el.appendChild(stage);
+        if (extra) el.appendChild(extra);
+        const pre = document.createElement("pre");
+        pre.textContent = snippet;
+        el.appendChild(pre);
+        document.getElementById("grid").appendChild(el);
+      }
+
+      function makeStage(w = 300, h = 220) {
+        const stage = document.createElement("div");
+        stage.className = "stage";
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        stage.appendChild(canvas);
+        return { stage, canvas };
+      }
+
+      // ── 1. Spring hover ──────────────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/hover-card.json");
+        stage.addEventListener("pointerenter", () => {
+          p.animate("card", { scale: 1.06 }, { type: "spring", stiffness: 350, damping: 16 });
+          p.animate("icon", { scale: 1.35, rotate: 90 }, { type: "spring", stiffness: 350, damping: 14 });
+        });
+        stage.addEventListener("pointerleave", () => {
+          p.animate("card", { scale: 1 }, { type: "spring", stiffness: 350, damping: 16 });
+          p.animate("icon", { scale: 1, rotate: 0 }, { type: "spring", stiffness: 350, damping: 14 });
+        });
+        card({
+          title: "1 · Spring hover",
+          note: "Hover — the card and its icon spring independently, composing on top of the authored idle bob. Fast in/out never snaps: springs redirect with velocity handoff.",
+          snippet: `player.animate("card", { scale: 1.06 },
+  { type: "spring", stiffness: 350, damping: 16 });
+player.animate("icon", { scale: 1.35, rotate: 90 },
+  { type: "spring", stiffness: 350, damping: 14 });`,
+          stage,
+        });
+      }
+
+      // ── 2. Tap pop ───────────────────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/heart.json");
+        stage.addEventListener("pointerdown", () =>
+          p.animate("heart", { scale: [1, 1.4, 1], rotate: [0, -8, 0] },
+            { duration: 0.45, ease: "easeOut" }));
+        card({
+          title: "2 · Tap pop",
+          note: "Click the heart — keyframe waypoints [1, 1.4, 1] over one eased tween, on top of its authored pulse.",
+          snippet: `player.animate("heart",
+  { scale: [1, 1.4, 1], rotate: [0, -8, 0] },
+  { duration: 0.45, ease: "easeOut" });`,
+          stage,
+        });
+      }
+
+      // ── 3. Stagger entrance ──────────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/stars.json");
+        const layers = ["star-1", "star-2", "star-3", "star-4", "star-5"];
+        const replay = () => layers.forEach((name, i) => {
+          p.set_node(name, { y: -140, opacity: 0, rotate: -90 });
+          p.animate(name, { y: 0, opacity: 1, rotate: 0 },
+            { type: "spring", bounce: 0.35, visualDuration: 0.55, delay: i * 0.08 });
+        });
+        const btn = document.createElement("button");
+        btn.textContent = "Replay";
+        btn.addEventListener("click", replay);
+        setTimeout(replay, 300);
+        card({
+          title: "3 · Stagger entrance",
+          note: "Five named stars spring in with an increasing delay while their authored twinkle keeps playing.",
+          snippet: `stars.forEach((name, i) => {
+  player.set_node(name, { y: -140, opacity: 0, rotate: -90 });
+  player.animate(name, { y: 0, opacity: 1, rotate: 0 },
+    { type: "spring", bounce: 0.35, delay: i * 0.08 });
+});`,
+          stage, extra: btn,
+        });
+      }
+
+      // ── 4. Drag with spring-return ───────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/knob.json");
+        let dragging = false, sx = 0, sy = 0;
+        const scale = 600 / 300; // comp units per css px
+        stage.addEventListener("pointerdown", (e) => {
+          dragging = true; sx = e.clientX; sy = e.clientY;
+          stage.setPointerCapture(e.pointerId);
+        });
+        stage.addEventListener("pointermove", (e) => {
+          if (!dragging) return;
+          p.set_node("knob", { x: (e.clientX - sx) * scale, y: (e.clientY - sy) * scale });
+        });
+        const release = () => {
+          if (!dragging) return;
+          dragging = false;
+          p.animate("knob", { x: 0, y: 0 }, { type: "spring", stiffness: 220, damping: 13 });
+        };
+        stage.addEventListener("pointerup", release);
+        stage.addEventListener("pointercancel", release);
+        card({
+          title: "4 · Drag, spring back",
+          note: "Drag the knob and let go — set() writes overrides per pointer move, release hands off to a spring while the shadow stays grounded.",
+          snippet: `onMove:   player.set_node("knob", { x: dx, y: dy });
+onRelease: player.animate("knob", { x: 0, y: 0 },
+  { type: "spring", stiffness: 220, damping: 13 });`,
+          stage,
+        });
+      }
+
+      // ── 5. Scroll-linked ─────────────────────────────────────────────────
+      {
+        const box = document.createElement("div");
+        box.className = "scrollbox";
+        const inner = document.createElement("div");
+        inner.className = "inner";
+        const canvas = document.createElement("canvas");
+        canvas.width = 300; canvas.height = 220;
+        inner.appendChild(canvas);
+        box.appendChild(inner);
+        const p = await createPlayer(canvas, "motion-assets/scene.json", { autoplay: false });
+        box.addEventListener("scroll", () => {
+          const progress = box.scrollTop / (inner.offsetHeight - box.offsetHeight);
+          p.set_frame(progress * (p.total_frames() - 1));
+          p.set_node("cloud-1", { x: progress * 260 });
+          p.set_node("cloud-2", { x: progress * -200 });
+        });
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = "scroll inside the box ↑↓";
+        card({
+          title: "5 · Scroll-linked",
+          note: "Scroll scrubs the authored timeline (the sun arcs) while the clouds get parallax offsets driven on top.",
+          snippet: `onScroll: {
+  player.set_frame(progress * player.total_frames());
+  player.set_node("cloud-1", { x: progress * 260 });
+  player.set_node("cloud-2", { x: progress * -200 });
+}`,
+          stage: box, extra: hint,
+        });
+      }
+
+      // ── 6. Sequence via finished promises ────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/launch.json");
+        let running = false;
+        const run = async () => {
+          if (running) return;
+          running = true;
+          await whenDone(p, p.animate("rocket", { rotate: [0, -4, 4, 0] }, { duration: 0.5 }));
+          p.set_node("flame", { opacity: 1 });
+          await whenDone(p, p.animate("rocket", { y: -420 },
+            { type: "spring", stiffness: 60, damping: 14 }));
+          p.set_node("flame", { opacity: 0 });
+          await whenDone(p, p.animate("rocket", { y: 0, rotate: 0 }, { duration: 0.6, ease: "easeInOut" }));
+          running = false;
+        };
+        const btn = document.createElement("button");
+        btn.textContent = "Launch";
+        btn.addEventListener("click", run);
+        card({
+          title: "6 · Sequence",
+          note: "Shake, ignite, lift off, land — MotionComplete events resolve per-animation promises, so steps chain with plain await.",
+          snippet: `await player.animate("rocket", { rotate: [0,-4,4,0] }, ...).finished;
+player.set_node("flame", { opacity: 1 });
+await player.animate("rocket", { y: -420 },
+  { type: "spring", stiffness: 60 }).finished;`,
+          stage, extra: btn,
+        });
+      }
+
+      // ── 7. Cursor spotlight ──────────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/scene.json");
+        stage.addEventListener("pointerenter", () =>
+          p.animate("@stage", { "spot.r": 90 }, { type: "spring", bounce: 0.2, visualDuration: 0.35 }));
+        stage.addEventListener("pointermove", (e) => {
+          const r = canvas.getBoundingClientRect();
+          p.animate("@stage",
+            { "spot.cx": e.clientX - r.left, "spot.cy": e.clientY - r.top },
+            { type: "spring", visualDuration: 0.15, bounce: 0 });
+        });
+        stage.addEventListener("pointerleave", () =>
+          p.animate("@stage", { "spot.r": 320 }, { duration: 0.4, ease: "easeOut" }));
+        p.set_node("@stage", { spot: { cx: 150, cy: 110, r: 320, feather: 0.5 } });
+        card({
+          title: "7 · Cursor spotlight",
+          note: "Move the pointer — a feathered alpha mask on @stage (the whole animation) springs after the cursor. Beyond what Lottie can author.",
+          snippet: `player.set_node("@stage", { spot: { cx, cy, r: 320, feather: 0.5 } });
+onMove: player.animate("@stage",
+  { "spot.cx": x, "spot.cy": y },
+  { type: "spring", visualDuration: 0.15 });`,
+          stage,
+        });
+      }
+
+      // ── 8. Iris reveal ───────────────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/hover-card.json");
+        const replay = () => {
+          p.set_node("@stage", { clip: { type: "circle", cx: 150, cy: 110, r: 0 } });
+          p.animate("@stage", { "clip.r": 200 }, { duration: 0.8, ease: "easeInOut" });
+        };
+        const btn = document.createElement("button");
+        btn.textContent = "Replay";
+        btn.addEventListener("click", replay);
+        setTimeout(replay, 400);
+        card({
+          title: "8 · Iris reveal",
+          note: "A circular clip on @stage animates open — the classic iris transition, one dotted-key tween.",
+          snippet: `player.set_node("@stage", { clip: { type: "circle", cx, cy, r: 0 } });
+player.animate("@stage", { "clip.r": 200 },
+  { duration: 0.8, ease: "easeInOut" });`,
+          stage, extra: btn,
+        });
+      }
+
+      // ── 9. Day / night grading ───────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/scene.json");
+        let night = false;
+        p.set_node("@stage", { tint: { black: "#0b1030", white: "#ffd9a0", intensity: 0 } });
+        const btn = document.createElement("button");
+        btn.textContent = "Toggle night";
+        btn.addEventListener("click", () => {
+          night = !night;
+          p.animate("@stage", { "tint.intensity": night ? 0.75 : 0 },
+            { duration: 0.9, ease: "easeInOut" });
+        });
+        card({
+          title: "9 · Day / night grading",
+          note: "A duotone tint on @stage tweens its intensity — live color grading over the playing scene.",
+          snippet: `player.set_node("@stage",
+  { tint: { black: "#0b1030", white: "#ffd9a0", intensity: 0 } });
+player.animate("@stage", { "tint.intensity": 0.75 },
+  { duration: 0.9, ease: "easeInOut" });`,
+          stage, extra: btn,
+        });
+      }
+
+      // ── 10. Focus pull ───────────────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/scene.json");
+        const spring = { type: "spring", visualDuration: 0.5, bounce: 0 };
+        let far = false;
+        const focus = () => {
+          far = !far;
+          for (const name of ["hill-front"])
+            p.animate(name, { blur: far ? 9 : 0 }, spring);
+          for (const name of ["sun", "cloud-1", "cloud-2", "hill-back"])
+            p.animate(name, { blur: far ? 0 : 7 }, spring);
+        };
+        const btn = document.createElement("button");
+        btn.textContent = "Pull focus";
+        btn.addEventListener("click", focus);
+        setTimeout(focus, 400);
+        card({
+          title: "10 · Focus pull",
+          note: "Per-layer gaussian blur springs between foreground and background — depth of field over flat vector art.",
+          snippet: `player.animate("hill-front", { blur: 9 }, spring);
+for (const name of ["sun", "cloud-1", "cloud-2"])
+  player.animate(name, { blur: 0 }, spring);`,
+          stage, extra: btn,
+        });
+      }
+
+      // ── 11. Ghost trails ─────────────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/knob.json");
+        let n = 0;
+        const pulse = async () => {
+          const name = `ghost-${++n}`;
+          if (!p.duplicate_node("knob", name)) return;
+          p.set_node(name, { blend: "add", opacity: 0.6 });
+          const id = p.animate(name, { scale: 1.9, opacity: 0 },
+            { duration: 0.7, ease: "easeOut" });
+          await whenDone(p, id);
+          p.remove_node(name);
+        };
+        stage.addEventListener("pointerdown", pulse);
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = "click the stage repeatedly";
+        card({
+          title: "11 · Ghost trails",
+          note: "Each click deep-copies the knob at its current pose, blends it additively, animates it out, and removes it when the promise resolves.",
+          snippet: `player.duplicate_node("knob", ghost);
+player.set_node(ghost, { blend: "add", opacity: 0.6 });
+await player.animate(ghost, { scale: 1.9, opacity: 0 }, ...).finished;
+player.remove_node(ghost);`,
+          stage, extra: hint,
+        });
+      }
+
+      // ── 12. animateValue → DOM ───────────────────────────────────────────
+      {
+        const { stage, canvas } = makeStage();
+        const p = await createPlayer(canvas, "motion-assets/heart.json");
+        const counter = document.createElement("div");
+        counter.style.cssText =
+          "font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;color:#e8e9ed;";
+        counter.textContent = "0";
+        const btn = document.createElement("button");
+        btn.textContent = "Count up";
+        btn.addEventListener("click", () => {
+          const id = p.animate_value(0, 1000, { type: "spring", stiffness: 40, damping: 14 });
+          p.animate("heart", { scale: [1, 1.25, 1] }, { duration: 0.5, ease: "easeOut" });
+          const update = () => {
+            const v = p.animation_value(id);
+            if (!Number.isNaN(v)) counter.textContent = Math.round(v);
+            if (Math.round(v) !== 1000) requestAnimationFrame(update);
+          };
+          requestAnimationFrame(update);
+        });
+        const wrap = document.createElement("div");
+        wrap.style.cssText = "display:flex;gap:14px;align-items:center;";
+        wrap.append(btn, counter);
+        card({
+          title: "12 · animateValue → DOM",
+          note: "A raw value springs on the same driver clock as the canvas — route it anywhere: counters, CSS, attributes. motion.dev's effects family in one method.",
+          snippet: `const id = player.animate_value(0, 1000,
+  { type: "spring", stiffness: 40 });
+onFrame: counter.textContent =
+  Math.round(player.animation_value(id));`,
+          stage, extra: wrap,
+        });
+      }
+    </script>
+  </body>
+</html>

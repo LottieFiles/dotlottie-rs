@@ -11,8 +11,9 @@ use rustc_hash::FxHashMap;
 use crate::renderer::fallback_font;
 
 use super::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point, Renderer,
-    Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, ClipRegion, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker,
+    NodeProps, Point, Renderer, Rgba, Segment, Shape, SpotMask, WgpuDevice, WgpuInstance,
+    WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 use super::{AudioEvent, AudioResolver, AudioSource};
@@ -309,7 +310,7 @@ impl Renderer for TvgRenderer {
     fn push(&mut self, drawable: Drawable<Self>) -> Result<(), TvgError> {
         if let Some(raw_canvas) = self.raw_canvas {
             let raw_paint = match drawable {
-                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Animation(animation) => animation.raw_scene,
                 Drawable::Shape(shape) => shape.raw_shape,
             };
 
@@ -322,11 +323,11 @@ impl Renderer for TvgRenderer {
     fn insert(&mut self, drawable: Drawable<Self>, at: Drawable<Self>) -> Result<(), TvgError> {
         if let Some(raw_canvas) = self.raw_canvas {
             let target = match drawable {
-                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Animation(animation) => animation.raw_scene,
                 Drawable::Shape(shape) => shape.raw_shape,
             };
             let at_paint = match at {
-                Drawable::Animation(animation) => animation.raw_paint,
+                Drawable::Animation(animation) => animation.raw_scene,
                 Drawable::Shape(shape) => shape.raw_shape,
             };
 
@@ -408,15 +409,37 @@ impl LayerIdMap {
     }
 }
 
+/// Pristine animated values of a layer paint, read before user props are composed on
+/// top. Recaptured when the paint pointer changes (scene rebuild).
+struct NodeBase {
+    paint: tvg::Tvg_Paint,
+    matrix: tvg::Tvg_Matrix,
+    opacity: u8,
+    /// Comp-space center of the animated bounds (auto anchor).
+    anchor: (f32, f32),
+    /// Whether user effects / mask / clip are attached to this (still-live) paint,
+    /// so a props change back to `None` clears exactly once.
+    has_fx: bool,
+    has_spot: bool,
+    has_clip: bool,
+}
+
 pub struct TvgAnimation {
     raw_animation: tvg::Tvg_Animation,
     raw_paint: tvg::Tvg_Paint,
+    // Wrapper scene holding the picture — the `@stage` node. Stage-level effects,
+    // masks, clips, and duplicates attach here. Owns one ref so the pointer
+    // survives canvas clears.
+    raw_scene: tvg::Tvg_Paint,
     data: Option<CString>,
     segment: Option<Segment>,
     markers: Vec<Marker>,
     total_frames: f32,
     duration: f32,
     layer_id_map: LayerIdMap,
+    node_base: FxHashMap<String, NodeBase>,
+    // Scene-owned duplicates; stable pointers, canvas-space transforms.
+    user_nodes: FxHashMap<String, tvg::Tvg_Paint>,
     // Boxed for a stable address to pass as the callback's user data.
     #[cfg(feature = "audio")]
     audio_resolver: Option<Box<AudioResolver>>,
@@ -467,23 +490,305 @@ impl Default for TvgAnimation {
     fn default() -> Self {
         let raw_animation = unsafe { tvg::tvg_animation_new() };
         let raw_paint = unsafe { tvg::tvg_animation_get_picture(raw_animation) };
+        let raw_scene = unsafe {
+            let scene = tvg::tvg_scene_new();
+            tvg::tvg_scene_add(scene, raw_paint);
+            tvg::tvg_paint_ref(scene);
+            scene
+        };
 
         Self {
             raw_animation,
             raw_paint,
+            raw_scene,
             data: None,
             segment: None,
             markers: Vec::new(),
             total_frames: 0.0,
             duration: 0.0,
             layer_id_map: LayerIdMap::new(),
+            node_base: FxHashMap::default(),
+            user_nodes: FxHashMap::default(),
             #[cfg(feature = "audio")]
             audio_resolver: None,
         }
     }
 }
 
+/// Fresh clipper shape for `tvg_paint_set_clip`; ThorVG refs it on attach and frees it
+/// on replace/clear, so the caller hands it over untouched.
+fn make_clip_shape(region: &ClipRegion) -> tvg::Tvg_Paint {
+    unsafe {
+        let shape = tvg::tvg_shape_new();
+        match *region {
+            ClipRegion::Rect { x, y, w, h, r } => {
+                let _ = tvg::tvg_shape_append_rect(shape, x, y, w, h, r, r, true);
+            }
+            ClipRegion::Circle { cx, cy, r } => {
+                let _ = tvg::tvg_shape_append_circle(shape, cx, cy, r, r, true);
+            }
+        }
+        shape
+    }
+}
+
+/// Circle whose alpha ramps from opaque to transparent over the feathered rim; used as
+/// the alpha-mask target.
+fn make_spot_shape(mask: &SpotMask) -> tvg::Tvg_Paint {
+    unsafe {
+        let shape = tvg::tvg_shape_new();
+        let _ =
+            tvg::tvg_shape_append_circle(shape, mask.cx, mask.cy, mask.radius, mask.radius, true);
+        let feather = mask.feather.clamp(0.0, 1.0);
+        if feather > 0.0 {
+            let stop = |offset: f32, a: u8| tvg::Tvg_Color_Stop {
+                offset,
+                r: 255,
+                g: 255,
+                b: 255,
+                a,
+            };
+            let stops = [stop(0.0, 255), stop(1.0 - feather, 255), stop(1.0, 0)];
+            let grad = tvg::tvg_radial_gradient_new();
+            let _ = tvg::tvg_radial_gradient_set(
+                grad,
+                mask.cx,
+                mask.cy,
+                mask.radius.max(1e-3),
+                mask.cx,
+                mask.cy,
+                0.0,
+            );
+            let _ = tvg::tvg_gradient_set_color_stops(grad, stops.as_ptr(), stops.len() as u32);
+            let _ = tvg::tvg_shape_set_gradient(shape, grad);
+        } else {
+            let _ = tvg::tvg_shape_set_fill_color(shape, 255, 255, 255, 255);
+        }
+        shape
+    }
+}
+
+/// Row-major 3×3 with translation in [2] and [5], matching `Tvg_Matrix` e13/e23.
+fn mat_mul(a: &[f32; 9], b: &[f32; 9]) -> [f32; 9] {
+    let mut out = [0.0f32; 9];
+    for row in 0..3 {
+        for col in 0..3 {
+            out[row * 3 + col] =
+                a[row * 3] * b[col] + a[row * 3 + 1] * b[3 + col] + a[row * 3 + 2] * b[6 + col];
+        }
+    }
+    out
+}
+
+fn to_tvg_matrix(m: &[f32; 9]) -> tvg::Tvg_Matrix {
+    tvg::Tvg_Matrix {
+        e11: m[0],
+        e12: m[1],
+        e13: m[2],
+        e21: m[3],
+        e22: m[4],
+        e23: m[5],
+        e31: m[6],
+        e32: m[7],
+        e33: m[8],
+    }
+}
+
+fn from_tvg_matrix(m: &tvg::Tvg_Matrix) -> [f32; 9] {
+    [
+        m.e11, m.e12, m.e13, m.e21, m.e22, m.e23, m.e31, m.e32, m.e33,
+    ]
+}
+
+/// User transform in comp space: translate, then rotate/scale about the anchor
+/// (the pivot follows the translation).
+fn compose_user_matrix(props: &NodeProps, anchor: (f32, f32)) -> [f32; 9] {
+    let (ax, ay) = props.anchor.unwrap_or(anchor);
+    let x = props.x.unwrap_or(0.0);
+    let y = props.y.unwrap_or(0.0);
+    let sx = props.scale_x.unwrap_or(1.0);
+    let sy = props.scale_y.unwrap_or(1.0);
+    let rad = props.rotate.unwrap_or(0.0).to_radians();
+    let (sin, cos) = rad.sin_cos();
+
+    // T(x + ax, y + ay) · R · S · T(-ax, -ay)
+    let rs = [
+        cos * sx,
+        -sin * sy,
+        0.0,
+        sin * sx,
+        cos * sy,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+    ];
+    let mut out = rs;
+    out[2] = rs[0] * -ax + rs[1] * -ay + x + ax;
+    out[5] = rs[3] * -ax + rs[4] * -ay + y + ay;
+    out
+}
+
 impl TvgAnimation {
+    /// Capture-and-compose core shared by layers, duplicates, and `@stage`.
+    /// `space` maps the paint's owner coordinate space back from canvas space
+    /// (identity for stage/duplicates, canvas→comp for authored layers).
+    fn apply_to_paint(
+        &mut self,
+        name: &str,
+        paint: tvg::Tvg_Paint,
+        props: &NodeProps,
+        space: &[f32; 9],
+    ) -> Result<(), TvgError> {
+        let needs_capture = match self.node_base.get(name) {
+            Some(base) => base.paint != paint,
+            None => true,
+        };
+
+        if needs_capture {
+            let mut matrix = to_tvg_matrix(&[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
+            let mut opacity: u8 = 255;
+            let (mut bx, mut by, mut bw, mut bh) = (0f32, 0f32, 0f32, 0f32);
+            unsafe {
+                tvg::tvg_paint_get_transform(paint, &mut matrix).into_result()?;
+                tvg::tvg_paint_get_opacity(paint, &mut opacity).into_result()?;
+                let _ = tvg::tvg_paint_get_aabb(paint, &mut bx, &mut by, &mut bw, &mut bh);
+            }
+            let cx = bx + bw * 0.5;
+            let cy = by + bh * 0.5;
+            let anchor = (
+                space[0] * cx + space[1] * cy + space[2],
+                space[3] * cx + space[4] * cy + space[5],
+            );
+            self.node_base.insert(
+                name.to_owned(),
+                NodeBase {
+                    paint,
+                    matrix,
+                    opacity,
+                    anchor,
+                    has_fx: false,
+                    has_spot: false,
+                    has_clip: false,
+                },
+            );
+        }
+
+        let base = self.node_base.get_mut(name).unwrap();
+
+        unsafe {
+            if props.restore {
+                tvg::tvg_paint_set_transform(paint, &base.matrix).into_result()?;
+                tvg::tvg_paint_set_opacity(paint, base.opacity).into_result()?;
+                tvg::tvg_paint_set_visible(paint, true).into_result()?;
+                if base.has_fx {
+                    let _ = tvg::tvg_scene_clear_effects(paint);
+                    let _ = tvg::tvg_paint_set_blend_method(
+                        paint,
+                        tvg::Tvg_Blend_Method_TVG_BLEND_METHOD_NORMAL,
+                    );
+                }
+                if base.has_spot {
+                    let _ = tvg::tvg_paint_set_mask_method(
+                        paint,
+                        std::ptr::null_mut(),
+                        tvg::Tvg_Mask_Method_TVG_MASK_METHOD_NONE,
+                    );
+                }
+                if base.has_clip {
+                    let _ = tvg::tvg_paint_set_clip(paint, std::ptr::null_mut());
+                }
+                base.has_fx = false;
+                base.has_spot = false;
+                base.has_clip = false;
+                return Ok(());
+            }
+
+            let user = compose_user_matrix(props, base.anchor);
+            let composed = mat_mul(&user, &from_tvg_matrix(&base.matrix));
+            tvg::tvg_paint_set_transform(paint, &to_tvg_matrix(&composed)).into_result()?;
+
+            let opacity =
+                (base.opacity as f32 * props.opacity.unwrap_or(1.0).clamp(0.0, 1.0)).round() as u8;
+            tvg::tvg_paint_set_opacity(paint, opacity).into_result()?;
+
+            if let Some(visible) = props.visible {
+                tvg::tvg_paint_set_visible(paint, visible).into_result()?;
+            }
+
+            // Effects: clear-then-add keeps exactly one user stack per apply; while an
+            // override is active, authored effects on this paint are suppressed.
+            let wants_fx = props.blur.is_some_and(|s| s > 0.05)
+                || props.tint.is_some_and(|t| t.intensity > 0.001);
+            if wants_fx || base.has_fx {
+                tvg::tvg_scene_clear_effects(paint).into_result()?;
+            }
+            if let Some(sigma) = props.blur {
+                if sigma > 0.05 {
+                    tvg::tvg_scene_add_effect_gaussian_blur(paint, sigma as f64, 0, 0, 60)
+                        .into_result()?;
+                }
+            }
+            if let Some(t) = props.tint {
+                if t.intensity > 0.001 {
+                    tvg::tvg_scene_add_effect_tint(
+                        paint,
+                        t.black[0] as std::ffi::c_int,
+                        t.black[1] as std::ffi::c_int,
+                        t.black[2] as std::ffi::c_int,
+                        t.white[0] as std::ffi::c_int,
+                        t.white[1] as std::ffi::c_int,
+                        t.white[2] as std::ffi::c_int,
+                        (t.intensity.clamp(0.0, 1.0) * 100.0) as f64,
+                    )
+                    .into_result()?;
+                }
+            }
+            base.has_fx = wants_fx;
+
+            if let Some(mode) = props.blend_mode {
+                tvg::tvg_paint_set_blend_method(paint, mode as tvg::Tvg_Blend_Method)
+                    .into_result()?;
+            }
+
+            match props.spot {
+                Some(spot) if spot.radius > 0.0 => {
+                    let shape = make_spot_shape(&spot);
+                    tvg::tvg_paint_set_mask_method(
+                        paint,
+                        shape,
+                        tvg::Tvg_Mask_Method_TVG_MASK_METHOD_ALPHA,
+                    )
+                    .into_result()?;
+                    base.has_spot = true;
+                }
+                _ if base.has_spot => {
+                    let _ = tvg::tvg_paint_set_mask_method(
+                        paint,
+                        std::ptr::null_mut(),
+                        tvg::Tvg_Mask_Method_TVG_MASK_METHOD_NONE,
+                    );
+                    base.has_spot = false;
+                }
+                _ => {}
+            }
+
+            match props.clip {
+                Some(region) => {
+                    let shape = make_clip_shape(&region);
+                    tvg::tvg_paint_set_clip(paint, shape).into_result()?;
+                    base.has_clip = true;
+                }
+                None if base.has_clip => {
+                    let _ = tvg::tvg_paint_set_clip(paint, std::ptr::null_mut());
+                    base.has_clip = false;
+                }
+                None => {}
+            }
+        }
+        Ok(())
+    }
+
     fn load_markers(&mut self) {
         let mut cnt: u32 = 0;
         unsafe {
@@ -668,6 +973,71 @@ impl Animation for TvgAnimation {
         }
     }
 
+    fn apply_node_props(
+        &mut self,
+        name: &str,
+        props: &NodeProps,
+        canvas_to_comp: &[f32; 9],
+    ) -> Result<(), TvgError> {
+        const IDENT: [f32; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+
+        // Stable-owner nodes: the wrapper scene and duplicates live in canvas space.
+        let (paint, space) = if name == "@stage" {
+            (self.raw_scene, &IDENT)
+        } else if let Some(&paint) = self.user_nodes.get(name) {
+            (paint, &IDENT)
+        } else {
+            let id = self.layer_id_map.get_or_insert(name)?;
+            let paint = unsafe { tvg::tvg_picture_get_paint(self.raw_paint, id) };
+            if paint.is_null() {
+                // Outside its in/out range — retained, re-attaches when it returns.
+                self.node_base.remove(name);
+                return Ok(());
+            }
+            (paint, canvas_to_comp)
+        };
+
+        self.apply_to_paint(name, paint, props, space)
+    }
+
+    fn duplicate_node(
+        &mut self,
+        source: &str,
+        as_name: &str,
+        comp_to_canvas: &[f32; 9],
+    ) -> Result<(), TvgError> {
+        if as_name == "@stage" || self.user_nodes.contains_key(as_name) {
+            return Err(TvgError::InvalidArgument);
+        }
+        let id = self.layer_id_map.get_or_insert(source)?;
+        let src = unsafe { tvg::tvg_picture_get_paint(self.raw_paint, id) };
+        if src.is_null() {
+            return Err(TvgError::InsufficientCondition);
+        }
+        unsafe {
+            let dup = tvg::tvg_paint_duplicate(src);
+            if dup.is_null() {
+                return Err(TvgError::FailedAllocation);
+            }
+            // Bake the picture chain so the copy renders identically from the stage.
+            let mut local = to_tvg_matrix(&[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
+            tvg::tvg_paint_get_transform(dup, &mut local).into_result()?;
+            let baked = mat_mul(comp_to_canvas, &from_tvg_matrix(&local));
+            tvg::tvg_paint_set_transform(dup, &to_tvg_matrix(&baked)).into_result()?;
+            tvg::tvg_scene_add(self.raw_scene, dup).into_result()?;
+            self.user_nodes.insert(as_name.to_owned(), dup);
+        }
+        Ok(())
+    }
+
+    fn remove_node(&mut self, name: &str) -> Result<(), TvgError> {
+        if let Some(paint) = self.user_nodes.remove(name) {
+            self.node_base.remove(name);
+            unsafe { tvg::tvg_scene_remove(self.raw_scene, paint).into_result()? };
+        }
+        Ok(())
+    }
+
     fn get_size(&self) -> Result<(f32, f32), TvgError> {
         let mut width = 0.0;
         let mut height = 0.0;
@@ -774,6 +1144,7 @@ impl Animation for TvgAnimation {
 impl Drop for TvgAnimation {
     fn drop(&mut self) {
         unsafe {
+            tvg::tvg_paint_unref(self.raw_scene, true);
             tvg::tvg_animation_del(self.raw_animation);
         };
     }
@@ -1000,5 +1371,80 @@ mod tests {
         assert!(!animation
             .hit_test(Point { x: 750.0, y: 750.0 }, "R")
             .unwrap());
+    }
+
+    const IDENT: [f32; 9] = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+
+    fn read_paint_state(animation: &TvgAnimation, name: &str) -> ([f32; 9], u8) {
+        let id = animation.layer_id_map.get_or_insert(name).unwrap();
+        let paint = unsafe { tvg::tvg_picture_get_paint(animation.raw_paint, id) };
+        assert!(!paint.is_null());
+        let mut m = to_tvg_matrix(&IDENT);
+        let mut opacity: u8 = 0;
+        unsafe {
+            tvg::tvg_paint_get_transform(paint, &mut m)
+                .into_result()
+                .unwrap();
+            tvg::tvg_paint_get_opacity(paint, &mut opacity)
+                .into_result()
+                .unwrap();
+        }
+        (from_tvg_matrix(&m), opacity)
+    }
+
+    #[test]
+    fn node_props_compose_idempotently_and_restore() {
+        let (_r, mut animation) = load_test_animation();
+        let (base_m, base_o) = read_paint_state(&animation, "B");
+
+        let props = NodeProps {
+            rotate: Some(90.0),
+            x: Some(10.0),
+            ..Default::default()
+        };
+        animation.apply_node_props("B", &props, &IDENT).unwrap();
+        let (m1, _) = read_paint_state(&animation, "B");
+        assert_ne!(m1, base_m, "override must change the transform");
+
+        // Re-applying within the same generation must not accumulate.
+        animation.apply_node_props("B", &props, &IDENT).unwrap();
+        let (m2, _) = read_paint_state(&animation, "B");
+        assert_eq!(m1, m2);
+
+        let restore = NodeProps {
+            restore: true,
+            ..Default::default()
+        };
+        animation.apply_node_props("B", &restore, &IDENT).unwrap();
+        let (m3, o3) = read_paint_state(&animation, "B");
+        assert_eq!(m3, base_m);
+        assert_eq!(o3, base_o);
+    }
+
+    #[test]
+    fn node_props_opacity_multiplies_base() {
+        let (_r, mut animation) = load_test_animation();
+        let (_, base_o) = read_paint_state(&animation, "B");
+
+        let props = NodeProps {
+            opacity: Some(0.5),
+            ..Default::default()
+        };
+        animation.apply_node_props("B", &props, &IDENT).unwrap();
+        let (_, o) = read_paint_state(&animation, "B");
+        let expected = (base_o as f32 * 0.5).round() as u8;
+        assert_eq!(o, expected);
+    }
+
+    #[test]
+    fn node_props_unknown_layer_is_soft() {
+        let (_r, mut animation) = load_test_animation();
+        let props = NodeProps {
+            rotate: Some(45.0),
+            ..Default::default()
+        };
+        animation
+            .apply_node_props("does-not-exist", &props, &IDENT)
+            .unwrap();
     }
 }

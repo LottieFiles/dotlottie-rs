@@ -256,6 +256,202 @@ pub struct AudioEvent<'a> {
 #[cfg(feature = "audio")]
 pub type AudioResolver = Box<dyn for<'a> FnMut(AudioEvent<'a>)>;
 
+/// Feathered circular alpha mask. Coordinates are canvas px on `@stage`,
+/// comp px on layers.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpotMask {
+    pub cx: f32,
+    pub cy: f32,
+    pub radius: f32,
+    /// 0..1 fraction of the radius that fades to transparent.
+    pub feather: f32,
+}
+
+impl Default for SpotMask {
+    fn default() -> Self {
+        Self {
+            cx: 0.0,
+            cy: 0.0,
+            radius: 0.0,
+            feather: 0.4,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ClipRegion {
+    Rect {
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        r: f32,
+    },
+    Circle {
+        cx: f32,
+        cy: f32,
+        r: f32,
+    },
+}
+
+/// Duotone grade: black point → white point, blended by intensity 0..1.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Tint {
+    pub black: [u8; 3],
+    pub white: [u8; 3],
+    pub intensity: f32,
+}
+
+impl Default for Tint {
+    fn default() -> Self {
+        Self {
+            black: [0, 0, 0],
+            white: [255, 255, 255],
+            intensity: 0.0,
+        }
+    }
+}
+
+/// User override props for a named node, composed on top of the authored animation
+/// every frame. `None` fields leave the authored value untouched.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct NodeProps {
+    /// Comp-space translation offset, px.
+    pub x: Option<f32>,
+    pub y: Option<f32>,
+    /// Degrees, clockwise, on top of the authored rotation.
+    pub rotate: Option<f32>,
+    /// Scale factors multiplying the authored scale (1 = unchanged).
+    pub scale_x: Option<f32>,
+    pub scale_y: Option<f32>,
+    /// Comp-space pivot for rotate/scale; `None` = center of the node's animated bounds.
+    pub anchor: Option<(f32, f32)>,
+    /// 0..1 multiplier on the authored opacity.
+    pub opacity: Option<f32>,
+    pub visible: Option<bool>,
+    /// Gaussian blur sigma, px. Overriding suppresses authored layer effects.
+    pub blur: Option<f32>,
+    /// `Tvg_Blend_Method` value; set-only, not tweened.
+    pub blend_mode: Option<u8>,
+    pub tint: Option<Tint>,
+    pub spot: Option<SpotMask>,
+    pub clip: Option<ClipRegion>,
+    /// One-shot: re-apply pristine base values, then the entry is dropped.
+    pub restore: bool,
+}
+
+impl NodeProps {
+    pub fn has_overrides(&self) -> bool {
+        self.x.is_some()
+            || self.y.is_some()
+            || self.rotate.is_some()
+            || self.scale_x.is_some()
+            || self.scale_y.is_some()
+            || self.opacity.is_some()
+            || self.visible.is_some()
+            || self.blur.is_some()
+            || self.blend_mode.is_some()
+            || self.tint.is_some()
+            || self.spot.is_some()
+            || self.clip.is_some()
+    }
+
+    pub fn scalar(&self, prop: crate::motion::Prop) -> Option<f32> {
+        use crate::motion::Prop;
+        match prop {
+            Prop::X => self.x,
+            Prop::Y => self.y,
+            Prop::Rotate => self.rotate,
+            Prop::ScaleX => self.scale_x,
+            Prop::ScaleY => self.scale_y,
+            Prop::Opacity => self.opacity,
+            Prop::Blur => self.blur,
+            Prop::TintIntensity => self.tint.map(|t| t.intensity),
+            Prop::SpotCx => self.spot.map(|s| s.cx),
+            Prop::SpotCy => self.spot.map(|s| s.cy),
+            Prop::SpotRadius => self.spot.map(|s| s.radius),
+            Prop::SpotFeather => self.spot.map(|s| s.feather),
+            Prop::ClipCx | Prop::ClipCy | Prop::ClipRadius => match self.clip {
+                Some(ClipRegion::Circle { cx, cy, r }) => Some(match prop {
+                    Prop::ClipCx => cx,
+                    Prop::ClipCy => cy,
+                    _ => r,
+                }),
+                _ => None,
+            },
+            Prop::Value => None,
+        }
+    }
+
+    pub fn set_scalar(&mut self, prop: crate::motion::Prop, v: f32) {
+        use crate::motion::Prop;
+        match prop {
+            Prop::X => self.x = Some(v),
+            Prop::Y => self.y = Some(v),
+            Prop::Rotate => self.rotate = Some(v),
+            Prop::ScaleX => self.scale_x = Some(v),
+            Prop::ScaleY => self.scale_y = Some(v),
+            Prop::Opacity => self.opacity = Some(v),
+            Prop::Blur => self.blur = Some(v),
+            Prop::TintIntensity => self.tint.get_or_insert_with(Default::default).intensity = v,
+            Prop::SpotCx => self.spot.get_or_insert_with(Default::default).cx = v,
+            Prop::SpotCy => self.spot.get_or_insert_with(Default::default).cy = v,
+            Prop::SpotRadius => self.spot.get_or_insert_with(Default::default).radius = v,
+            Prop::SpotFeather => self.spot.get_or_insert_with(Default::default).feather = v,
+            Prop::ClipCx | Prop::ClipCy | Prop::ClipRadius => {
+                let clip = self.clip.get_or_insert(ClipRegion::Circle {
+                    cx: 0.0,
+                    cy: 0.0,
+                    r: 0.0,
+                });
+                if let ClipRegion::Circle { cx, cy, r } = clip {
+                    match prop {
+                        Prop::ClipCx => *cx = v,
+                        Prop::ClipCy => *cy = v,
+                        _ => *r = v,
+                    }
+                }
+            }
+            Prop::Value => {}
+        }
+        self.restore = false;
+    }
+
+    /// Clear one scalar (whole substructure for grouped props).
+    pub fn clear_scalar(&mut self, prop: crate::motion::Prop) {
+        use crate::motion::Prop;
+        match prop {
+            Prop::X => self.x = None,
+            Prop::Y => self.y = None,
+            Prop::Rotate => self.rotate = None,
+            Prop::ScaleX => self.scale_x = None,
+            Prop::ScaleY => self.scale_y = None,
+            Prop::Opacity => self.opacity = None,
+            Prop::Blur => self.blur = None,
+            Prop::TintIntensity => self.tint = None,
+            Prop::SpotCx | Prop::SpotCy | Prop::SpotRadius | Prop::SpotFeather => {
+                self.spot = None;
+            }
+            Prop::ClipCx | Prop::ClipCy | Prop::ClipRadius => self.clip = None,
+            Prop::Value => {}
+        }
+    }
+
+    /// Overwrite this entry's fields with the `Some` fields of `other`.
+    pub fn merge(&mut self, other: &NodeProps) {
+        macro_rules! take {
+            ($($field:ident),*) => {
+                $(if other.$field.is_some() { self.$field = other.$field; })*
+            };
+        }
+        take!(
+            x, y, rotate, scale_x, scale_y, anchor, opacity, visible, blur, blend_mode, tint, spot,
+            clip
+        );
+        self.restore = false;
+    }
+}
+
 pub trait Animation: Default {
     type Error: error::Error;
 
@@ -266,6 +462,31 @@ pub trait Animation: Default {
     fn set_audio_resolver(&mut self, resolver: Option<AudioResolver>) -> Result<(), Self::Error>;
 
     fn hit_test(&self, point: Point, layer_name: &str) -> Result<bool, Self::Error>;
+
+    /// Compose `props` onto the named layer's pristine base values. The base is
+    /// captured per paint pointer: a rebuilt layer scene carries fresh authored
+    /// values, while a stable pointer keeps the cached base valid — recapturing on a
+    /// stable pointer would read back our own composed values and accumulate.
+    /// `canvas_to_comp` maps canvas space back to composition space (auto anchor).
+    fn apply_node_props(
+        &mut self,
+        name: &str,
+        props: &NodeProps,
+        canvas_to_comp: &[f32; 9],
+    ) -> Result<(), Self::Error>;
+
+    /// Deep-copy a named layer as of the current frame, registered under `as_name` in
+    /// the node namespace (canvas space, stable paint). `comp_to_canvas` bakes the
+    /// picture transform into the copy.
+    fn duplicate_node(
+        &mut self,
+        source: &str,
+        as_name: &str,
+        comp_to_canvas: &[f32; 9],
+    ) -> Result<(), Self::Error>;
+
+    /// Remove a node created by `duplicate_node`.
+    fn remove_node(&mut self, name: &str) -> Result<(), Self::Error>;
 
     fn get_size(&self) -> Result<(f32, f32), Self::Error>;
 

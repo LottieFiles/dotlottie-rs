@@ -3,13 +3,14 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
+use crate::motion::{AnimateOptions, Driver as MotionDriver, PropKeyframes, Write as MotionWrite};
 use crate::player_state::{Resume, State, TweenOutcome};
 use crate::poll_events::{EventQueue, PlayerEvent};
 #[cfg(feature = "state-machines")]
 use crate::state_machine::{Error as StateMachineEngineError, StateMachineEngine};
 use crate::{
     layout::Layout,
-    renderer::{Error as LottieRendererError, LottieRenderer},
+    renderer::{Error as LottieRendererError, LottieRenderer, NodeProps},
     tween::{TweenState, TweenStatus},
     Marker,
 };
@@ -118,6 +119,10 @@ pub struct Player {
     audio: Option<Rc<RefCell<AudioManager>>>,
     direction: Direction,
     active_marker: Option<CString>,
+    motion: MotionDriver,
+    value_tracks: std::collections::HashMap<String, f32>,
+    value_names: std::collections::HashMap<u64, String>,
+    next_value_key: u64,
     event_queue: EventQueue<PlayerEvent, 16>,
     completion_event: CompletionEvent,
     // Config properties
@@ -190,6 +195,10 @@ impl Player {
             audio: None,
             direction: Direction::Forward,
             active_marker: None,
+            motion: MotionDriver::default(),
+            value_tracks: std::collections::HashMap::new(),
+            value_names: std::collections::HashMap::new(),
+            next_value_key: 0,
             #[cfg(feature = "state-machines")]
             state_machine_id: None,
             event_queue: EventQueue::new(),
@@ -609,6 +618,156 @@ impl Player {
         Ok(())
     }
 
+    // ── Motion API ───────────────────────────────────────────────────────
+
+    /// Merge override props onto the named node, interrupting any live animation
+    /// tracks on the overridden scalars.
+    pub fn set_node_props(&mut self, name: &str, props: NodeProps) -> Result<()> {
+        use crate::motion::Prop;
+        for prop in [
+            Prop::X,
+            Prop::Y,
+            Prop::Rotate,
+            Prop::ScaleX,
+            Prop::ScaleY,
+            Prop::Opacity,
+        ] {
+            if props.scalar(prop).is_some() {
+                self.motion.interrupt(name, prop);
+            }
+        }
+        self.renderer.set_node_props(name, &props)?;
+        Ok(())
+    }
+
+    pub fn get_node_props(&self, name: &str) -> Option<NodeProps> {
+        self.renderer.get_node_props(name)
+    }
+
+    pub fn reset_node(&mut self, name: &str) -> Result<()> {
+        self.motion.interrupt_target(name);
+        self.renderer.reset_node(name)?;
+        Ok(())
+    }
+
+    pub fn reset_nodes(&mut self) -> Result<()> {
+        self.motion.clear();
+        self.value_tracks.clear();
+        self.value_names.clear();
+        self.renderer.reset_nodes()?;
+        Ok(())
+    }
+
+    /// Deep-copy a named layer at its current pose; the copy joins the node
+    /// namespace under `as_name` (stable, canvas-space) and works with every
+    /// node API.
+    pub fn duplicate_node(&mut self, source: &str, as_name: &str) -> Result<()> {
+        self.renderer.duplicate_node(source, as_name)?;
+        Ok(())
+    }
+
+    pub fn remove_node(&mut self, name: &str) -> Result<()> {
+        self.motion.interrupt_target(name);
+        self.renderer.remove_node(name)?;
+        Ok(())
+    }
+
+    /// Animate a raw value on the driver clock — no node sink; read it with
+    /// `animation_value`. The motion.dev "effects" family in one method.
+    pub fn animate_value(&mut self, from: f32, to: f32, options: AnimateOptions) -> u64 {
+        self.next_value_key += 1;
+        let target = format!("@value:{}", self.next_value_key);
+        let id = self.motion.animate(
+            &target,
+            vec![PropKeyframes {
+                prop: crate::motion::Prop::Value,
+                values: vec![to],
+                times: None,
+            }],
+            options,
+            |_| Some(from),
+        );
+        self.value_tracks.insert(target.clone(), from);
+        self.value_names.insert(id, target);
+        id
+    }
+
+    /// Latest sample of an `animate_value` animation.
+    pub fn animation_value(&self, id: u64) -> Option<f32> {
+        self.value_tracks.get(self.value_names.get(&id)?).copied()
+    }
+
+    /// Start an animation over node properties. Returns an id for the controls
+    /// (`animation_pause/resume/stop/cancel`); a `MotionComplete` event fires when
+    /// every property in the call settles.
+    pub fn animate(
+        &mut self,
+        name: &str,
+        entries: Vec<PropKeyframes>,
+        options: AnimateOptions,
+    ) -> u64 {
+        let current = self.renderer.get_node_props(name).unwrap_or_default();
+        self.motion
+            .animate(name, entries, options, |prop| current.scalar(prop))
+    }
+
+    pub fn animation_pause(&mut self, id: u64) {
+        self.motion.pause(id);
+    }
+
+    pub fn animation_resume(&mut self, id: u64) {
+        self.motion.resume(id);
+    }
+
+    pub fn animation_set_speed(&mut self, id: u64, speed: f32) {
+        self.motion.set_speed(id, speed);
+    }
+
+    /// Freeze at the current value; overrides persist.
+    pub fn animation_stop(&mut self, id: u64) {
+        self.motion.stop(id);
+    }
+
+    /// Remove the animation and its overrides, reverting to the authored animation.
+    pub fn animation_cancel(&mut self, id: u64) {
+        let Player {
+            motion, renderer, ..
+        } = self;
+        motion.cancel(id, |target, write| {
+            if let MotionWrite::Clear(prop) = write {
+                let _ = renderer.clear_node_scalar(target, prop);
+            }
+        });
+    }
+
+    fn tick_motion(&mut self, dt_ms: f32) {
+        if !self.motion.is_active() {
+            return;
+        }
+        let Player {
+            motion,
+            renderer,
+            value_tracks,
+            ..
+        } = self;
+        motion.tick(dt_ms / 1000.0, |target, write| match write {
+            MotionWrite::Set(crate::motion::Prop::Value, value) => {
+                value_tracks.insert(target.to_owned(), value);
+            }
+            MotionWrite::Set(prop, value) => {
+                let _ = renderer.set_node_scalar(target, prop, value);
+            }
+            MotionWrite::Clear(prop) => {
+                if !matches!(prop, crate::motion::Prop::Value) {
+                    let _ = renderer.clear_node_scalar(target, prop);
+                }
+            }
+        });
+        for id in self.motion.drain_finished() {
+            self.event_queue.push(PlayerEvent::MotionComplete { id });
+        }
+    }
+
     fn emit_on_complete(&mut self) {
         self.completion_event = CompletionEvent::Completed;
         self.event_queue.push(PlayerEvent::Complete);
@@ -922,6 +1081,7 @@ impl Player {
         self.state = State::Idle;
         self.elapsed_frames = 0.0;
         self.current_loop_count = 0;
+        self.motion.clear();
 
         let loaded = loader(&mut *self.renderer).is_ok();
 
@@ -1616,6 +1776,8 @@ impl Player {
     /// frame was unchanged and rendering was skipped.
     pub fn tick(&mut self, dt: f32) -> Result<bool> {
         let dt = dt.max(0.0);
+
+        self.tick_motion(dt);
 
         if matches!(self.state, State::Tweening { .. }) {
             match self.tween_advance(dt) {

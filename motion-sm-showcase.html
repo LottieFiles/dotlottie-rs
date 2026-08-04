@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dotLottie Motion API — State Machine Showcase</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 0; padding: 24px;
+        background: #0e0f13; color: #e8e9ed;
+      }
+      h1 { margin: 0 0 4px; font-size: 26px; }
+      .subtitle { color: #8a8f9c; margin-bottom: 24px; font-size: 14px; }
+      .grid {
+        display: grid; gap: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        max-width: 1200px;
+      }
+      .card {
+        background: #171922; border: 1px solid #262a38; border-radius: 12px;
+        padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      }
+      .card h2 { margin: 0; font-size: 15px; }
+      .card p { margin: 0; color: #8a8f9c; font-size: 12.5px; line-height: 1.5; }
+      .stage {
+        position: relative; border-radius: 8px; background: #f6f7f9;
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden; touch-action: none;
+      }
+      .stage canvas { display: block; }
+      pre {
+        margin: 0; padding: 10px 12px; border-radius: 8px;
+        background: #0b0c10; color: #9fd6a1; font-size: 11px;
+        line-height: 1.55; overflow-x: auto; max-height: 220px; overflow-y: auto;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      button {
+        align-self: flex-start;
+        background: #2b6ef4; color: white; border: 0;
+        padding: 6px 14px; border-radius: 6px; font-size: 12.5px; cursor: pointer;
+      }
+      button:active { transform: translateY(1px); }
+      .scrollbox {
+        height: 220px; overflow-y: scroll; border-radius: 8px; background: #f6f7f9;
+      }
+      .scrollbox .inner { height: 700px; position: relative; }
+      .scrollbox canvas { position: sticky; top: 0; display: block; }
+      .hint { font-size: 11px; color: #5b6070; }
+    </style>
+  </head>
+  <body>
+    <h1>dotLottie Motion API · State Machines</h1>
+    <div class="subtitle">
+      The motion-showcase demos, re-expressed declaratively: no imperative animate() calls —
+      each card is a state machine JSON with SetNode/Animate actions, named motions, and
+      input bindings. The host only forwards pointer events and writes inputs.
+    </div>
+    <div class="grid" id="grid"></div>
+
+    <script type="module">
+      const mod = await import("./release/wasm/dotlottie_rs.js");
+      await mod.default();
+
+      // ── harness ──────────────────────────────────────────────────────────
+      const players = [];
+
+      async function createSmPlayer(canvas, src, smDef) {
+        const p = new mod.DotLottiePlayerWasm();
+        p.setup_sw_target(canvas.width, canvas.height);
+        const data = await (await fetch(src)).text();
+        p.load_animation(data);
+        if (!p.state_machine_load(JSON.stringify(smDef))) {
+          console.error("SM failed to load", smDef);
+        }
+        p.sm_start(false, []);
+        const ctx = canvas.getContext("2d");
+        players.push({ p, canvas, ctx });
+        return p;
+      }
+
+      let last = 0;
+      function loop(ts) {
+        requestAnimationFrame(loop);
+        const dt = last ? ts - last : 0;
+        last = ts;
+        for (const { p, canvas, ctx } of players) {
+          if (p.sm_tick(dt)) {
+            const px = p.get_pixel_buffer();
+            ctx.putImageData(
+              new ImageData(new Uint8ClampedArray(px.buffer, px.byteOffset, px.byteLength),
+                canvas.width, canvas.height), 0, 0);
+          }
+        }
+      }
+      requestAnimationFrame(loop);
+
+      function card({ title, note, snippet, stage, extra }) {
+        const el = document.createElement("div");
+        el.className = "card";
+        const h = document.createElement("h2");
+        h.textContent = title;
+        const n = document.createElement("p");
+        n.textContent = note;
+        el.append(h, n);
+        el.appendChild(stage);
+        if (extra) el.appendChild(extra);
+        const pre = document.createElement("pre");
+        pre.textContent = snippet;
+        el.appendChild(pre);
+        document.getElementById("grid").appendChild(el);
+      }
+
+      function makeStage(w = 300, h = 220) {
+        const stage = document.createElement("div");
+        stage.className = "stage";
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        stage.appendChild(canvas);
+        return { stage, canvas };
+      }
+
+      function local(canvas, e) {
+        const r = canvas.getBoundingClientRect();
+        return [e.clientX - r.left, e.clientY - r.top];
+      }
+
+      // Forward the standard pointer events; the SM decides what they mean.
+      function forwardPointer(stage, canvas, p) {
+        stage.addEventListener("pointerenter", e => p.sm_post_pointer_enter(...local(canvas, e)));
+        stage.addEventListener("pointerleave", e => p.sm_post_pointer_exit(...local(canvas, e)));
+        stage.addEventListener("pointermove",  e => p.sm_post_pointer_move(...local(canvas, e)));
+        stage.addEventListener("pointerdown",  e => p.sm_post_pointer_down(...local(canvas, e)));
+        stage.addEventListener("pointerup",    e => p.sm_post_pointer_up(...local(canvas, e)));
+      }
+
+      const state = (extra = {}) => ({
+        type: "PlaybackState", name: "a", animation: "",
+        autoplay: true, loop: true, transitions: [], ...extra,
+      });
+      const spring = (o) => ({ type: "spring", ...o });
+
+      // ── 1. Spring hover — named pose motions, PointerEnter/Exit ─────────
+      {
+        const sm = {
+          initial: "a",
+          motions: [
+            { name: "hoverIn", steps: [
+              { target: "card", keyframes: { scale: 1.06 },
+                transition: spring({ stiffness: 350, damping: 16 }) },
+              { target: "icon", keyframes: { scale: 1.35, rotate: 90 },
+                transition: spring({ stiffness: 350, damping: 14 }), at: "<" },
+            ]},
+            { name: "hoverOut", steps: [
+              { target: "card", keyframes: { scale: 1 },
+                transition: spring({ stiffness: 350, damping: 16 }) },
+              { target: "icon", keyframes: { scale: 1, rotate: 0 },
+                transition: spring({ stiffness: 350, damping: 14 }), at: "<" },
+            ]},
+          ],
+          states: [state()],
+          interactions: [
+            { type: "PointerEnter", actions: [{ type: "PlayMotion", motion: "hoverIn" }] },
+            { type: "PointerExit",  actions: [{ type: "PlayMotion", motion: "hoverOut" }] },
+          ],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/hover-card.json", sm);
+        forwardPointer(stage, canvas, p);
+        card({
+          title: "1 · Spring hover (motions + PointerEnter)",
+          note: "Two named pose motions; enter/exit interactions play them. Fast in/out redirects with velocity handoff — no code.",
+          snippet: JSON.stringify({ motions: sm.motions, interactions: sm.interactions }, null, 1),
+          stage,
+        });
+      }
+
+      // ── 2. Tap pop — raw Animate action, keyframe waypoints ──────────────
+      {
+        const sm = {
+          initial: "a",
+          states: [state()],
+          interactions: [
+            { type: "PointerDown", actions: [
+              { type: "Animate", target: "heart",
+                keyframes: { scale: [1, 1.4, 1], rotate: [0, -8, 0] },
+                transition: { duration: 0.45, ease: "easeOut" } },
+            ]},
+          ],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/heart.json", sm);
+        forwardPointer(stage, canvas, p);
+        card({
+          title: "2 · Tap pop (Animate action)",
+          note: "Click the heart — one Animate action with keyframe waypoints on top of the authored pulse.",
+          snippet: JSON.stringify(sm.interactions, null, 1),
+          stage,
+        });
+      }
+
+      // ── 3. Stagger entrance — at offsets, explicit-start keyframes ───────
+      {
+        const starStep = (name, at) => ({
+          target: name,
+          keyframes: { y: [-140, 0], opacity: [0, 1], rotate: [-90, 0] },
+          transition: spring({ bounce: 0.35, visualDuration: 0.55 }),
+          at,
+        });
+        const sm = {
+          initial: "a",
+          motions: [
+            { name: "starsIn", steps: [
+              starStep("star-1", 0), starStep("star-2", 0.08), starStep("star-3", 0.16),
+              starStep("star-4", 0.24), starStep("star-5", 0.32),
+            ]},
+          ],
+          states: [state({ motions: ["starsIn"] })],
+          interactions: [
+            { type: "PointerDown", actions: [{ type: "PlayMotion", motion: "starsIn" }] },
+          ],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/stars.json", sm);
+        forwardPointer(stage, canvas, p);
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = "click the stage to replay";
+        card({
+          title: "3 · Stagger entrance (at offsets)",
+          note: "Five steps in one batch, staggered by `at`. Explicit-start keyframes ([-140, 0]) replace the set-then-animate pair. Plays on state entry; click replays.",
+          snippet: JSON.stringify(sm.motions[0].steps[0], null, 1) + "\n// …star-2 at 0.08, star-3 at 0.16…",
+          stage, extra: hint,
+        });
+      }
+
+      // ── 4. Follow + spring home — input arithmetic on @pointer ───────────
+      {
+        const sm = {
+          initial: "a",
+          states: [state()],
+          inputs: [
+            { type: "Numeric", name: "dx", value: 0 },
+            { type: "Numeric", name: "dy", value: 0 },
+          ],
+          interactions: [
+            { type: "PointerMove", actions: [
+              { type: "SetNumeric", inputName: "dx", value: "@pointer.x" },
+              { type: "Decrement",  inputName: "dx", value: 150 },
+              { type: "Multiply",   inputName: "dx", value: 2 },
+              { type: "SetNumeric", inputName: "dy", value: "@pointer.y" },
+              { type: "Decrement",  inputName: "dy", value: 110 },
+              { type: "Multiply",   inputName: "dy", value: 2 },
+              { type: "Animate", target: "knob",
+                keyframes: { x: "$dx", y: "$dy" },
+                transition: spring({ visualDuration: 0.15, bounce: 0 }) },
+            ]},
+            { type: "PointerUp", actions: [
+              { type: "Animate", target: "knob", keyframes: { x: 0, y: 0 },
+                transition: spring({ stiffness: 220, damping: 13 }) },
+            ]},
+          ],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/knob.json", sm);
+        forwardPointer(stage, canvas, p);
+        card({
+          title: "4 · Follow, spring home (@pointer + input math)",
+          note: "The knob spring-follows the cursor: @pointer feeds an input, Decrement/Multiply recenter and scale it, Animate binds it. Release springs home.",
+          snippet: JSON.stringify(sm.interactions[0].actions, null, 1),
+          stage,
+        });
+      }
+
+      // ── 5. Scroll-linked — OnInputChange over a host-written input ───────
+      {
+        const sm = {
+          initial: "a",
+          states: [state({ autoplay: false, loop: false })],
+          inputs: [
+            { type: "Numeric", name: "progress", value: 0 },
+            { type: "Numeric", name: "c1", value: 0 },
+            { type: "Numeric", name: "c2", value: 0 },
+          ],
+          interactions: [
+            { type: "OnInputChange", inputName: "progress", actions: [
+              { type: "SetProgress", value: "$progress" },
+              { type: "SetNumeric", inputName: "c1", value: "$progress" },
+              { type: "Multiply",   inputName: "c1", value: 2.6 },
+              { type: "SetNode", target: "cloud-1", props: { x: "$c1" } },
+              { type: "SetNumeric", inputName: "c2", value: "$progress" },
+              { type: "Multiply",   inputName: "c2", value: -2.0 },
+              { type: "SetNode", target: "cloud-2", props: { x: "$c2" } },
+            ]},
+          ],
+        };
+        const box = document.createElement("div");
+        box.className = "scrollbox";
+        const inner = document.createElement("div");
+        inner.className = "inner";
+        const canvas = document.createElement("canvas");
+        canvas.width = 300; canvas.height = 220;
+        inner.appendChild(canvas);
+        box.appendChild(inner);
+        const p = await createSmPlayer(canvas, "motion-assets/scene.json", sm);
+        box.addEventListener("scroll", () => {
+          const t = box.scrollTop / (inner.offsetHeight - box.offsetHeight);
+          p.sm_set_numeric_input("progress", t * 100);
+        });
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = "scroll inside the box ↑↓ — the host only writes one input";
+        card({
+          title: "5 · Scroll-linked (OnInputChange)",
+          note: "Nothing scroll-specific in the SM: the host writes a numeric input; OnInputChange scrubs the timeline and derives cloud parallax with input arithmetic. Any producer works — scroll, slider, sensor.",
+          snippet: JSON.stringify(sm.interactions[0], null, 1),
+          stage: box, extra: hint,
+        });
+      }
+
+      // ── 6. Sequence — mixed Animate/SetNode steps, completion-chained ────
+      {
+        const sm = {
+          initial: "a",
+          motions: [
+            { name: "launch", interrupt: "ignore", steps: [
+              { target: "rocket", keyframes: { rotate: [0, -4, 4, 0] },
+                transition: { duration: 0.5 } },
+              { type: "SetNode", target: "flame", props: { opacity: 1 } },
+              { target: "rocket", keyframes: { y: -420 },
+                transition: spring({ stiffness: 60, damping: 14 }) },
+              { type: "SetNode", target: "flame", props: { opacity: 0 } },
+              { target: "rocket", keyframes: { y: 0, rotate: 0 },
+                transition: { duration: 0.6, ease: "easeInOut" } },
+            ]},
+          ],
+          states: [state()],
+          interactions: [
+            { type: "PointerDown", actions: [{ type: "PlayMotion", motion: "launch" }] },
+          ],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/launch.json", sm);
+        forwardPointer(stage, canvas, p);
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = "click to launch — clicks mid-flight are ignored";
+        card({
+          title: "6 · Sequence (mixed steps, interrupt: ignore)",
+          note: "Shake → ignite → lift → land: instant SetNode steps between spring/tween steps, chained on completion — no promises, no async, no re-entrancy flag.",
+          snippet: JSON.stringify(sm.motions[0], null, 1),
+          stage, extra: hint,
+        });
+      }
+
+      // ── 7. Cursor spotlight — @pointer springs on @stage ────────────────
+      {
+        const sm = {
+          initial: "a",
+          states: [state({
+            entryActions: [
+              { type: "SetNode", target: "@stage",
+                props: { spot: { cx: 150, cy: 110, r: 320, feather: 0.5 } } },
+            ],
+          })],
+          interactions: [
+            { type: "PointerEnter", actions: [
+              { type: "Animate", target: "@stage", keyframes: { "spot.r": 90 },
+                transition: spring({ bounce: 0.2, visualDuration: 0.35 }) },
+            ]},
+            { type: "PointerMove", actions: [
+              { type: "Animate", target: "@stage",
+                keyframes: { "spot.cx": "@pointer.x", "spot.cy": "@pointer.y" },
+                transition: spring({ visualDuration: 0.15, bounce: 0 }) },
+            ]},
+            { type: "PointerExit", actions: [
+              { type: "Animate", target: "@stage", keyframes: { "spot.r": 320 },
+                transition: { duration: 0.4, ease: "easeOut" } },
+            ]},
+          ],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/scene.json", sm);
+        forwardPointer(stage, canvas, p);
+        card({
+          title: "7 · Cursor spotlight (@pointer.x/y)",
+          note: "A feathered alpha mask on @stage spring-follows the cursor — the flagship recipe, fully declarative via reserved pointer inputs.",
+          snippet: JSON.stringify(sm.interactions[1], null, 1),
+          stage,
+        });
+      }
+
+      // ── 8. Iris reveal — SetNode + Animate steps in one motion ───────────
+      {
+        const sm = {
+          initial: "a",
+          motions: [
+            { name: "iris", steps: [
+              { type: "SetNode", target: "@stage",
+                props: { clip: { type: "circle", cx: 150, cy: 110, r: 0 } } },
+              { target: "@stage", keyframes: { "clip.r": 200 },
+                transition: { duration: 0.8, ease: "easeInOut" } },
+            ]},
+          ],
+          states: [state({ motions: ["iris"] })],
+          interactions: [
+            { type: "PointerDown", actions: [{ type: "PlayMotion", motion: "iris" }] },
+          ],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/hover-card.json", sm);
+        forwardPointer(stage, canvas, p);
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = "click to replay";
+        card({
+          title: "8 · Iris reveal (motion on state entry)",
+          note: "Reset the clip to r:0, tween it open — one motion referenced by the state, replayed on click.",
+          snippet: JSON.stringify(sm.motions[0], null, 1),
+          stage, extra: hint,
+        });
+      }
+
+      // ── 9. Day / night — states as looks, event-toggled ──────────────────
+      {
+        const sm = {
+          initial: "boot",
+          states: [
+            { type: "PlaybackState", name: "boot", animation: "",
+              autoplay: true, loop: true,
+              entryActions: [
+                { type: "SetNode", target: "@stage",
+                  props: { tint: { black: "#0b1030", white: "#ffd9a0", intensity: 0 } } },
+              ],
+              transitions: [{ type: "Transition", toState: "day" }] },
+            { type: "PlaybackState", name: "day", animation: "",
+              autoplay: true, loop: true,
+              entryActions: [
+                { type: "Animate", target: "@stage", keyframes: { "tint.intensity": 0 },
+                  transition: { duration: 0.9, ease: "easeInOut" } },
+              ],
+              transitions: [{ type: "Transition", toState: "night",
+                guards: [{ type: "Event", inputName: "toggle" }] }] },
+            { type: "PlaybackState", name: "night", animation: "",
+              autoplay: true, loop: true,
+              entryActions: [
+                { type: "Animate", target: "@stage", keyframes: { "tint.intensity": 0.75 },
+                  transition: { duration: 0.9, ease: "easeInOut" } },
+              ],
+              transitions: [{ type: "Transition", toState: "day",
+                guards: [{ type: "Event", inputName: "toggle" }] }] },
+          ],
+          inputs: [{ type: "Event", name: "toggle" }],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/scene.json", sm);
+        const btn = document.createElement("button");
+        btn.textContent = "Toggle night";
+        btn.addEventListener("click", () => p.sm_fire("toggle"));
+        card({
+          title: "9 · Day / night (states as looks)",
+          note: "day/night states each animate the grade on entry; an event toggles between them. Mid-tween toggles redirect from the live value.",
+          snippet: JSON.stringify(sm.states[2], null, 1),
+          stage, extra: btn,
+        });
+      }
+
+      // ── 10. Focus pull — state-scoped parallel motions ───────────────────
+      {
+        const blurStep = (target, blur, at) => ({
+          target, keyframes: { blur },
+          transition: spring({ visualDuration: 0.5, bounce: 0 }), at,
+        });
+        const sm = {
+          initial: "near",
+          motions: [
+            { name: "focusNear", steps: [
+              blurStep("hill-front", 0), blurStep("sun", 7, "<"),
+              blurStep("cloud-1", 7, "<"), blurStep("cloud-2", 7, "<"),
+              blurStep("hill-back", 7, "<"),
+            ]},
+            { name: "focusFar", steps: [
+              blurStep("hill-front", 9), blurStep("sun", 0, "<"),
+              blurStep("cloud-1", 0, "<"), blurStep("cloud-2", 0, "<"),
+              blurStep("hill-back", 0, "<"),
+            ]},
+          ],
+          states: [
+            { type: "PlaybackState", name: "near", animation: "",
+              autoplay: true, loop: true, motions: ["focusNear"],
+              transitions: [{ type: "Transition", toState: "far",
+                guards: [{ type: "Event", inputName: "focus" }] }] },
+            { type: "PlaybackState", name: "far", animation: "",
+              autoplay: true, loop: true, motions: ["focusFar"],
+              transitions: [{ type: "Transition", toState: "near",
+                guards: [{ type: "Event", inputName: "focus" }] }] },
+          ],
+          inputs: [{ type: "Event", name: "focus" }],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/scene.json", sm);
+        const btn = document.createElement("button");
+        btn.textContent = "Pull focus";
+        btn.addEventListener("click", () => p.sm_fire("focus"));
+        card({
+          title: "10 · Focus pull (state-scoped motions)",
+          note: "Per-layer blur springs, five parallel steps via at:\"<\". Switching states mid-flight interrupts with handoff — depth of field as two states.",
+          snippet: JSON.stringify(sm.motions[1], null, 1),
+          stage, extra: btn,
+        });
+      }
+
+      // ── 11. AnimateInput → DOM ───────────────────────────────────────────
+      {
+        const sm = {
+          initial: "a",
+          states: [state()],
+          inputs: [{ type: "Numeric", name: "counter", value: 0 }],
+          interactions: [
+            { type: "PointerDown", actions: [
+              { type: "AnimateInput", inputName: "counter", from: 0, to: 1000,
+                transition: spring({ stiffness: 40, damping: 14 }) },
+              { type: "Animate", target: "heart", keyframes: { scale: [1, 1.25, 1] },
+                transition: { duration: 0.5, ease: "easeOut" } },
+            ]},
+          ],
+        };
+        const { stage, canvas } = makeStage();
+        const p = await createSmPlayer(canvas, "motion-assets/heart.json", sm);
+        forwardPointer(stage, canvas, p);
+        const counter = document.createElement("div");
+        counter.style.cssText =
+          "font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;color:#e8e9ed;";
+        counter.textContent = "0";
+        (function read() {
+          requestAnimationFrame(read);
+          const v = p.sm_get_numeric_input("counter");
+          if (v != null && !Number.isNaN(v)) counter.textContent = Math.round(v);
+        })();
+        card({
+          title: "11 · AnimateInput → DOM",
+          note: "Click the stage: a spring drives the `counter` input on the engine clock; the host just reads the input per frame and routes it to the DOM.",
+          snippet: JSON.stringify(sm.interactions[0].actions[0], null, 1),
+          stage, extra: counter,
+        });
+      }
+    </script>
+  </body>
+</html>

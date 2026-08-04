@@ -123,6 +123,10 @@ pub struct Player {
     value_tracks: std::collections::HashMap<String, f32>,
     value_names: std::collections::HashMap<u64, String>,
     next_value_key: u64,
+    // Finished animation ids retained for the state machine (opt-in; the host event
+    // queue gets MotionComplete regardless).
+    motion_completion_tracking: bool,
+    pending_motion_completions: Vec<u64>,
     event_queue: EventQueue<PlayerEvent, 16>,
     completion_event: CompletionEvent,
     // Config properties
@@ -199,6 +203,8 @@ impl Player {
             value_tracks: std::collections::HashMap::new(),
             value_names: std::collections::HashMap::new(),
             next_value_key: 0,
+            motion_completion_tracking: false,
+            pending_motion_completions: Vec::new(),
             #[cfg(feature = "state-machines")]
             state_machine_id: None,
             event_queue: EventQueue::new(),
@@ -777,8 +783,24 @@ impl Player {
             }
         });
         for id in self.motion.drain_finished() {
+            if self.motion_completion_tracking {
+                self.pending_motion_completions.push(id);
+            }
             self.event_queue.push(PlayerEvent::MotionComplete { id });
         }
+    }
+
+    /// Enable/disable retaining finished animation ids for [`take_motion_completions`].
+    /// The state machine engine turns this on while running.
+    pub fn set_motion_completion_tracking(&mut self, on: bool) {
+        self.motion_completion_tracking = on;
+        if !on {
+            self.pending_motion_completions.clear();
+        }
+    }
+
+    pub fn take_motion_completions(&mut self) -> Vec<u64> {
+        std::mem::take(&mut self.pending_motion_completions)
     }
 
     fn emit_on_complete(&mut self) {

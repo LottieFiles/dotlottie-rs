@@ -1,12 +1,14 @@
 use core::result::Result::Ok;
 use std::ffi::{CStr, CString};
 
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::string::{DotString, DotStringInterner};
 
 pub(crate) const GLOBAL_INPUT_PREFIX: char = '@';
 pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
+pub(crate) const POINTER_X: &str = "@pointer.x";
+pub(crate) const POINTER_Y: &str = "@pointer.y";
 
 const DEFAULT_RNG_SEED: u64 = 0x853c_49e6_748f_ea9b;
 
@@ -15,6 +17,8 @@ pub mod definition;
 pub mod events;
 pub mod inputs;
 pub mod interactions;
+pub mod motion_ops;
+pub mod motions;
 pub mod security;
 pub mod states;
 pub mod transitions;
@@ -156,6 +160,15 @@ pub struct StateMachineEngine<'a> {
     elapsed_time_states: FxHashSet<DotString>,
     elapsed_time_in_global: bool,
 
+    // Motion integration: `Animate.onComplete` event bindings by driver group id,
+    // AnimateInput tracks (driver value id → input), live motion instances, and the
+    // nodes SM actions have written (reset on stop).
+    motion_completion_events: FxHashMap<u64, DotString>,
+    value_input_tracks: Vec<(u64, DotString)>,
+    motion_instances: Vec<motions::MotionInstance>,
+    sm_touched_nodes: FxHashSet<String>,
+    input_change_depth: u8,
+
     rng: oorandom::Rand32,
     rng_seed: u64,
 }
@@ -204,6 +217,9 @@ impl<'a> StateMachineEngine<'a> {
 
         if let Some(old_value) = ret {
             self.observe_numeric_input_value_change(key, old_value, value);
+            if old_value != value {
+                self.run_input_change_interactions(key);
+            }
         }
 
         if called_from_action {
@@ -220,6 +236,12 @@ impl<'a> StateMachineEngine<'a> {
     pub fn get_numeric_input(&self, key: &str) -> Option<f32> {
         if key == ELAPSED_TIME {
             return Some(self.elapsed_time);
+        }
+        if key == POINTER_X {
+            return Some(self.pointer_management.pointer_x);
+        }
+        if key == POINTER_Y {
+            return Some(self.pointer_management.pointer_y);
         }
         self.inputs.get_numeric(key)
     }
@@ -248,6 +270,9 @@ impl<'a> StateMachineEngine<'a> {
 
         if let Some(ref old_value) = ret {
             self.observe_string_input_value_change(key, old_value, value);
+            if old_value != value {
+                self.run_input_change_interactions(key);
+            }
         }
 
         if called_from_action {
@@ -280,6 +305,9 @@ impl<'a> StateMachineEngine<'a> {
 
         if let Some(old_value) = ret {
             self.observe_boolean_input_value_change(key, old_value, value);
+            if old_value != value {
+                self.run_input_change_interactions(key);
+            }
         }
 
         if called_from_action {
@@ -295,6 +323,279 @@ impl<'a> StateMachineEngine<'a> {
 
     pub fn get_boolean_input(&self, key: &str) -> Option<bool> {
         self.inputs.get_boolean(key)
+    }
+
+    /// Run the actions of `OnInputChange` interactions listening to `key`.
+    /// Depth-capped so mutually-updating inputs can't recurse unboundedly.
+    fn run_input_change_interactions(&mut self, key: &str) {
+        if self.status == StateMachineEngineStatus::Stopped || self.input_change_depth >= 4 {
+            return;
+        }
+        let mut actions: Vec<Action> = Vec::new();
+        for interaction in self.interactions(Some("OnInputChange")) {
+            if let Interaction::OnInputChange {
+                input_name,
+                actions: a,
+            } = interaction
+            {
+                if input_name.as_str() == key {
+                    actions.extend(a.iter().cloned());
+                }
+            }
+        }
+        if actions.is_empty() {
+            return;
+        }
+        self.input_change_depth += 1;
+        for action in actions {
+            let _ = action.execute(self, false, true);
+        }
+        self.input_change_depth -= 1;
+    }
+
+    // ---- Motion action plumbing -------------------------------------------------
+
+    pub(crate) fn motion_set_node(&mut self, target: &str, props: crate::NodeProps) {
+        self.sm_touched_nodes.insert(target.to_owned());
+        let _ = self.player.set_node_props(target, props);
+    }
+
+    pub(crate) fn motion_animate(
+        &mut self,
+        target: &str,
+        entries: Vec<crate::motion::PropKeyframes>,
+        options: crate::motion::AnimateOptions,
+        on_complete: Option<DotString>,
+    ) -> u64 {
+        self.sm_touched_nodes.insert(target.to_owned());
+        let id = self.player.animate(target, entries, options);
+        if let Some(event) = on_complete {
+            self.motion_completion_events.insert(id, event);
+        }
+        id
+    }
+
+    pub(crate) fn motion_reset_node(&mut self, target: Option<&str>) {
+        match target {
+            Some(target) => {
+                let _ = self.player.reset_node(target);
+                self.sm_touched_nodes.remove(target);
+            }
+            None => {
+                let _ = self.player.reset_nodes();
+                self.sm_touched_nodes.clear();
+            }
+        }
+    }
+
+    /// Drive a numeric input with a motion track (`AnimateInput`). A new track for
+    /// the same input replaces the old one.
+    pub(crate) fn motion_animate_input(
+        &mut self,
+        input: DotString,
+        from: f32,
+        to: f32,
+        options: crate::motion::AnimateOptions,
+    ) {
+        if let Some(pos) = self
+            .value_input_tracks
+            .iter()
+            .position(|(_, name)| *name == input)
+        {
+            let (old_id, _) = self.value_input_tracks.swap_remove(pos);
+            self.player.animation_stop(old_id);
+        }
+        let id = self.player.animate_value(from, to, options);
+        self.value_input_tracks.push((id, input));
+    }
+
+    /// Start a named motion. `state_scoped` instances are interrupted when the
+    /// current state exits; others run to completion.
+    pub(crate) fn play_motion(&mut self, name: DotString, state_scoped: bool) {
+        let Some(motion_idx) = self
+            .state_machine
+            .motions
+            .iter()
+            .position(|m| m.name == name)
+        else {
+            return;
+        };
+        if let Some(pos) = self
+            .motion_instances
+            .iter()
+            .position(|i| i.motion_idx == motion_idx)
+        {
+            match self.state_machine.motions[motion_idx].interrupt {
+                motions::InterruptPolicy::Ignore => return,
+                motions::InterruptPolicy::Restart => {
+                    let instance = self.motion_instances.swap_remove(pos);
+                    for group in instance.live_groups {
+                        self.player.animation_stop(group);
+                    }
+                }
+            }
+        }
+        let remaining = self.state_machine.motions[motion_idx].repeat;
+        self.motion_instances.push(motions::MotionInstance {
+            motion_idx,
+            state_scoped,
+            cursor: 0,
+            live_groups: Vec::new(),
+            remaining,
+        });
+        self.advance_motion_instances(&[]);
+    }
+
+    /// Interrupt every state-scoped motion: tracks stop (overrides freeze at their
+    /// live values — the next state picks up from there), instances drop.
+    pub(crate) fn stop_state_scoped_motions(&mut self) {
+        let mut i = 0;
+        while i < self.motion_instances.len() {
+            if self.motion_instances[i].state_scoped {
+                let instance = self.motion_instances.swap_remove(i);
+                for group in instance.live_groups {
+                    self.player.animation_stop(group);
+                }
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    /// Advance motion instances given the driver groups that completed this tick:
+    /// settled batches launch their successors; exhausted motions repeat or finish.
+    /// Returns the names of motions that finished (for OnMotionComplete).
+    fn advance_motion_instances(&mut self, completed: &[u64]) -> Vec<DotString> {
+        use motions::{At, Repeat, StepKind};
+
+        let mut instances = std::mem::take(&mut self.motion_instances);
+        let mut finished: Vec<DotString> = Vec::new();
+
+        instances.retain_mut(|inst| {
+            inst.live_groups.retain(|g| !completed.contains(g));
+            if !inst.live_groups.is_empty() {
+                return true;
+            }
+            // Clone keeps the borrow checker out of the launch calls below; motion
+            // defs are small and this only runs on batch boundaries.
+            let motion = self.state_machine.motions[inst.motion_idx].clone();
+            loop {
+                if inst.cursor >= motion.steps.len() {
+                    match inst.remaining {
+                        Repeat::Infinite => inst.cursor = 0,
+                        Repeat::Count(n) if n > 1 => {
+                            inst.remaining = Repeat::Count(n - 1);
+                            inst.cursor = 0;
+                        }
+                        Repeat::Count(_) => {
+                            finished.push(motion.name.clone());
+                            return false;
+                        }
+                    }
+                }
+
+                // Launch one batch: a leader step plus every following step
+                // carrying an `at` placement.
+                let mut launched_any = false;
+                let mut prev_delay = 0.0f32;
+                let mut first = true;
+                while inst.cursor < motion.steps.len() {
+                    let step = &motion.steps[inst.cursor];
+                    if !first && step.at.is_none() {
+                        break;
+                    }
+                    let delay = match step.at {
+                        None => 0.0,
+                        Some(At::Offset(x)) => x,
+                        Some(At::WithPrevious) => prev_delay,
+                        Some(At::AfterPrevious(x)) => (prev_delay + x).max(0.0),
+                    };
+                    prev_delay = delay;
+                    match &step.kind {
+                        StepKind::SetNode { target, props } => {
+                            if let Some(props) = props.resolve(self) {
+                                self.motion_set_node(target, props);
+                            }
+                        }
+                        StepKind::Animate {
+                            target,
+                            keyframes,
+                            options,
+                        } => {
+                            if let Some(entries) = keyframes.resolve(self) {
+                                let mut options = options.clone();
+                                options.delay += delay;
+                                let id = self.motion_animate(target, entries, options, None);
+                                inst.live_groups.push(id);
+                                launched_any = true;
+                            }
+                        }
+                    }
+                    inst.cursor += 1;
+                    first = false;
+                }
+
+                if launched_any {
+                    return true;
+                }
+                // An all-instant iteration under infinite repeat would spin forever.
+                if inst.cursor >= motion.steps.len()
+                    && matches!(inst.remaining, Repeat::Infinite)
+                {
+                    return false;
+                }
+            }
+        });
+
+        debug_assert!(self.motion_instances.is_empty());
+        self.motion_instances = instances;
+        finished
+    }
+
+    /// Per-tick motion bookkeeping, after the player tick: sample AnimateInput
+    /// tracks into their inputs, fire Animate onComplete events, advance motion
+    /// instances, and run OnMotionComplete interactions.
+    fn process_motion_tick(&mut self, completed: &[u64]) {
+        if !self.value_input_tracks.is_empty() {
+            let tracks = self.value_input_tracks.clone();
+            for (id, input) in &tracks {
+                if let Some(value) = self.player.animation_value(*id) {
+                    self.set_numeric_input(input.as_str(), value, true, false);
+                }
+            }
+            self.value_input_tracks
+                .retain(|(id, _)| !completed.contains(id));
+        }
+
+        if completed.is_empty() {
+            return;
+        }
+
+        for id in completed {
+            if let Some(event) = self.motion_completion_events.remove(id) {
+                let _ = self.fire(event.as_str(), true);
+            }
+        }
+
+        let finished = self.advance_motion_instances(completed);
+        if finished.is_empty() {
+            return;
+        }
+        let mut actions: Vec<Action> = Vec::new();
+        for interaction in self.interactions(Some("OnMotionComplete")) {
+            if let Interaction::OnMotionComplete {
+                motion_name,
+                actions: a,
+            } = interaction
+            {
+                if finished.iter().any(|n| n == motion_name) {
+                    actions.extend(a.iter().cloned());
+                }
+            }
+        }
+        for action in actions {
+            let _ = action.execute(self, true, false);
+        }
     }
 
     pub fn reset_input(&mut self, key: &str, run_pipeline: bool, called_from_action: bool) {
@@ -390,6 +691,11 @@ impl<'a> StateMachineEngine<'a> {
             elapsed_time: 0.0,
             elapsed_time_states: FxHashSet::default(),
             elapsed_time_in_global: false,
+            motion_completion_events: FxHashMap::default(),
+            value_input_tracks: Vec::new(),
+            motion_instances: Vec::new(),
+            sm_touched_nodes: FxHashSet::default(),
+            input_change_depth: 0,
             rng: oorandom::Rand32::new(DEFAULT_RNG_SEED),
             rng_seed: DEFAULT_RNG_SEED,
         };
@@ -498,6 +804,7 @@ impl<'a> StateMachineEngine<'a> {
 
         self.elapsed_time = 0.0;
         self.rng = oorandom::Rand32::new(self.rng_seed);
+        self.player.set_motion_completion_tracking(true);
 
         let initial = &self.state_machine.initial.clone();
 
@@ -530,6 +837,19 @@ impl<'a> StateMachineEngine<'a> {
         self.status = StateMachineEngineStatus::Stopped;
 
         self.observe_on_stop();
+
+        // Motion hygiene: stop SM-driven animation tracks, drop instances and
+        // bindings, and revert every node SM actions wrote. Nodes the host also
+        // touched via the public API get reverted with them — documented caveat.
+        self.motion_instances.clear();
+        self.motion_completion_events.clear();
+        for (id, _) in std::mem::take(&mut self.value_input_tracks) {
+            self.player.animation_stop(id);
+        }
+        for target in std::mem::take(&mut self.sm_touched_nodes) {
+            let _ = self.player.reset_node(&target);
+        }
+        self.player.set_motion_completion_tracking(false);
 
         self.player.set_mode(self.cached_mode);
         self.player.set_speed(self.cached_speed);
@@ -612,6 +932,9 @@ impl<'a> StateMachineEngine<'a> {
                 interactions::Interaction::Click { .. } => {
                     interaction_types.push("Click".to_string());
                 }
+                // Engine-internal triggers; frameworks don't forward events for these.
+                interactions::Interaction::OnInputChange { .. }
+                | interactions::Interaction::OnMotionComplete { .. } => {}
             }
         }
 
@@ -1480,6 +1803,13 @@ impl<'a> StateMachineEngine<'a> {
         let ticked = self.player.tick(dt);
 
         self.check_completion();
+
+        if self.status != StateMachineEngineStatus::Stopped {
+            let completions = self.player.take_motion_completions();
+            if !completions.is_empty() || !self.value_input_tracks.is_empty() {
+                self.process_motion_tick(&completions);
+            }
+        }
 
         if self.status == StateMachineEngineStatus::Tweening
             && self.player.status() != crate::Status::Tweening

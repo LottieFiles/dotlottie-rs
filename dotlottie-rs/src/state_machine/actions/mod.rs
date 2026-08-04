@@ -4,6 +4,10 @@ use std::ffi::CString;
 use super::definition::StringBool;
 use crate::json::{opt, Value};
 use crate::state_machine::definition::{dot_string, string_bool, string_number};
+use crate::state_machine::motion_ops::{
+    animate_options_from_json, keyframes_spec_from_json, props_spec_from_json, resolve_num,
+    KeyframesSpec, PropsSpec,
+};
 use crate::string::{DotString, DotStringInterner};
 use crate::Event;
 
@@ -127,6 +131,28 @@ pub enum Action {
     FireCustomEvent {
         value: String,
     },
+    SetNode {
+        target: String,
+        props: Box<PropsSpec>,
+    },
+    Animate {
+        target: String,
+        keyframes: KeyframesSpec,
+        options: crate::motion::AnimateOptions,
+        on_complete: Option<DotString>,
+    },
+    ResetNode {
+        target: Option<String>,
+    },
+    AnimateInput {
+        input_name: DotString,
+        from: Option<StringNumber>,
+        to: StringNumber,
+        options: crate::motion::AnimateOptions,
+    },
+    PlayMotion {
+        motion: DotString,
+    },
 }
 
 pub(crate) fn action_from_json(v: &Value) -> Option<Action> {
@@ -196,6 +222,28 @@ pub(crate) fn action_from_json(v: &Value) -> Option<Action> {
         "FireCustomEvent" => Action::FireCustomEvent {
             value: req_string("value")?,
         },
+        "SetNode" => Action::SetNode {
+            target: req_string("target")?,
+            props: Box::new(props_spec_from_json(v.get("props")?)?),
+        },
+        "Animate" => Action::Animate {
+            target: req_string("target")?,
+            keyframes: keyframes_spec_from_json(v.get("keyframes")?)?,
+            options: animate_options_from_json(v.get("transition"), v.get("delay")),
+            on_complete: opt(v.get("onComplete"), dot_string)?,
+        },
+        "ResetNode" => Action::ResetNode {
+            target: v.opt_str_field("target")?,
+        },
+        "AnimateInput" => Action::AnimateInput {
+            input_name: input_name()?,
+            from: opt(v.get("from"), string_number)?,
+            to: string_number(v.get("to")?)?,
+            options: animate_options_from_json(v.get("transition"), v.get("delay")),
+        },
+        "PlayMotion" => Action::PlayMotion {
+            motion: dot_string(v.get("motion")?)?,
+        },
         _ => return None,
     })
 }
@@ -214,12 +262,25 @@ impl Action {
             | Action::Floor { input_name }
             | Action::Clamp { input_name, .. }
             | Action::Fire { input_name }
-            | Action::Reset { input_name } => input_name,
+            | Action::Reset { input_name }
+            | Action::AnimateInput { input_name, .. } => input_name,
+            Action::Animate { on_complete, .. } => {
+                if let Some(name) = on_complete {
+                    *name = interner.intern(name.as_str());
+                }
+                return;
+            }
+            Action::PlayMotion { motion } => {
+                *motion = interner.intern(motion.as_str());
+                return;
+            }
             Action::OpenUrl { .. }
             | Action::SetTheme { .. }
             | Action::SetFrame { .. }
             | Action::SetProgress { .. }
-            | Action::FireCustomEvent { .. } => return,
+            | Action::FireCustomEvent { .. }
+            | Action::SetNode { .. }
+            | Action::ResetNode { .. } => return,
         };
         *input_name = interner.intern(input_name.as_str());
     }
@@ -616,6 +677,49 @@ impl ActionTrait for Action {
                         let _ = engine.player.set_frame(clamped_frame);
                     }
                 }
+                Ok(())
+            }
+            Action::SetNode { target, props } => {
+                // A present-but-unresolvable input reference no-ops the action
+                // (Clamp semantics).
+                if let Some(props) = props.resolve(engine) {
+                    engine.motion_set_node(target, props);
+                }
+                Ok(())
+            }
+            Action::Animate {
+                target,
+                keyframes,
+                options,
+                on_complete,
+            } => {
+                if let Some(entries) = keyframes.resolve(engine) {
+                    engine.motion_animate(target, entries, options.clone(), on_complete.clone());
+                }
+                Ok(())
+            }
+            Action::ResetNode { target } => {
+                engine.motion_reset_node(target.as_deref());
+                Ok(())
+            }
+            Action::AnimateInput {
+                input_name,
+                from,
+                to,
+                options,
+            } => {
+                let from = match from {
+                    Some(v) => resolve_num(engine, v),
+                    None => engine.get_numeric_input(input_name),
+                };
+                let (Some(from), Some(to)) = (from, resolve_num(engine, to)) else {
+                    return Ok(());
+                };
+                engine.motion_animate_input(input_name.clone(), from, to, options.clone());
+                Ok(())
+            }
+            Action::PlayMotion { motion } => {
+                engine.play_motion(motion.clone(), false);
                 Ok(())
             }
             Action::SetProgress { value } => {

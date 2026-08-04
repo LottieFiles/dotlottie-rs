@@ -47,6 +47,45 @@ impl Prop {
             _ => 0.0,
         }
     }
+
+    /// Canonical dotted-key catalog shared by every serialized surface (JS
+    /// keyframes objects, state machine actions). Uniform `scale` is caller
+    /// sugar lowered to X+Y and deliberately absent here, as is `Value`.
+    pub const KEYS: &'static [(&'static str, Prop)] = &[
+        ("x", Prop::X),
+        ("y", Prop::Y),
+        ("rotate", Prop::Rotate),
+        ("scaleX", Prop::ScaleX),
+        ("scaleY", Prop::ScaleY),
+        ("opacity", Prop::Opacity),
+        ("blur", Prop::Blur),
+        ("tint.intensity", Prop::TintIntensity),
+        ("spot.cx", Prop::SpotCx),
+        ("spot.cy", Prop::SpotCy),
+        ("spot.r", Prop::SpotRadius),
+        ("spot.feather", Prop::SpotFeather),
+        ("clip.cx", Prop::ClipCx),
+        ("clip.cy", Prop::ClipCy),
+        ("clip.r", Prop::ClipRadius),
+    ];
+
+    pub fn from_key(key: &str) -> Option<Prop> {
+        Self::KEYS
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, prop)| *prop)
+    }
+}
+
+/// Named easing preset → cubic-bezier; unknown names fall back to `EASE`.
+pub fn ease_preset(name: &str) -> [f32; 4] {
+    match name {
+        "linear" => EASE_LINEAR,
+        "easeIn" => EASE_IN,
+        "easeOut" => EASE_OUT,
+        "easeInOut" => EASE_IN_OUT,
+        _ => EASE,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

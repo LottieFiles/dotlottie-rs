@@ -4,6 +4,7 @@ use crate::string::{DotString, DotStringInterner};
 use super::{
     inputs::Input,
     interactions::Interaction,
+    motions::Motion,
     states::{State, StateTrait},
     GLOBAL_INPUT_PREFIX,
 };
@@ -33,6 +34,7 @@ pub struct StateMachine {
     pub states: Vec<State>,
     pub interactions: Option<Vec<Interaction>>,
     pub inputs: Option<Vec<Input>>,
+    pub motions: Vec<Motion>,
 }
 
 impl StateMachine {
@@ -47,6 +49,7 @@ impl StateMachine {
             states,
             interactions,
             inputs,
+            motions: Vec::new(),
         }
     }
 
@@ -77,6 +80,9 @@ impl StateMachine {
             for i in interactions {
                 i.intern_identifiers(interner);
             }
+        }
+        for motion in &mut self.motions {
+            motion.intern_identifiers(interner);
         }
     }
 }
@@ -137,11 +143,16 @@ fn state_machine_from_value(root: &Value) -> Option<StateMachine> {
         });
         v
     });
+    let motions = opt(root.get("motions"), |v| {
+        array_of(v, super::motions::motion_from_json)
+    })?
+    .unwrap_or_default();
     Some(StateMachine {
         initial,
         states,
         interactions,
         inputs,
+        motions,
     })
 }
 

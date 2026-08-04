@@ -231,25 +231,9 @@ fn parse_keyframes(obj: &JsValue) -> Vec<PropKeyframes> {
             times: None,
         });
     };
-    for (key, prop) in [
-        ("x", Prop::X),
-        ("y", Prop::Y),
-        ("rotate", Prop::Rotate),
-        ("scaleX", Prop::ScaleX),
-        ("scaleY", Prop::ScaleY),
-        ("opacity", Prop::Opacity),
-        ("blur", Prop::Blur),
-        ("tint.intensity", Prop::TintIntensity),
-        ("spot.cx", Prop::SpotCx),
-        ("spot.cy", Prop::SpotCy),
-        ("spot.r", Prop::SpotRadius),
-        ("spot.feather", Prop::SpotFeather),
-        ("clip.cx", Prop::ClipCx),
-        ("clip.cy", Prop::ClipCy),
-        ("clip.r", Prop::ClipRadius),
-    ] {
+    for (key, prop) in Prop::KEYS {
         if let Some(values) = js_get(obj, key).and_then(|v| js_waypoints(&v)) {
-            push(prop, values);
+            push(*prop, values);
         }
     }
     // Uniform scale sugar lowers to both axes.
@@ -260,16 +244,7 @@ fn parse_keyframes(obj: &JsValue) -> Vec<PropKeyframes> {
     entries
 }
 
-fn ease_preset(name: &str) -> [f32; 4] {
-    use crate::motion as m;
-    match name {
-        "linear" => m::EASE_LINEAR,
-        "easeIn" => m::EASE_IN,
-        "easeOut" => m::EASE_OUT,
-        "easeInOut" => m::EASE_IN_OUT,
-        _ => m::EASE,
-    }
-}
+use crate::motion::ease_preset;
 
 fn parse_animate_options(obj: &JsValue) -> AnimateOptions {
     use crate::motion::{SpringParams, Transition};

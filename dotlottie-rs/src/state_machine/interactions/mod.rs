@@ -1,4 +1,4 @@
-use crate::json::{array_of, opt, Value};
+use crate::json::{opt, Value};
 use crate::state_machine::definition::dot_string;
 use crate::string::{DotString, DotStringInterner};
 
@@ -44,13 +44,30 @@ pub enum Interaction {
         state_name: DotString,
         actions: Vec<Action>,
     },
+    /// Runs actions whenever the named input's value changes (host-set or
+    /// action-set). The declarative bridge for host-observed signals: scroll
+    /// progress, sliders, sensors — anything written into an input.
+    OnInputChange {
+        input_name: DotString,
+        actions: Vec<Action>,
+    },
+    /// Runs actions when a named motion finishes its last step (never fires for
+    /// `repeat: "infinite"`).
+    OnMotionComplete {
+        motion_name: DotString,
+        actions: Vec<Action>,
+    },
 }
 
 pub(crate) fn interaction_from_json(v: &Value) -> Option<Interaction> {
+    // Unknown action types are skipped, not fatal (forward compatibility).
     let actions = || -> Option<Vec<Action>> {
-        array_of(
-            v.get("actions")?,
-            crate::state_machine::actions::action_from_json,
+        Some(
+            v.get("actions")?
+                .as_array()?
+                .iter()
+                .filter_map(crate::state_machine::actions::action_from_json)
+                .collect(),
         )
     };
     let layer_name = || opt(v.get("layerName"), dot_string);
@@ -86,6 +103,14 @@ pub(crate) fn interaction_from_json(v: &Value) -> Option<Interaction> {
             state_name: dot_string(v.get("stateName")?)?,
             actions: actions()?,
         },
+        "OnInputChange" => Interaction::OnInputChange {
+            input_name: dot_string(v.get("inputName")?)?,
+            actions: actions()?,
+        },
+        "OnMotionComplete" => Interaction::OnMotionComplete {
+            motion_name: dot_string(v.get("motionName")?)?,
+            actions: actions()?,
+        },
         _ => return None,
     })
 }
@@ -100,6 +125,8 @@ impl InteractionTrait for Interaction {
             Interaction::PointerExit { layer_name, .. } => layer_name.as_ref(),
             Interaction::OnComplete { .. } => None,
             Interaction::OnLoopComplete { .. } => None,
+            Interaction::OnInputChange { .. } => None,
+            Interaction::OnMotionComplete { .. } => None,
             Interaction::Click { layer_name, .. } => layer_name.as_ref(),
         }
     }
@@ -113,6 +140,8 @@ impl InteractionTrait for Interaction {
             Interaction::PointerExit { actions, .. } => actions,
             Interaction::OnComplete { actions, .. } => actions,
             Interaction::OnLoopComplete { actions, .. } => actions,
+            Interaction::OnInputChange { actions, .. } => actions,
+            Interaction::OnMotionComplete { actions, .. } => actions,
             Interaction::Click { actions, .. } => actions,
         }
     }
@@ -125,6 +154,8 @@ impl InteractionTrait for Interaction {
             Interaction::PointerMove { .. } => None,
             Interaction::PointerExit { .. } => None,
             Interaction::Click { .. } => None,
+            Interaction::OnInputChange { .. } => None,
+            Interaction::OnMotionComplete { .. } => None,
             Interaction::OnComplete { state_name, .. } => Some(state_name.as_str().to_owned()),
             Interaction::OnLoopComplete { state_name, .. } => Some(state_name.as_str().to_owned()),
         }
@@ -139,6 +170,8 @@ impl InteractionTrait for Interaction {
             Interaction::PointerExit { .. } => "PointerExit",
             Interaction::OnComplete { .. } => "OnComplete",
             Interaction::OnLoopComplete { .. } => "OnLoopComplete",
+            Interaction::OnInputChange { .. } => "OnInputChange",
+            Interaction::OnMotionComplete { .. } => "OnMotionComplete",
             Interaction::Click { .. } => "Click",
         }
     }
@@ -190,6 +223,19 @@ impl Interaction {
                 actions,
             } => {
                 *state_name = interner.intern(state_name.as_str());
+                for a in actions {
+                    a.intern_identifiers(interner);
+                }
+            }
+            Interaction::OnInputChange {
+                input_name: name,
+                actions,
+            }
+            | Interaction::OnMotionComplete {
+                motion_name: name,
+                actions,
+            } => {
+                *name = interner.intern(name.as_str());
                 for a in actions {
                     a.intern_identifiers(interner);
                 }

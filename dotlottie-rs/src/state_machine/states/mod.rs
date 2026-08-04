@@ -37,6 +37,8 @@ pub enum State {
         background_color: Option<u32>,
         entry_actions: Option<Vec<Action>>,
         exit_actions: Option<Vec<Action>>,
+        /// Named motions started on entry, interrupted on exit (state-scoped).
+        motions: Option<Vec<DotString>>,
     },
     GlobalState {
         name: DotString,
@@ -53,9 +55,16 @@ pub(crate) fn state_from_json(v: &Value) -> Option<State> {
             crate::state_machine::transitions::transition_from_json,
         )
     };
+    // Unknown action types are skipped, not fatal: an older runtime reading a
+    // newer file degrades to the actions it knows instead of rejecting the file.
     let actions = |field: Option<&Value>| -> Option<Option<Vec<Action>>> {
         opt(field, |a| {
-            array_of(a, crate::state_machine::actions::action_from_json)
+            Some(
+                a.as_array()?
+                    .iter()
+                    .filter_map(crate::state_machine::actions::action_from_json)
+                    .collect(),
+            )
         })
     };
     Some(match v.str_field("type")? {
@@ -73,6 +82,7 @@ pub(crate) fn state_from_json(v: &Value) -> Option<State> {
             background_color: opt(v.get("backgroundColor"), Value::as_u32)?,
             entry_actions: actions(v.get("entryActions"))?,
             exit_actions: actions(v.get("exitActions"))?,
+            motions: opt(v.get("motions"), |m| array_of(m, dot_string))?,
         },
         "GlobalState" => State::GlobalState {
             name: dot_string(v.get("name")?)?,
@@ -93,6 +103,7 @@ impl State {
                 animation,
                 entry_actions,
                 exit_actions,
+                motions,
                 ..
             } => {
                 *name = interner.intern(name.as_str());
@@ -108,6 +119,11 @@ impl State {
                 if let Some(actions) = exit_actions {
                     for a in actions {
                         a.intern_identifiers(interner);
+                    }
+                }
+                if let Some(motions) = motions {
+                    for m in motions {
+                        *m = interner.intern(m.as_str());
                     }
                 }
             }
@@ -150,6 +166,7 @@ impl StateTrait for State {
                 segment,
                 background_color,
                 entry_actions,
+                motions,
                 ..
             } => {
                 let defined_mode = match mode {
@@ -204,6 +221,13 @@ impl StateTrait for State {
                     }
                 }
 
+                // Entry actions ran first so motions see the inputs they set.
+                if let Some(motions) = motions {
+                    for motion in motions {
+                        engine.play_motion(motion.clone(), true);
+                    }
+                }
+
                 if let Some(is_final) = r#final {
                     if *is_final {
                         engine.stop();
@@ -254,6 +278,9 @@ impl StateTrait for State {
     fn exit(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState { exit_actions, .. } => {
+                // State-scoped motions freeze at their live values; whatever the
+                // next state animates picks up from there with velocity handoff.
+                engine.stop_state_scoped_motions();
                 /* Perform exit actions */
                 if let Some(actions) = exit_actions {
                     for action in actions {

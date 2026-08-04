@@ -717,6 +717,13 @@ impl Player {
             .animate(name, entries, options, |prop| current.scalar(prop))
     }
 
+    /// True while any `animate`/`animate_value` track is live (including delayed
+    /// ones). Lets embedders keep their tick loop running for motion on a paused
+    /// or stopped player.
+    pub fn motion_active(&self) -> bool {
+        self.motion.is_active()
+    }
+
     pub fn animation_pause(&mut self, id: u64) {
         self.motion.pause(id);
     }

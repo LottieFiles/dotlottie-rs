@@ -765,6 +765,12 @@ impl DotLottiePlayerWasm {
         self.player.animate(target, entries, opts) as f64
     }
 
+    /// True while any `animate`/`animate_value` track is live (including delayed
+    /// ones) — keep the tick loop running while this holds, even when paused.
+    pub fn motion_active(&self) -> bool {
+        self.player.motion_active()
+    }
+
     /// Instantly set override props: `set_node("arm", { rotate: 30, opacity: 0.5 })`.
     pub fn set_node(&mut self, target: &str, props: &JsValue) -> bool {
         self.player

@@ -17,10 +17,7 @@ use crate::{ColorSpace, Renderer, Rgba};
 #[cfg(feature = "dotlottie")]
 use crate::{DotLottieManager, Manifest};
 #[cfg(feature = "audio")]
-use rustc_hash::FxHashMap;
-#[cfg(feature = "audio")]
 use std::cell::RefCell;
-#[cfg(feature = "audio")]
 use std::rc::Rc;
 #[cfg(feature = "audio")]
 use std::sync::Arc;
@@ -99,6 +96,9 @@ impl Direction {
     }
 }
 
+/// User-provided resolver for assets outside the dotLottie container.
+type UserAssetResolver = Rc<dyn Fn(&str) -> Option<Vec<u8>>>;
+
 // This is used to pass the loop complete / complete event to the state machine engine
 pub enum CompletionEvent {
     None,
@@ -116,6 +116,7 @@ pub struct Player {
     dotlottie_manager: Option<DotLottieManager>,
     #[cfg(feature = "audio")]
     audio: Option<Rc<RefCell<AudioManager>>>,
+    asset_resolver: Option<UserAssetResolver>,
     direction: Direction,
     active_marker: Option<CString>,
     event_queue: EventQueue<PlayerEvent, 16>,
@@ -166,6 +167,45 @@ impl Player {
         crate::TvgRenderer::unload_font(name).map_err(|_| Error::Unknown)
     }
 
+    /// Set a resolver for assets outside the dotLottie container (remote URLs,
+    /// external paths). Called synchronously on the render thread when ThorVG
+    /// first needs the asset; return `None` to skip it. Takes effect on the
+    /// next load. The resolver must not call back into the player.
+    pub fn set_asset_resolver<F>(&mut self, resolver: F)
+    where
+        F: Fn(&str) -> Option<Vec<u8>> + 'static,
+    {
+        self.asset_resolver = Some(Rc::new(resolver));
+    }
+
+    pub fn clear_asset_resolver(&mut self) {
+        self.asset_resolver = None;
+    }
+
+    fn build_asset_resolver(&self) -> Option<crate::renderer::AssetResolver> {
+        #[cfg(feature = "dotlottie")]
+        let store = self.dotlottie_manager.as_ref().map(|dm| dm.assets());
+        #[cfg(feature = "dotlottie")]
+        let has_container = store.is_some();
+        #[cfg(not(feature = "dotlottie"))]
+        let has_container = false;
+
+        let user = self.asset_resolver.clone();
+        if !has_container && user.is_none() {
+            return None;
+        }
+
+        Some(Box::new(move |src: &str| {
+            #[cfg(feature = "dotlottie")]
+            if let Some(store) = &store {
+                if let Some(bytes) = store.get(src) {
+                    return Some(bytes);
+                }
+            }
+            user.as_ref().and_then(|resolver| resolver(src))
+        }))
+    }
+
     pub fn with_renderer<R: Renderer>(renderer: R) -> Self {
         Player {
             renderer: <dyn LottieRenderer>::new(renderer),
@@ -188,6 +228,7 @@ impl Player {
             dotlottie_manager: None,
             #[cfg(feature = "audio")]
             audio: None,
+            asset_resolver: None,
             direction: Direction::Forward,
             active_marker: None,
             #[cfg(feature = "state-machines")]
@@ -216,11 +257,32 @@ impl Player {
     }
 
     /// Create the audio manager and attach the renderer's audio resolver.
-    /// `sources` is empty for raw-JSON animations whose audio is embedded.
     #[cfg(feature = "audio")]
-    fn setup_audio(&mut self, sources: FxHashMap<String, Arc<[u8]>>) {
-        self.audio = Some(Rc::new(RefCell::new(AudioManager::new(sources))));
+    fn setup_audio(&mut self) {
+        let lookup = self.build_audio_lookup();
+        self.audio = Some(Rc::new(RefCell::new(AudioManager::new(lookup))));
         self.attach_audio_resolver();
+    }
+
+    #[cfg(feature = "audio")]
+    fn build_audio_lookup(&self) -> crate::audio::AudioSourceLookup {
+        #[cfg(feature = "dotlottie")]
+        let store = self.dotlottie_manager.as_ref().map(|dm| dm.assets());
+        let user = self.asset_resolver.clone();
+        Box::new(move |src: &str| {
+            if !src.to_lowercase().ends_with("mp3") {
+                return None;
+            }
+            #[cfg(feature = "dotlottie")]
+            if let Some(store) = &store {
+                if let Some(bytes) = store.get(src) {
+                    return Some(Arc::from(bytes));
+                }
+            }
+            user.as_ref()
+                .and_then(|resolver| resolver(src))
+                .map(Arc::from)
+        })
     }
 
     #[cfg(feature = "audio")]
@@ -961,12 +1023,13 @@ impl Player {
             self.theme_id = None;
         }
 
-        let result = self.load_animation_common(|renderer| renderer.load_data(animation_data));
+        let resolver = self.build_asset_resolver();
+        let result = self
+            .load_animation_common(move |renderer| renderer.load_data(animation_data, resolver));
 
         if result.is_ok() {
-            // Embedded audio is delivered via the resolver, so no source map.
             #[cfg(feature = "audio")]
-            self.setup_audio(FxHashMap::default());
+            self.setup_audio();
 
             self.event_queue.push(PlayerEvent::Load);
             if self.autoplay {
@@ -1030,21 +1093,16 @@ impl Player {
 
         self.dotlottie_manager = Some(manager);
 
-        let result =
-            self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr));
+        let resolver = self.build_asset_resolver();
+        let result = self.load_animation_common(move |renderer| {
+            renderer.load_data(&animation_data_cstr, resolver)
+        });
 
         if result.is_ok() {
             self.animation_id = active_animation_id;
 
             #[cfg(feature = "audio")]
-            {
-                let sources = self
-                    .dotlottie_manager
-                    .as_ref()
-                    .map(|dm| dm.get_audio_sources())
-                    .unwrap_or_default();
-                self.setup_audio(sources);
-            }
+            self.setup_audio();
 
             self.event_queue.push(PlayerEvent::Load);
 
@@ -1077,7 +1135,10 @@ impl Player {
                 Ok(animation_data) => {
                     let animation_data_cstr =
                         CString::new(animation_data).expect("Failed to create CString");
-                    self.load_animation_common(|renderer| renderer.load_data(&animation_data_cstr))
+                    let resolver = self.build_asset_resolver();
+                    self.load_animation_common(move |renderer| {
+                        renderer.load_data(&animation_data_cstr, resolver)
+                    })
                 }
                 Err(_error) => Err(Error::Unknown),
             };
@@ -1086,14 +1147,7 @@ impl Player {
                 self.animation_id = Some(animation_id.to_owned());
 
                 #[cfg(feature = "audio")]
-                {
-                    let sources = self
-                        .dotlottie_manager
-                        .as_ref()
-                        .map(|dm| dm.get_audio_sources())
-                        .unwrap_or_default();
-                    self.setup_audio(sources);
-                }
+                self.setup_audio();
 
                 #[cfg(feature = "theming")]
                 if let Some(ref theme_id_cstr) = saved_theme_id {
@@ -1254,7 +1308,7 @@ impl Player {
                 SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot)?,
                 SlotType::Gradient(slot) => self.renderer.set_gradient_slot(&slot_id, slot)?,
                 SlotType::Image(slot) => {
-                    let slot = self.normalize_image_slot(&slot_id, slot)?;
+                    let slot = self.normalize_image_slot(&slot_id, slot);
                     self.renderer.set_image_slot(&slot_id, slot)?
                 }
                 SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot)?,
@@ -1290,31 +1344,19 @@ impl Player {
         slot_id: &str,
         slot: crate::renderer::ImageSlot,
     ) -> Result<()> {
-        let slot = self.normalize_image_slot(slot_id, slot)?;
+        let slot = self.normalize_image_slot(slot_id, slot);
         self.renderer.set_image_slot(slot_id, slot)?;
         Ok(())
     }
 
-    /// Inline package images as `data:` URIs and ensure non-zero `w`/`h`, the
-    /// only shape ThorVG parses as an image rather than as audio.
+    /// Carry over the `w`/`h` of the asset being replaced when the override
+    /// omits them, so a replacement fills the box the animation lays out for it.
+    /// Paths pass through verbatim; the asset resolver serves them.
     fn normalize_image_slot(
         &self,
         slot_id: &str,
         mut slot: crate::renderer::ImageSlot,
-    ) -> Result<crate::renderer::ImageSlot> {
-        if !slot.is_embedded() && !slot.is_remote() {
-            let file_name = slot
-                .file_name()
-                .map(str::to_owned)
-                .ok_or(Error::InvalidParameter)?;
-
-            let data_url = self
-                .resolve_package_image(&file_name)
-                .ok_or(Error::InvalidParameter)?;
-
-            slot.inline(data_url);
-        }
-
+    ) -> crate::renderer::ImageSlot {
         if !slot.has_dimensions() {
             if let Some(crate::renderer::SlotType::Image(default)) =
                 self.renderer.default_slot(slot_id)
@@ -1325,36 +1367,18 @@ impl Player {
             }
         }
 
-        if !slot.has_dimensions() {
-            return Err(Error::InvalidParameter);
-        }
-
-        Ok(slot)
+        slot
     }
 
     fn normalize_image_slots(
         &self,
         slots: &mut std::collections::BTreeMap<String, crate::renderer::SlotType>,
-    ) -> Result<()> {
+    ) {
         for (slot_id, slot_type) in slots.iter_mut() {
             if let crate::renderer::SlotType::Image(slot) = slot_type {
-                *slot = self.normalize_image_slot(slot_id, slot.clone())?;
+                *slot = self.normalize_image_slot(slot_id, slot.clone());
             }
         }
-
-        Ok(())
-    }
-
-    #[cfg(feature = "dotlottie")]
-    fn resolve_package_image(&self, file_name: &str) -> Option<String> {
-        self.dotlottie_manager
-            .as_ref()?
-            .get_image_data_url(file_name)
-    }
-
-    #[cfg(not(feature = "dotlottie"))]
-    fn resolve_package_image(&self, _file_name: &str) -> Option<String> {
-        None
     }
 
     pub fn set_text_slot(&mut self, slot_id: &str, slot: crate::renderer::TextSlot) -> Result<()> {
@@ -1403,7 +1427,7 @@ impl Player {
         &mut self,
         mut slots: std::collections::BTreeMap<String, crate::renderer::SlotType>,
     ) -> Result<()> {
-        self.normalize_image_slots(&mut slots)?;
+        self.normalize_image_slots(&mut slots);
         self.renderer.set_slots(slots)?;
         Ok(())
     }
@@ -1426,7 +1450,7 @@ impl Player {
                             self.renderer.set_gradient_slot(&slot_id, slot)?
                         }
                         SlotType::Image(slot) => {
-                            let slot = self.normalize_image_slot(&slot_id, slot)?;
+                            let slot = self.normalize_image_slot(&slot_id, slot);
                             self.renderer.set_image_slot(&slot_id, slot)?
                         }
                         SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot)?,
@@ -1465,7 +1489,7 @@ impl Player {
                 .ok_or(Error::InvalidParameter)?;
 
             if let crate::renderer::SlotType::Image(slot) = parsed {
-                let slot = self.normalize_image_slot(slot_id, slot)?;
+                let slot = self.normalize_image_slot(slot_id, slot);
                 self.renderer.set_image_slot(slot_id, slot)?;
 
                 return Ok(());
@@ -1662,6 +1686,220 @@ impl Player {
         state_machine: &str,
     ) -> std::result::Result<StateMachineEngine<'a>, StateMachineEngineError> {
         StateMachineEngine::new(state_machine, self, None)
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "tvg")]
+mod asset_resolver_tests {
+    use crate::{ColorSpace, Player};
+    use std::ffi::CString;
+
+    static RED_PNG: &[u8] = include_bytes!("../assets/images/red.png");
+
+    const EXTERNAL_ASSETS_JSON: &str =
+        include_str!("../assets/animations/lottie/external_assets.json");
+
+    fn render_first_frame(player: &mut Player) {
+        let _ = player.set_frame(0.0);
+        let _ = player.render();
+    }
+
+    #[test]
+    fn user_asset_resolver_supplies_remote_image() {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; 128 * 128];
+        player
+            .set_sw_target(&mut buffer, 128, 128, ColorSpace::ABGR8888)
+            .unwrap();
+        player
+            .set_asset_resolver(|src: &str| src.starts_with("https://").then(|| RED_PNG.to_vec()));
+        let data = CString::new(EXTERNAL_ASSETS_JSON).unwrap();
+        player.load_animation_data(&data).unwrap();
+        render_first_frame(&mut player);
+        assert!(
+            buffer.iter().any(|&px| px != 0),
+            "resolver-supplied remote image should render"
+        );
+    }
+
+    #[cfg(feature = "dotlottie")]
+    #[test]
+    fn container_image_renders_via_resolver() {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; 256 * 256];
+        player
+            .set_sw_target(&mut buffer, 256, 256, ColorSpace::ABGR8888)
+            .unwrap();
+        let data = include_bytes!("../assets/animations/dotlottie/v2/image.lottie");
+        player.load_dotlottie_data(data).unwrap();
+        render_first_frame(&mut player);
+        assert!(
+            buffer.iter().any(|&px| px != 0),
+            "container image should render through the resolver"
+        );
+    }
+
+    #[cfg(feature = "dotlottie")]
+    #[test]
+    fn container_font_renders_via_resolver() {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; 256 * 256];
+        player
+            .set_sw_target(&mut buffer, 256, 256, ColorSpace::ABGR8888)
+            .unwrap();
+        let data = include_bytes!("../assets/animations/dotlottie/v2/elapsed_time.lottie");
+        player.load_dotlottie_data(data).unwrap();
+        render_first_frame(&mut player);
+        assert!(
+            buffer.iter().any(|&px| px != 0),
+            "text with container font should render"
+        );
+    }
+
+    #[test]
+    fn without_resolver_remote_image_is_silently_skipped() {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; 128 * 128];
+        player
+            .set_sw_target(&mut buffer, 128, 128, ColorSpace::ABGR8888)
+            .unwrap();
+        let data = CString::new(EXTERNAL_ASSETS_JSON).unwrap();
+        player.load_animation_data(&data).unwrap();
+        render_first_frame(&mut player);
+        assert!(
+            buffer.iter().all(|&px| px == 0),
+            "unresolved remote image renders nothing, load still succeeds"
+        );
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "tvg")]
+mod image_slot_tests {
+    use crate::{ColorSpace, ImageSlot, Player};
+    use std::ffi::CString;
+
+    static RED_PNG: &[u8] = include_bytes!("../assets/images/red.png");
+    static BLUE_PNG: &[u8] = include_bytes!("../assets/images/blue.png");
+
+    const SIZE: u32 = 100;
+
+    /// One image layer filling the canvas, its asset slotted as `logo` and
+    /// served by the resolver.
+    fn animation(width_height: &str) -> String {
+        format!(
+            r#"{{"v":"5.7.4","fr":60,"ip":0,"op":60,"w":100,"h":100,
+            "assets":[{{"id":"img","sid":"logo",{width_height}"u":"","p":"blue.png","e":0}}],
+            "layers":[{{"ddd":0,"ind":1,"ty":2,"nm":"img","refId":"img",
+            "ks":{{"o":{{"a":0,"k":100}},"r":{{"a":0,"k":0}},"p":{{"a":0,"k":[50,50,0]}},
+            "a":{{"a":0,"k":[50,50,0]}},"s":{{"a":0,"k":[100,100,100]}}}},
+            "ip":0,"op":60,"st":0}}]}}"#
+        )
+    }
+
+    fn center(buffer: &[u32]) -> u32 {
+        buffer[(SIZE * SIZE / 2 + SIZE / 2) as usize]
+    }
+
+    fn render(json: &str, slot: Option<ImageSlot>) -> u32 {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
+        player
+            .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+            .unwrap();
+        player.set_asset_resolver(|src: &str| match src {
+            s if s.ends_with("blue.png") => Some(BLUE_PNG.to_vec()),
+            s if s.ends_with("red.png") => Some(RED_PNG.to_vec()),
+            _ => None,
+        });
+        player
+            .load_animation_data(&CString::new(json).unwrap())
+            .unwrap();
+        if let Some(slot) = slot {
+            player.set_image_slot("logo", slot).unwrap();
+        }
+        let _ = player.set_frame(0.0);
+        let _ = player.render();
+
+        center(&buffer)
+    }
+
+    #[test]
+    fn resetting_a_slot_between_overrides_restores_the_original() {
+        let json = animation(r#""w":100,"h":100,"#);
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
+        player
+            .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+            .unwrap();
+        player.set_asset_resolver(|src: &str| match src {
+            s if s.ends_with("blue.png") => Some(BLUE_PNG.to_vec()),
+            s if s.ends_with("red.png") => Some(RED_PNG.to_vec()),
+            _ => None,
+        });
+        player
+            .load_animation_data(&CString::new(json.as_str()).unwrap())
+            .unwrap();
+
+        let frame = |player: &mut Player| {
+            let _ = player.set_frame(0.0);
+            let _ = player.render();
+        };
+
+        frame(&mut player);
+        let original = center(&buffer);
+
+        player
+            .set_image_slot("logo", ImageSlot::from_src("red.png".to_string()))
+            .unwrap();
+        frame(&mut player);
+        let overridden = center(&buffer);
+
+        player.reset_slot("logo").unwrap();
+        frame(&mut player);
+        let restored = center(&buffer);
+
+        assert_ne!(original, overridden, "the override takes effect");
+        assert_eq!(original, restored, "resetting brings back the first asset");
+    }
+
+    #[test]
+    fn overriding_an_image_slot_re_resolves_the_asset() {
+        let json = animation(r#""w":100,"h":100,"#);
+        let blue = render(&json, None);
+        let red = render(&json, Some(ImageSlot::from_src("red.png".to_string())));
+
+        assert_ne!(blue, 0, "the slotted image renders before any override");
+        assert_ne!(red, 0, "an overridden slot re-runs the asset resolver");
+        assert_ne!(blue, red, "the override replaces the rendered image");
+    }
+
+    #[test]
+    fn an_override_keeps_the_dimensions_of_the_asset_it_replaces() {
+        let json = animation(r#""w":100,"h":100,"#);
+        let corner = {
+            let mut player = Player::new();
+            let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
+            player
+                .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+                .unwrap();
+            player.set_asset_resolver(|_: &str| Some(RED_PNG.to_vec()));
+            player
+                .load_animation_data(&CString::new(json.as_str()).unwrap())
+                .unwrap();
+            player
+                .set_image_slot("logo", ImageSlot::from_src("red.png".to_string()))
+                .unwrap();
+            let _ = player.set_frame(0.0);
+            player.render().unwrap();
+            buffer[(SIZE * (SIZE - 2) + SIZE - 2) as usize]
+        };
+
+        assert_ne!(
+            corner, 0,
+            "an 8x8 replacement is stretched over the 100x100 asset box"
+        );
     }
 }
 

@@ -11,8 +11,8 @@ use rustc_hash::FxHashMap;
 use crate::renderer::fallback_font;
 
 use super::{
-    Animation, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point, Renderer,
-    Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    Animation, AssetResolver, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker, Point,
+    Renderer, Rgba, Segment, Shape, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "audio")]
 use super::{AudioEvent, AudioResolver, AudioSource};
@@ -420,6 +420,90 @@ pub struct TvgAnimation {
     // Boxed for a stable address to pass as the callback's user data.
     #[cfg(feature = "audio")]
     audio_resolver: Option<Box<AudioResolver>>,
+    // Boxed for a stable address; installed pre-load and frozen by ThorVG.
+    asset_resolver: Option<Box<AssetResolverState>>,
+}
+
+struct AssetResolverState {
+    resolver: AssetResolver,
+    /// (fName, fPath) pairs from the animation's fonts.list.
+    fonts: Vec<(String, String)>,
+    failed_fonts: Vec<String>,
+}
+
+unsafe extern "C" fn asset_resolver_trampoline(
+    paint: tvg::Tvg_Paint,
+    src: *const c_char,
+    data: *mut std::ffi::c_void,
+) -> bool {
+    if paint.is_null() || src.is_null() || data.is_null() {
+        return false;
+    }
+    let state = unsafe { &mut *(data as *mut AssetResolverState) };
+    let Ok(src) = unsafe { CStr::from_ptr(src) }.to_str() else {
+        return false;
+    };
+    let mut ty: tvg::Tvg_Type = 0;
+    unsafe { tvg::tvg_paint_get_type(paint, &mut ty) };
+
+    if ty == tvg::Tvg_Type_TVG_TYPE_PICTURE {
+        let Some(bytes) = (state.resolver)(src).filter(|b| !b.is_empty()) else {
+            return false;
+        };
+        unsafe {
+            tvg::tvg_picture_load_data(
+                paint,
+                bytes.as_ptr() as *const c_char,
+                bytes.len() as u32,
+                c"".as_ptr(),
+                ptr::null(),
+                true,
+            )
+        }
+        .into_result()
+        .is_ok()
+    } else if ty == tvg::Tvg_Type_TVG_TYPE_TEXT {
+        if state.failed_fonts.iter().any(|f| f == src) {
+            return false;
+        }
+        let name = src
+            .strip_prefix("name:")
+            .map(str::to_owned)
+            .or_else(|| {
+                state
+                    .fonts
+                    .iter()
+                    .find(|(_, path)| path == src)
+                    .map(|(name, _)| name.clone())
+            })
+            .unwrap_or_else(|| src.to_owned());
+        let ok = (|| {
+            let bytes = (state.resolver)(src).filter(|b| !b.is_empty())?;
+            let cname = CString::new(name).ok()?;
+            unsafe {
+                tvg::tvg_font_load_data(
+                    cname.as_ptr(),
+                    bytes.as_ptr() as *const c_char,
+                    bytes.len() as u32,
+                    c"ttf".as_ptr(),
+                    true,
+                )
+                .into_result()
+                .ok()?;
+                tvg::tvg_text_set_font(paint, cname.as_ptr())
+                    .into_result()
+                    .ok()?;
+            }
+            Some(())
+        })()
+        .is_some();
+        if !ok {
+            state.failed_fonts.push(src.to_owned());
+        }
+        ok
+    } else {
+        false
+    }
 }
 
 /// Bridges ThorVG's C audio callback to the Rust resolver stored in `data`.
@@ -479,6 +563,7 @@ impl Default for TvgAnimation {
             layer_id_map: LayerIdMap::new(),
             #[cfg(feature = "audio")]
             audio_resolver: None,
+            asset_resolver: None,
         }
     }
 }
@@ -605,6 +690,30 @@ impl Animation for TvgAnimation {
                 Err(e)
             }
         }
+    }
+
+    fn install_asset_resolver(
+        &mut self,
+        resolver: AssetResolver,
+        fonts: Vec<(String, String)>,
+    ) -> Result<(), TvgError> {
+        let mut boxed = Box::new(AssetResolverState {
+            resolver,
+            fonts,
+            failed_fonts: Vec::new(),
+        });
+        let data = (&mut *boxed) as *mut AssetResolverState as *mut std::ffi::c_void;
+        unsafe {
+            tvg::tvg_picture_set_asset_resolver(
+                self.raw_paint,
+                Some(asset_resolver_trampoline),
+                data,
+            )
+        }
+        .into_result()?;
+        // Store only after success; a loaded picture keeps the old pointer.
+        self.asset_resolver = Some(boxed);
+        Ok(())
     }
 
     #[cfg(feature = "audio")]
@@ -1000,5 +1109,112 @@ mod tests {
         assert!(!animation
             .hit_test(Point { x: 750.0, y: 750.0 }, "R")
             .unwrap());
+    }
+
+    #[test]
+    fn asset_resolver_supplies_image_bytes() {
+        use std::sync::Mutex;
+
+        static RED_PNG: &[u8] = include_bytes!("../../assets/images/red.png");
+        static SEEN: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+        const JSON: &str = r#"{"v":"5.7.4","fr":30,"ip":0,"op":10,"w":100,"h":100,
+        "assets":[{"id":"img0","w":16,"h":16,"u":"images/","p":"img_0.png","e":0}],
+        "layers":[{"ddd":0,"ind":1,"ty":2,"nm":"i0","refId":"img0","ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[50,50,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"ip":0,"op":10,"st":0}]}"#;
+
+        let mut renderer = TvgRenderer::new(0);
+        renderer.create_sw_canvas().unwrap();
+        let canvas = renderer.raw_canvas.unwrap();
+        let mut buf = vec![0u32; 128 * 128];
+        unsafe {
+            tvg::tvg_swcanvas_set_target(
+                canvas,
+                buf.as_mut_ptr(),
+                128,
+                128,
+                128,
+                tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
+            );
+        }
+
+        let mut anim = TvgAnimation::default();
+        let resolver: AssetResolver = Box::new(|src: &str| {
+            SEEN.lock().unwrap().push(src.to_string());
+            src.ends_with(".png").then(|| RED_PNG.to_vec())
+        });
+        anim.install_asset_resolver(resolver, Vec::new()).unwrap();
+
+        let cjson = CString::new(JSON).unwrap();
+        anim.load_data(&cjson, c"lottie+json").unwrap();
+
+        unsafe {
+            tvg::tvg_canvas_add(canvas, anim.raw_paint);
+            tvg::tvg_animation_set_frame(anim.raw_animation, 0.0);
+            tvg::tvg_canvas_update(canvas);
+            tvg::tvg_canvas_draw(canvas, true);
+            tvg::tvg_canvas_sync(canvas);
+        }
+
+        assert_eq!(SEEN.lock().unwrap().as_slice(), ["/images/img_0.png"]);
+        assert!(
+            buf.iter().any(|&px| px != 0),
+            "resolver-supplied image should produce pixels"
+        );
+    }
+
+    #[cfg(feature = "tvg-ttf")]
+    #[test]
+    fn asset_resolver_registers_font_under_fname_and_memoizes_failures() {
+        use std::sync::Mutex;
+        static CALLS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+        const FONT_JSON: &str = r#"{"v":"5.7.4","fr":30,"ip":0,"op":10,"w":100,"h":100,"assets":[],
+        "fonts":{"list":[{"fName":"ResolverFontA","fFamily":"My","fStyle":"Regular","fPath":"/f/ResolverFontA.ttf","origin":3,"ascent":75}]},
+        "layers":[{"ddd":0,"ind":1,"ty":5,"nm":"t","ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[10,50,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"t":{"d":{"k":[{"s":{"s":24,"f":"ResolverFontA","t":"Hi","j":0,"tr":0,"lh":29,"ls":0,"fc":[0,0,0]},"t":0}]}},"ip":0,"op":10,"st":0}]}"#;
+
+        let run = |supply: bool, fonts: Vec<(String, String)>| -> usize {
+            CALLS.lock().unwrap().clear();
+            let mut renderer = TvgRenderer::new(0);
+            renderer.create_sw_canvas().unwrap();
+            let canvas = renderer.raw_canvas.unwrap();
+            let mut buf = vec![0u32; 128 * 128];
+            unsafe {
+                tvg::tvg_swcanvas_set_target(
+                    canvas,
+                    buf.as_mut_ptr(),
+                    128,
+                    128,
+                    128,
+                    tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
+                );
+            }
+            let mut anim = TvgAnimation::default();
+            let resolver: AssetResolver = Box::new(move |src: &str| {
+                CALLS.lock().unwrap().push(src.to_string());
+                supply.then(|| fallback_font::font().1)
+            });
+            anim.install_asset_resolver(resolver, fonts).unwrap();
+            let cjson = CString::new(FONT_JSON).unwrap();
+            anim.load_data(&cjson, c"lottie+json").unwrap();
+            unsafe {
+                tvg::tvg_canvas_add(canvas, anim.raw_paint);
+            }
+            for f in 0..4 {
+                unsafe {
+                    tvg::tvg_animation_set_frame(anim.raw_animation, f as f32);
+                    tvg::tvg_canvas_update(canvas);
+                    tvg::tvg_canvas_draw(canvas, true);
+                    tvg::tvg_canvas_sync(canvas);
+                }
+            }
+            CALLS.lock().unwrap().len()
+        };
+
+        let fonts = vec![(
+            "ResolverFontA".to_string(),
+            "/f/ResolverFontA.ttf".to_string(),
+        )];
+        assert_eq!(run(true, fonts), 1, "font resolved once under fName");
+        assert_eq!(run(false, Vec::new()), 1, "failed font not retried");
     }
 }

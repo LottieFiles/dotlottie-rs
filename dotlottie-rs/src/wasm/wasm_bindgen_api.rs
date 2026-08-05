@@ -859,6 +859,28 @@ impl DotLottiePlayerWasm {
         1.0
     }
 
+    // ── Assets ────────────────────────────────────────────────────────────────
+
+    /// Set a resolver for assets outside the dotLottie container (remote URLs,
+    /// external paths). Called synchronously with the asset `src` when ThorVG
+    /// first needs it; return a `Uint8Array` with the bytes, or `null`/`undefined`
+    /// to skip. Takes effect on the next load. Pass `null` to clear the resolver.
+    pub fn set_asset_resolver(&mut self, resolver: Option<js_sys::Function>) {
+        let Some(resolver) = resolver else {
+            self.player.clear_asset_resolver();
+            return;
+        };
+        self.player.set_asset_resolver(move |src: &str| {
+            let result = resolver
+                .call1(&JsValue::NULL, &JsValue::from_str(src))
+                .ok()?;
+            if result.is_null() || result.is_undefined() {
+                return None;
+            }
+            Some(js_sys::Uint8Array::new(&result).to_vec())
+        });
+    }
+
     // ── Font ──────────────────────────────────────────────────────────────────
 
     #[cfg(feature = "tvg")]

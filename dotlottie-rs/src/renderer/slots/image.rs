@@ -78,8 +78,7 @@ impl ImageSlot {
         self.path.as_deref().filter(|name| !name.is_empty())
     }
 
-    /// ThorVG discriminates image assets from audio on `w`/`h` being non-zero,
-    /// so a zero dimension is as good as an absent one.
+    /// A zero dimension is as good as an absent one — ThorVG skips sizing on both.
     pub fn has_dimensions(&self) -> bool {
         matches!((self.width, self.height), (Some(w), Some(h)) if w > 0 && h > 0)
     }

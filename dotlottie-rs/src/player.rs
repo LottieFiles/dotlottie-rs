@@ -1308,7 +1308,7 @@ impl Player {
                 SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot)?,
                 SlotType::Gradient(slot) => self.renderer.set_gradient_slot(&slot_id, slot)?,
                 SlotType::Image(slot) => {
-                    let slot = self.normalize_image_slot(&slot_id, slot)?;
+                    let slot = self.normalize_image_slot(&slot_id, slot);
                     self.renderer.set_image_slot(&slot_id, slot)?
                 }
                 SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot)?,
@@ -1344,18 +1344,19 @@ impl Player {
         slot_id: &str,
         slot: crate::renderer::ImageSlot,
     ) -> Result<()> {
-        let slot = self.normalize_image_slot(slot_id, slot)?;
+        let slot = self.normalize_image_slot(slot_id, slot);
         self.renderer.set_image_slot(slot_id, slot)?;
         Ok(())
     }
 
-    /// Ensure non-zero `w`/`h`, the only shape ThorVG parses as an image rather
-    /// than as audio. Paths pass through verbatim; the asset resolver serves them.
+    /// Carry over the `w`/`h` of the asset being replaced when the override
+    /// omits them, so a replacement fills the box the animation lays out for it.
+    /// Paths pass through verbatim; the asset resolver serves them.
     fn normalize_image_slot(
         &self,
         slot_id: &str,
         mut slot: crate::renderer::ImageSlot,
-    ) -> Result<crate::renderer::ImageSlot> {
+    ) -> crate::renderer::ImageSlot {
         if !slot.has_dimensions() {
             if let Some(crate::renderer::SlotType::Image(default)) =
                 self.renderer.default_slot(slot_id)
@@ -1366,24 +1367,18 @@ impl Player {
             }
         }
 
-        if !slot.has_dimensions() {
-            return Err(Error::InvalidParameter);
-        }
-
-        Ok(slot)
+        slot
     }
 
     fn normalize_image_slots(
         &self,
         slots: &mut std::collections::BTreeMap<String, crate::renderer::SlotType>,
-    ) -> Result<()> {
+    ) {
         for (slot_id, slot_type) in slots.iter_mut() {
             if let crate::renderer::SlotType::Image(slot) = slot_type {
-                *slot = self.normalize_image_slot(slot_id, slot.clone())?;
+                *slot = self.normalize_image_slot(slot_id, slot.clone());
             }
         }
-
-        Ok(())
     }
 
     pub fn set_text_slot(&mut self, slot_id: &str, slot: crate::renderer::TextSlot) -> Result<()> {
@@ -1432,7 +1427,7 @@ impl Player {
         &mut self,
         mut slots: std::collections::BTreeMap<String, crate::renderer::SlotType>,
     ) -> Result<()> {
-        self.normalize_image_slots(&mut slots)?;
+        self.normalize_image_slots(&mut slots);
         self.renderer.set_slots(slots)?;
         Ok(())
     }
@@ -1455,7 +1450,7 @@ impl Player {
                             self.renderer.set_gradient_slot(&slot_id, slot)?
                         }
                         SlotType::Image(slot) => {
-                            let slot = self.normalize_image_slot(&slot_id, slot)?;
+                            let slot = self.normalize_image_slot(&slot_id, slot);
                             self.renderer.set_image_slot(&slot_id, slot)?
                         }
                         SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot)?,
@@ -1494,7 +1489,7 @@ impl Player {
                 .ok_or(Error::InvalidParameter)?;
 
             if let crate::renderer::SlotType::Image(slot) = parsed {
-                let slot = self.normalize_image_slot(slot_id, slot)?;
+                let slot = self.normalize_image_slot(slot_id, slot);
                 self.renderer.set_image_slot(slot_id, slot)?;
 
                 return Ok(());
@@ -1775,6 +1770,135 @@ mod asset_resolver_tests {
         assert!(
             buffer.iter().all(|&px| px == 0),
             "unresolved remote image renders nothing, load still succeeds"
+        );
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "tvg")]
+mod image_slot_tests {
+    use crate::{ColorSpace, ImageSlot, Player};
+    use std::ffi::CString;
+
+    static RED_PNG: &[u8] = include_bytes!("../assets/images/red.png");
+    static BLUE_PNG: &[u8] = include_bytes!("../assets/images/blue.png");
+
+    const SIZE: u32 = 100;
+
+    /// One image layer filling the canvas, its asset slotted as `logo` and
+    /// served by the resolver.
+    fn animation(width_height: &str) -> String {
+        format!(
+            r#"{{"v":"5.7.4","fr":60,"ip":0,"op":60,"w":100,"h":100,
+            "assets":[{{"id":"img","sid":"logo",{width_height}"u":"","p":"blue.png","e":0}}],
+            "layers":[{{"ddd":0,"ind":1,"ty":2,"nm":"img","refId":"img",
+            "ks":{{"o":{{"a":0,"k":100}},"r":{{"a":0,"k":0}},"p":{{"a":0,"k":[50,50,0]}},
+            "a":{{"a":0,"k":[50,50,0]}},"s":{{"a":0,"k":[100,100,100]}}}},
+            "ip":0,"op":60,"st":0}}]}}"#
+        )
+    }
+
+    fn center(buffer: &[u32]) -> u32 {
+        buffer[(SIZE * SIZE / 2 + SIZE / 2) as usize]
+    }
+
+    fn render(json: &str, slot: Option<ImageSlot>) -> u32 {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
+        player
+            .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+            .unwrap();
+        player.set_asset_resolver(|src: &str| match src {
+            s if s.ends_with("blue.png") => Some(BLUE_PNG.to_vec()),
+            s if s.ends_with("red.png") => Some(RED_PNG.to_vec()),
+            _ => None,
+        });
+        player
+            .load_animation_data(&CString::new(json).unwrap())
+            .unwrap();
+        if let Some(slot) = slot {
+            player.set_image_slot("logo", slot).unwrap();
+        }
+        let _ = player.set_frame(0.0);
+        let _ = player.render();
+
+        center(&buffer)
+    }
+
+    #[test]
+    fn resetting_a_slot_between_overrides_restores_the_original() {
+        let json = animation(r#""w":100,"h":100,"#);
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
+        player
+            .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+            .unwrap();
+        player.set_asset_resolver(|src: &str| match src {
+            s if s.ends_with("blue.png") => Some(BLUE_PNG.to_vec()),
+            s if s.ends_with("red.png") => Some(RED_PNG.to_vec()),
+            _ => None,
+        });
+        player
+            .load_animation_data(&CString::new(json.as_str()).unwrap())
+            .unwrap();
+
+        let frame = |player: &mut Player| {
+            let _ = player.set_frame(0.0);
+            let _ = player.render();
+        };
+
+        frame(&mut player);
+        let original = center(&buffer);
+
+        player
+            .set_image_slot("logo", ImageSlot::from_src("red.png".to_string()))
+            .unwrap();
+        frame(&mut player);
+        let overridden = center(&buffer);
+
+        player.reset_slot("logo").unwrap();
+        frame(&mut player);
+        let restored = center(&buffer);
+
+        assert_ne!(original, overridden, "the override takes effect");
+        assert_eq!(original, restored, "resetting brings back the first asset");
+    }
+
+    #[test]
+    fn overriding_an_image_slot_re_resolves_the_asset() {
+        let json = animation(r#""w":100,"h":100,"#);
+        let blue = render(&json, None);
+        let red = render(&json, Some(ImageSlot::from_src("red.png".to_string())));
+
+        assert_ne!(blue, 0, "the slotted image renders before any override");
+        assert_ne!(red, 0, "an overridden slot re-runs the asset resolver");
+        assert_ne!(blue, red, "the override replaces the rendered image");
+    }
+
+    #[test]
+    fn an_override_keeps_the_dimensions_of_the_asset_it_replaces() {
+        let json = animation(r#""w":100,"h":100,"#);
+        let corner = {
+            let mut player = Player::new();
+            let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
+            player
+                .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+                .unwrap();
+            player.set_asset_resolver(|_: &str| Some(RED_PNG.to_vec()));
+            player
+                .load_animation_data(&CString::new(json.as_str()).unwrap())
+                .unwrap();
+            player
+                .set_image_slot("logo", ImageSlot::from_src("red.png".to_string()))
+                .unwrap();
+            let _ = player.set_frame(0.0);
+            player.render().unwrap();
+            buffer[(SIZE * (SIZE - 2) + SIZE - 2) as usize]
+        };
+
+        assert_ne!(
+            corner, 0,
+            "an 8x8 replacement is stretched over the 100x100 asset box"
         );
     }
 }

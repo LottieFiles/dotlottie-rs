@@ -1758,7 +1758,7 @@ mod asset_resolver_tests {
     }
 
     #[test]
-    fn without_resolver_remote_image_is_silently_skipped() {
+    fn without_resolver_remote_image_renders_missing_placeholder() {
         let mut player = Player::new();
         let mut buffer = vec![0u32; 128 * 128];
         player
@@ -1768,8 +1768,15 @@ mod asset_resolver_tests {
         player.load_animation_data(&data).unwrap();
         render_first_frame(&mut player);
         assert!(
-            buffer.iter().all(|&px| px == 0),
-            "unresolved remote image renders nothing, load still succeeds"
+            buffer.iter().any(|&px| px != 0),
+            "unresolved remote image should render the missing-image placeholder"
+        );
+        assert!(
+            buffer
+                .iter()
+                .filter(|&&px| px != 0)
+                .all(|&px| (px & 0xFF) == ((px >> 8) & 0xFF) && (px & 0xFF) == ((px >> 16) & 0xFF)),
+            "placeholder pixels should be neutral gray"
         );
     }
 }

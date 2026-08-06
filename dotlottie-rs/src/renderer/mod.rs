@@ -51,29 +51,6 @@ fn into_lottie<R: Renderer>(_err: R::Error) -> Error {
     Error::RendererError
 }
 
-/// (fName, fPath) pairs from fonts.list; embedded data: fonts are excluded.
-fn extract_fonts_from_animation(animation_json: &str) -> Vec<(String, String)> {
-    let Ok(json) = crate::json::Value::parse(animation_json) else {
-        return Vec::new();
-    };
-    let mut out = Vec::new();
-    if let Some(crate::json::Value::Array(list)) =
-        json.get("fonts").and_then(|fonts| fonts.get("list"))
-    {
-        for font in list {
-            let (Some(name), Some(path)) = (font.str_field("fName"), font.str_field("fPath"))
-            else {
-                continue;
-            };
-            if path.starts_with("data:") {
-                continue;
-            }
-            out.push((name.to_owned(), path.to_owned()));
-        }
-    }
-    out
-}
-
 pub trait LottieRenderer {
     /// # Safety
     ///
@@ -307,15 +284,13 @@ impl<R: Renderer> LottieRendererImpl<R> {
     fn load_animation(
         &mut self,
         data: &CStr,
-        resolver_install: Option<(AssetResolver, Vec<(String, String)>)>,
+        resolver: AssetResolver,
     ) -> Result<R::Animation, Error> {
         let mut animation = R::Animation::default();
 
-        if let Some((resolver, fonts)) = resolver_install {
-            animation
-                .install_asset_resolver(resolver, fonts)
-                .map_err(into_lottie::<R>)?;
-        }
+        animation
+            .install_asset_resolver(resolver)
+            .map_err(into_lottie::<R>)?;
 
         let mimetype = c"lottie+json";
         animation
@@ -554,20 +529,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
         // Extract default slot values BEFORE passing to ThorVG, because
         // ThorVG's load_data with copy=false may parse the JSON in-place
         // and mutate the buffer (nulling out string terminators).
-        let json_str = data.to_str().ok();
-        let default_slots = json_str
+        let default_slots = data
+            .to_str()
+            .ok()
             .map(slots::extract_slots_from_animation)
             .unwrap_or_default();
-        let resolver_install = asset_resolver.map(|resolver| {
-            (
-                resolver,
-                json_str
-                    .map(extract_fonts_from_animation)
-                    .unwrap_or_default(),
-            )
-        });
 
-        let animation = self.load_animation(data, resolver_install)?;
+        // Always install a resolver so unresolved images render the placeholder.
+        let resolver = asset_resolver.unwrap_or_else(|| Box::new(|_: &str| None) as AssetResolver);
+
+        let animation = self.load_animation(data, resolver)?;
 
         let background_shape = if !self.background.is_transparent() {
             Some(self.create_background_shape()?)

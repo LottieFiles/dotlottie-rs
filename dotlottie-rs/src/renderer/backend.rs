@@ -265,13 +265,8 @@ pub trait Animation: Default {
 
     fn load_data(&mut self, data: &CStr, mimetype: &CStr) -> Result<(), Self::Error>;
 
-    /// Install the asset resolver. Must be called before `load_data`;
-    /// `fonts` maps `fName` to `fPath` for font-src resolution.
-    fn install_asset_resolver(
-        &mut self,
-        resolver: AssetResolver,
-        fonts: Vec<(String, String)>,
-    ) -> Result<(), Self::Error>;
+    /// Install the asset resolver. Must be called before `load_data`.
+    fn install_asset_resolver(&mut self, resolver: AssetResolver) -> Result<(), Self::Error>;
 
     /// Register a callback for audio layer playback changes, or `None` to disable.
     #[cfg(feature = "audio")]

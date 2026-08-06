@@ -426,9 +426,56 @@ pub struct TvgAnimation {
 
 struct AssetResolverState {
     resolver: AssetResolver,
-    /// (fName, fPath) pairs from the animation's fonts.list.
-    fonts: Vec<(String, String)>,
+    /// `src` -> registered font name; ThorVG re-asks every frame.
+    loaded_fonts: Vec<(String, CString)>,
     failed_fonts: Vec<String>,
+}
+
+/// ThorVG stretches the picture to the asset's declared width/height.
+const PLACEHOLDER_SIZE: usize = 32;
+
+/// Gray field with a border and a mountains-and-sun pictogram.
+fn missing_image_placeholder_pixels() -> [u32; PLACEHOLDER_SIZE * PLACEHOLDER_SIZE] {
+    const FIELD: u32 = 0xFFE9E9E9;
+    const BORDER: u32 = 0xFFC6C6C6;
+    const GLYPH: u32 = 0xFFADADAD;
+    const N: usize = PLACEHOLDER_SIZE;
+
+    let mut pixels = [FIELD; N * N];
+    for i in 0..N {
+        for edge in [0, N - 1] {
+            pixels[edge * N + i] = BORDER;
+            pixels[i * N + edge] = BORDER;
+        }
+    }
+    for y in 2..N - 2 {
+        for x in 2..N - 2 {
+            let (fx, fy) = (x as f32 + 0.5, y as f32 + 0.5);
+            let sun = (fx - 21.5).powi(2) + (fy - 9.5).powi(2) <= 3.5 * 3.5;
+            let peak_far = fy <= 25.5 && fy >= 13.5 + (fx - 11.5).abs() * 1.15;
+            let peak_near = fy <= 25.5 && fy >= 17.5 + (fx - 21.5).abs() * 1.3;
+            if sun || peak_far || peak_near {
+                pixels[y * N + x] = GLYPH;
+            }
+        }
+    }
+    pixels
+}
+
+fn load_missing_image_placeholder(paint: tvg::Tvg_Paint) -> bool {
+    let pixels = missing_image_placeholder_pixels();
+    unsafe {
+        tvg::tvg_picture_load_raw(
+            paint,
+            pixels.as_ptr(),
+            PLACEHOLDER_SIZE as u32,
+            PLACEHOLDER_SIZE as u32,
+            tvg::Tvg_Colorspace_TVG_COLORSPACE_ARGB8888,
+            true,
+        )
+    }
+    .into_result()
+    .is_ok()
 }
 
 unsafe extern "C" fn asset_resolver_trampoline(
@@ -448,7 +495,7 @@ unsafe extern "C" fn asset_resolver_trampoline(
 
     if ty == tvg::Tvg_Type_TVG_TYPE_PICTURE {
         let Some(bytes) = (state.resolver)(src).filter(|b| !b.is_empty()) else {
-            return false;
+            return load_missing_image_placeholder(paint);
         };
         unsafe {
             tvg::tvg_picture_load_data(
@@ -462,21 +509,17 @@ unsafe extern "C" fn asset_resolver_trampoline(
         }
         .into_result()
         .is_ok()
+            || load_missing_image_placeholder(paint)
     } else if ty == tvg::Tvg_Type_TVG_TYPE_TEXT {
         if state.failed_fonts.iter().any(|f| f == src) {
             return false;
         }
-        let name = src
-            .strip_prefix("name:")
-            .map(str::to_owned)
-            .or_else(|| {
-                state
-                    .fonts
-                    .iter()
-                    .find(|(_, path)| path == src)
-                    .map(|(name, _)| name.clone())
-            })
-            .unwrap_or_else(|| src.to_owned());
+        if let Some((_, cname)) = state.loaded_fonts.iter().find(|(s, _)| s == src) {
+            return unsafe { tvg::tvg_text_set_font(paint, cname.as_ptr()) }
+                .into_result()
+                .is_ok();
+        }
+        let name = src.strip_prefix("name:").unwrap_or(src);
         let ok = (|| {
             let bytes = (state.resolver)(src).filter(|b| !b.is_empty())?;
             let cname = CString::new(name).ok()?;
@@ -494,6 +537,7 @@ unsafe extern "C" fn asset_resolver_trampoline(
                     .into_result()
                     .ok()?;
             }
+            state.loaded_fonts.push((src.to_owned(), cname));
             Some(())
         })()
         .is_some();
@@ -692,14 +736,10 @@ impl Animation for TvgAnimation {
         }
     }
 
-    fn install_asset_resolver(
-        &mut self,
-        resolver: AssetResolver,
-        fonts: Vec<(String, String)>,
-    ) -> Result<(), TvgError> {
+    fn install_asset_resolver(&mut self, resolver: AssetResolver) -> Result<(), TvgError> {
         let mut boxed = Box::new(AssetResolverState {
             resolver,
-            fonts,
+            loaded_fonts: Vec::new(),
             failed_fonts: Vec::new(),
         });
         let data = (&mut *boxed) as *mut AssetResolverState as *mut std::ffi::c_void;
@@ -1142,7 +1182,7 @@ mod tests {
             SEEN.lock().unwrap().push(src.to_string());
             src.ends_with(".png").then(|| RED_PNG.to_vec())
         });
-        anim.install_asset_resolver(resolver, Vec::new()).unwrap();
+        anim.install_asset_resolver(resolver).unwrap();
 
         let cjson = CString::new(JSON).unwrap();
         anim.load_data(&cjson, c"lottie+json").unwrap();
@@ -1162,9 +1202,57 @@ mod tests {
         );
     }
 
+    #[test]
+    fn unresolved_image_renders_missing_placeholder() {
+        const JSON: &str = r#"{"v":"5.7.4","fr":30,"ip":0,"op":10,"w":100,"h":100,
+        "assets":[{"id":"img0","w":16,"h":16,"u":"images/","p":"img_0.png","e":0}],
+        "layers":[{"ddd":0,"ind":1,"ty":2,"nm":"i0","refId":"img0","ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[50,50,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"ip":0,"op":10,"st":0}]}"#;
+
+        let mut renderer = TvgRenderer::new(0);
+        renderer.create_sw_canvas().unwrap();
+        let canvas = renderer.raw_canvas.unwrap();
+        let mut buf = vec![0u32; 128 * 128];
+        unsafe {
+            tvg::tvg_swcanvas_set_target(
+                canvas,
+                buf.as_mut_ptr(),
+                128,
+                128,
+                128,
+                tvg::Tvg_Colorspace_TVG_COLORSPACE_ABGR8888,
+            );
+        }
+
+        let mut anim = TvgAnimation::default();
+        let resolver: AssetResolver = Box::new(|_| None);
+        anim.install_asset_resolver(resolver).unwrap();
+
+        let cjson = CString::new(JSON).unwrap();
+        anim.load_data(&cjson, c"lottie+json").unwrap();
+
+        unsafe {
+            tvg::tvg_canvas_add(canvas, anim.raw_paint);
+            tvg::tvg_animation_set_frame(anim.raw_animation, 0.0);
+            tvg::tvg_canvas_update(canvas);
+            tvg::tvg_canvas_draw(canvas, true);
+            tvg::tvg_canvas_sync(canvas);
+        }
+
+        assert!(
+            buf.iter().any(|&px| px != 0),
+            "unresolved image should render the missing-image placeholder, not blank"
+        );
+        assert!(
+            buf.iter().filter(|&&px| px != 0).all(|&px| {
+                (px & 0xFF) == ((px >> 8) & 0xFF) && (px & 0xFF) == ((px >> 16) & 0xFF)
+            }),
+            "placeholder pixels should be neutral gray"
+        );
+    }
+
     #[cfg(feature = "tvg-ttf")]
     #[test]
-    fn asset_resolver_registers_font_under_fname_and_memoizes_failures() {
+    fn asset_resolver_memoizes_loaded_fonts_and_failures() {
         use std::sync::Mutex;
         static CALLS: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
@@ -1172,7 +1260,7 @@ mod tests {
         "fonts":{"list":[{"fName":"ResolverFontA","fFamily":"My","fStyle":"Regular","fPath":"/f/ResolverFontA.ttf","origin":3,"ascent":75}]},
         "layers":[{"ddd":0,"ind":1,"ty":5,"nm":"t","ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[10,50,0]},"a":{"a":0,"k":[0,0,0]},"s":{"a":0,"k":[100,100,100]}},"t":{"d":{"k":[{"s":{"s":24,"f":"ResolverFontA","t":"Hi","j":0,"tr":0,"lh":29,"ls":0,"fc":[0,0,0]},"t":0}]}},"ip":0,"op":10,"st":0}]}"#;
 
-        let run = |supply: bool, fonts: Vec<(String, String)>| -> usize {
+        let run = |supply: bool| -> usize {
             CALLS.lock().unwrap().clear();
             let mut renderer = TvgRenderer::new(0);
             renderer.create_sw_canvas().unwrap();
@@ -1193,7 +1281,7 @@ mod tests {
                 CALLS.lock().unwrap().push(src.to_string());
                 supply.then(|| fallback_font::font().1)
             });
-            anim.install_asset_resolver(resolver, fonts).unwrap();
+            anim.install_asset_resolver(resolver).unwrap();
             let cjson = CString::new(FONT_JSON).unwrap();
             anim.load_data(&cjson, c"lottie+json").unwrap();
             unsafe {
@@ -1210,11 +1298,7 @@ mod tests {
             CALLS.lock().unwrap().len()
         };
 
-        let fonts = vec![(
-            "ResolverFontA".to_string(),
-            "/f/ResolverFontA.ttf".to_string(),
-        )];
-        assert_eq!(run(true, fonts), 1, "font resolved once under fName");
-        assert_eq!(run(false, Vec::new()), 1, "failed font not retried");
+        assert_eq!(run(true), 1, "loaded font memoized, resolver asked once");
+        assert_eq!(run(false), 1, "failed font not retried");
     }
 }

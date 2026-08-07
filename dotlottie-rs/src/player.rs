@@ -3,8 +3,7 @@ use std::{fs, mem};
 
 #[cfg(feature = "audio")]
 use crate::audio::AudioManager;
-use crate::player_state::{Resume, State, TweenOutcome};
-use crate::poll_events::{EventQueue, PlayerEvent};
+use crate::event_queue::EventQueue;
 #[cfg(feature = "state-machines")]
 use crate::state_machine::{Error as StateMachineEngineError, StateMachineEngine};
 use crate::{
@@ -96,8 +95,53 @@ impl Direction {
     }
 }
 
+pub(crate) enum State {
+    Idle,
+    Stopped,
+    Paused,
+    Playing,
+    Tweening { tween: TweenState, resume: Resume },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Resume {
+    Stopped,
+    Paused,
+    Playing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TweenOutcome {
+    Completed,
+    Cancelled,
+}
+
+impl From<Resume> for State {
+    fn from(resume: Resume) -> Self {
+        match resume {
+            Resume::Stopped => State::Stopped,
+            Resume::Paused => State::Paused,
+            Resume::Playing => State::Playing,
+        }
+    }
+}
+
 /// User-provided resolver for assets outside the dotLottie container.
 type UserAssetResolver = Rc<dyn Fn(&str) -> Option<Vec<u8>>>;
+
+/// Events emitted by the player, drained via [`Player::poll_event`].
+#[derive(Debug, Clone, PartialEq)]
+pub enum PlayerEvent {
+    Load,
+    LoadError,
+    Play,
+    Pause,
+    Stop,
+    Frame { frame_no: f32 },
+    Render { frame_no: f32 },
+    Loop { loop_count: u32 },
+    Complete,
+}
 
 // This is used to pass the loop complete / complete event to the state machine engine
 pub enum CompletionEvent {
@@ -1686,6 +1730,18 @@ impl Player {
         state_machine: &str,
     ) -> std::result::Result<StateMachineEngine<'a>, StateMachineEngineError> {
         StateMachineEngine::new(state_machine, self, None)
+    }
+}
+
+#[cfg(test)]
+mod state_tests {
+    use super::*;
+
+    #[test]
+    fn resume_maps_to_matching_state() {
+        assert!(matches!(State::from(Resume::Stopped), State::Stopped));
+        assert!(matches!(State::from(Resume::Paused), State::Paused));
+        assert!(matches!(State::from(Resume::Playing), State::Playing));
     }
 }
 

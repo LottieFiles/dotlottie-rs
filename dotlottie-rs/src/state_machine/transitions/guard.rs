@@ -1,12 +1,9 @@
 use crate::json::Value;
-use crate::{
-    state_machine::definition::{
-        dot_string, string_bool, string_number_bool, StringBool, StringNumberBool,
-    },
-    state_machine::inputs::InputManager,
-    state_machine::{ELAPSED_TIME, GLOBAL_INPUT_PREFIX},
-    string::{DotString, DotStringInterner},
+use crate::state_machine::definition::{
+    dot_string, string_bool, string_number_bool, StringBool, StringNumberBool,
 };
+use crate::state_machine::StateMachineEngine;
+use crate::string::{DotString, DotStringInterner};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum TransitionGuardConditionType {
@@ -30,11 +27,25 @@ fn condition_type_from_json(v: &Value) -> Option<TransitionGuardConditionType> {
     })
 }
 
-pub trait GuardTrait {
-    fn string_input_is_satisfied(&self, inputs: &InputManager) -> bool;
-    fn boolean_input_is_satisfied(&self, inputs: &InputManager) -> bool;
-    fn numeric_input_is_satisfied(&self, inputs: &InputManager, elapsed_time: f32) -> bool;
-    fn event_input_is_satisfied(&self, event: &str) -> bool;
+/// Ordering comparison — numeric guards only.
+fn compare_ord<T: PartialOrd>(condition: &TransitionGuardConditionType, a: T, b: T) -> bool {
+    match condition {
+        TransitionGuardConditionType::GreaterThan => a > b,
+        TransitionGuardConditionType::GreaterThanOrEqual => a >= b,
+        TransitionGuardConditionType::LessThan => a < b,
+        TransitionGuardConditionType::LessThanOrEqual => a <= b,
+        TransitionGuardConditionType::Equal => a == b,
+        TransitionGuardConditionType::NotEqual => a != b,
+    }
+}
+
+/// Equality comparison — string and boolean guards. Ordering never matches.
+fn compare_eq<T: PartialEq>(condition: &TransitionGuardConditionType, a: T, b: T) -> bool {
+    match condition {
+        TransitionGuardConditionType::Equal => a == b,
+        TransitionGuardConditionType::NotEqual => a != b,
+        _ => false,
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -92,180 +103,75 @@ impl Guard {
         };
         *input_name = interner.intern(input_name.as_str());
     }
-}
 
-impl GuardTrait for Guard {
-    // Check if the input is satisfied
-    // If the user uses compare_to as a string and pass "$" as a prefix, we use the input value
-    // If the input_value is not found, we return false
-    fn boolean_input_is_satisfied(&self, input: &InputManager) -> bool {
+    /// Evaluate the guard against the engine's current inputs. `event` is the
+    /// event pending on this pipeline run, if any. An unresolvable `compareTo`
+    /// reference leaves the guard unsatisfied.
+    pub(crate) fn is_satisfied(
+        &self,
+        engine: &StateMachineEngine,
+        event: Option<&DotString>,
+    ) -> bool {
         match self {
-            Guard::Boolean {
-                input_name,
-                condition_type,
-                compare_to,
-            } => {
-                if let Some(input_value) = input.get_boolean(input_name) {
-                    match compare_to {
-                        StringBool::Bool(compare_to) => match condition_type {
-                            TransitionGuardConditionType::Equal => {
-                                return input_value == *compare_to;
-                            }
-                            TransitionGuardConditionType::NotEqual => {
-                                return input_value != *compare_to;
-                            }
-                            _ => return false,
-                        },
-                        StringBool::String(compare_to) => {
-                            // Get the number from the input
-                            // Remove the "$" prefix from the value
-                            let value = compare_to.trim_start_matches('$');
-                            let opt_bool_value = input.get_boolean(value);
-                            if let Some(bool_value) = opt_bool_value {
-                                match condition_type {
-                                    TransitionGuardConditionType::Equal => {
-                                        return input_value == bool_value;
-                                    }
-                                    TransitionGuardConditionType::NotEqual => {
-                                        return input_value != bool_value;
-                                    }
-                                    _ => return false,
-                                }
-                            }
+            Guard::Event { input_name } => event.is_some_and(|e| input_name == e),
 
-                            // Failed to get value from inputs
-                            false
-                        }
-                    };
-                }
-
-                // Failed to get value from inputs
-                false
-            }
-            _ => false,
-        }
-    }
-
-    fn string_input_is_satisfied(&self, input: &InputManager) -> bool {
-        match self {
-            Guard::String {
-                input_name,
-                condition_type,
-                compare_to,
-            } => {
-                if let Some(input_value) = input.get_string(input_name) {
-                    match compare_to {
-                        StringNumberBool::String(compare_to) => {
-                            let mut mut_compare_to = compare_to.clone();
-
-                            if mut_compare_to.starts_with("$") {
-                                // Get the string from the input
-                                // Remove the "$" prefix from the value
-                                let value = mut_compare_to.trim_start_matches('$');
-                                let opt_string_value = input.get_string(value);
-                                if let Some(string_value) = opt_string_value {
-                                    mut_compare_to = string_value.to_string();
-                                } else {
-                                    // Failed to get value from inputs
-                                    return false;
-                                }
-                            }
-
-                            match condition_type {
-                                TransitionGuardConditionType::Equal => {
-                                    return *input_value == *mut_compare_to;
-                                }
-                                TransitionGuardConditionType::NotEqual => {
-                                    return *input_value != *mut_compare_to;
-                                }
-                                _ => return false,
-                            }
-                        }
-                        StringNumberBool::F32(_) => false,
-                        StringNumberBool::Bool(_) => false,
-                    };
-                }
-
-                // Failed to get value from inputs
-                false
-            }
-            _ => false,
-        }
-    }
-
-    fn numeric_input_is_satisfied(&self, input: &InputManager, elapsed_time: f32) -> bool {
-        let lookup = |key: &str| -> Option<f32> {
-            if key == ELAPSED_TIME {
-                Some(elapsed_time)
-            } else {
-                input.get_numeric(key)
-            }
-        };
-        match self {
             Guard::Numeric {
                 input_name,
                 condition_type,
                 compare_to,
             } => {
-                if let Some(input_value) = lookup(input_name) {
-                    match compare_to {
-                        StringNumberBool::String(compare_to) => {
-                            let resolved = if compare_to.starts_with(GLOBAL_INPUT_PREFIX) {
-                                lookup(compare_to)
-                            } else if compare_to.starts_with('$') {
-                                input.get_numeric(compare_to.trim_start_matches('$'))
-                            } else {
-                                None
-                            };
-                            if let Some(numeric_value) = resolved {
-                                match condition_type {
-                                    TransitionGuardConditionType::GreaterThan => {
-                                        input_value > numeric_value
-                                    }
-                                    TransitionGuardConditionType::GreaterThanOrEqual => {
-                                        input_value >= numeric_value
-                                    }
-                                    TransitionGuardConditionType::LessThan => {
-                                        input_value < numeric_value
-                                    }
-                                    TransitionGuardConditionType::LessThanOrEqual => {
-                                        input_value <= numeric_value
-                                    }
-                                    TransitionGuardConditionType::Equal => {
-                                        input_value == numeric_value
-                                    }
-                                    TransitionGuardConditionType::NotEqual => {
-                                        input_value != numeric_value
-                                    }
-                                }
-                            } else {
-                                false
-                            }
-                        }
-                        StringNumberBool::F32(value) => match condition_type {
-                            TransitionGuardConditionType::GreaterThan => input_value > *value,
-                            TransitionGuardConditionType::GreaterThanOrEqual => {
-                                input_value >= *value
-                            }
-                            TransitionGuardConditionType::LessThan => input_value < *value,
-                            TransitionGuardConditionType::LessThanOrEqual => input_value <= *value,
-                            TransitionGuardConditionType::Equal => input_value == *value,
-                            TransitionGuardConditionType::NotEqual => input_value != *value,
-                        },
-                        StringNumberBool::Bool(_) => false,
+                let Some(lhs) = engine.get_numeric_input(input_name) else {
+                    return false;
+                };
+                let rhs = match compare_to {
+                    StringNumberBool::F32(value) => Some(*value),
+                    StringNumberBool::String(reference) => engine.resolve_numeric_ref(reference),
+                    StringNumberBool::Bool(_) => None,
+                };
+                rhs.is_some_and(|rhs| compare_ord(condition_type, lhs, rhs))
+            }
+
+            Guard::String {
+                input_name,
+                condition_type,
+                compare_to,
+            } => {
+                let Some(lhs) = engine.inputs.get_string(input_name) else {
+                    return false;
+                };
+                let StringNumberBool::String(compare_to) = compare_to else {
+                    return false;
+                };
+                let rhs = if compare_to.starts_with('$') {
+                    match engine.inputs.get_string(compare_to.trim_start_matches('$')) {
+                        Some(value) => value,
+                        None => return false,
                     }
                 } else {
-                    false
-                }
+                    compare_to.as_str()
+                };
+                compare_eq(condition_type, lhs, rhs)
             }
-            _ => false,
-        }
-    }
 
-    fn event_input_is_satisfied(&self, event: &str) -> bool {
-        match self {
-            Guard::Event { input_name } => input_name == event,
-            _ => false,
+            Guard::Boolean {
+                input_name,
+                condition_type,
+                compare_to,
+            } => {
+                let Some(lhs) = engine.inputs.get_boolean(input_name) else {
+                    return false;
+                };
+                let rhs = match compare_to {
+                    StringBool::Bool(value) => *value,
+                    StringBool::String(reference) => {
+                        match engine.inputs.get_boolean(reference.trim_start_matches('$')) {
+                            Some(value) => value,
+                            None => return false,
+                        }
+                    }
+                };
+                compare_eq(condition_type, lhs, rhs)
+            }
         }
     }
 }

@@ -9,7 +9,8 @@
       "entryActions": [
         {
           "type": "Increment",
-          "inputName": "counter"
+          "inputName": "counter",
+          "value": 1
         }
       ]
     }

@@ -113,7 +113,7 @@ mod bezier {
     ///   P1 = (x1, y1)
     ///   P2 = (x2, y2)
     ///   P3 = (1, 1)
-    pub(super) fn cubic_bezier(t: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
+    pub(crate) fn cubic_bezier(t: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
         if t <= 0.0 {
             return 0.0;
         }

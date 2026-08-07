@@ -11,37 +11,23 @@ enum WhitelistEntry {
     Wildcard(String),
 }
 
-fn parse_url(url_str: &str) -> Result<(String, String), String> {
+/// Split a URL into `(host, path)`, ignoring any scheme. `None` when there is
+/// no host to speak of.
+fn parse_url(url_str: &str) -> Option<(&str, &str)> {
     let url_str = url_str.trim();
 
-    if url_str.is_empty() {
-        return Err("Empty URL".to_string());
-    }
-
-    let without_protocol = if let Some(stripped) = url_str.strip_prefix("https://") {
-        stripped
-    } else if let Some(stripped) = url_str.strip_prefix("http://") {
-        stripped
-    } else {
-        url_str
-    };
+    let without_protocol = url_str
+        .strip_prefix("https://")
+        .or_else(|| url_str.strip_prefix("http://"))
+        .unwrap_or(url_str);
 
     if without_protocol.is_empty() {
-        return Err("URL has no host".to_string());
+        return None;
     }
 
-    if let Some(slash_pos) = without_protocol.find('/') {
-        let host = &without_protocol[..slash_pos];
-        let path = &without_protocol[slash_pos..];
+    let host_len = without_protocol.find('/').unwrap_or(without_protocol.len());
 
-        if host.is_empty() {
-            return Err("URL has no host".to_string());
-        }
-
-        Ok((host.to_string(), path.to_string()))
-    } else {
-        Ok((without_protocol.to_string(), String::new()))
-    }
+    (host_len > 0).then(|| without_protocol.split_at(host_len))
 }
 
 impl WhitelistEntry {
@@ -240,29 +226,27 @@ impl Whitelist {
         }
     }
 
-    fn normalize_url(url: &str) -> Result<String, String> {
-        let url = url.trim().to_lowercase();
+    /// Lowercase `host` + `path`, scheme and trailing slash stripped.
+    fn normalize_url(url: &str) -> Option<String> {
+        let url = url.trim().to_ascii_lowercase();
+        let (host, path) = parse_url(&url)?;
 
-        let (host, path) = match parse_url(&url) {
-            Ok(result) => result,
-            Err(_) => match parse_url(&format!("https://{url}")) {
-                Ok(result) => result,
-                Err(e) => return Err(format!("Invalid URL: {e}")),
-            },
-        };
-
-        // Normalize path: remove trailing slashes except for root "/"
         // Empty path and "/" both become empty (representing root)
-        let path = if path.is_empty() || path == "/" {
+        let path = if path == "/" {
             ""
         } else {
             path.trim_end_matches('/')
         };
-        Ok(format!("{host}{path}"))
+
+        let mut normalized = String::with_capacity(host.len() + path.len());
+        normalized.push_str(host);
+        normalized.push_str(path);
+        Some(normalized)
     }
 
-    pub fn add(&mut self, pattern: &str) -> Result<(), String> {
-        let pattern = pattern.trim().to_lowercase();
+    /// Add a pattern. A pattern with no parseable host is ignored.
+    pub fn add(&mut self, pattern: &str) {
+        let pattern = pattern.trim().to_ascii_lowercase();
 
         if pattern.contains('*') {
             let normalized_pattern = if let Some(without_protocol) = pattern
@@ -315,49 +299,26 @@ impl Whitelist {
             self.entries
                 .insert(WhitelistEntry::Wildcard(normalized_pattern));
         } else {
-            let normalized_pattern = Self::normalize_url(&pattern)?;
+            let Some(normalized_pattern) = Self::normalize_url(&pattern) else {
+                return;
+            };
             self.entries
                 .insert(WhitelistEntry::Exact(normalized_pattern));
         }
-
-        Ok(())
     }
 
-    pub fn is_allowed(&self, url_str: &str) -> Result<bool, String> {
-        let normalized_url = Self::normalize_url(url_str)?;
+    /// An unparseable URL is never allowed.
+    pub fn is_allowed(&self, url_str: &str) -> bool {
+        let Some(normalized_url) = Self::normalize_url(url_str) else {
+            return false;
+        };
 
-        // Special case: if "*" is in the whitelist, allow everything
-        for entry in &self.entries {
-            match entry {
-                WhitelistEntry::Exact(pattern) => {
-                    if pattern == "*" {
-                        return Ok(true);
-                    }
-                }
-                WhitelistEntry::Wildcard(pattern) => {
-                    if pattern == "*" {
-                        return Ok(true);
-                    }
-                }
+        self.entries.iter().any(|entry| match entry {
+            WhitelistEntry::Exact(pattern) => pattern == "*" || *pattern == normalized_url,
+            WhitelistEntry::Wildcard(pattern) => {
+                pattern == "*" || WhitelistEntry::matches_wildcard(pattern, &normalized_url)
             }
-        }
-
-        for entry in &self.entries {
-            match entry {
-                WhitelistEntry::Exact(pattern) => {
-                    if normalized_url == *pattern {
-                        return Ok(true);
-                    }
-                }
-                WhitelistEntry::Wildcard(pattern) => {
-                    if WhitelistEntry::matches_wildcard(pattern, &normalized_url) {
-                        return Ok(true);
-                    }
-                }
-            }
-        }
-
-        Ok(false)
+        })
     }
 }
 
@@ -367,36 +328,26 @@ mod tests {
 
     #[test]
     fn test_custom_url_parsing() {
+        assert_eq!(parse_url("example.com"), Some(("example.com", "")));
         assert_eq!(
-            parse_url("example.com").unwrap(),
-            ("example.com".to_string(), "".to_string())
+            parse_url("example.com/path"),
+            Some(("example.com", "/path"))
+        );
+        assert_eq!(parse_url("https://example.com"), Some(("example.com", "")));
+        assert_eq!(
+            parse_url("http://example.com/path"),
+            Some(("example.com", "/path"))
         );
         assert_eq!(
-            parse_url("example.com/path").unwrap(),
-            ("example.com".to_string(), "/path".to_string())
-        );
-
-        assert_eq!(
-            parse_url("https://example.com").unwrap(),
-            ("example.com".to_string(), "".to_string())
-        );
-        assert_eq!(
-            parse_url("http://example.com/path").unwrap(),
-            ("example.com".to_string(), "/path".to_string())
-        );
-        assert_eq!(
-            parse_url("https://example.com/path/to/resource").unwrap(),
-            ("example.com".to_string(), "/path/to/resource".to_string())
+            parse_url("https://example.com/path/to/resource"),
+            Some(("example.com", "/path/to/resource"))
         );
 
-        assert!(parse_url("").is_err());
-        assert!(parse_url("https://").is_err());
-        assert!(parse_url("http://").is_err());
+        assert_eq!(parse_url(""), None);
+        assert_eq!(parse_url("https://"), None);
+        assert_eq!(parse_url("http://"), None);
 
-        assert_eq!(
-            parse_url("  example.com  ").unwrap(),
-            ("example.com".to_string(), "".to_string())
-        );
+        assert_eq!(parse_url("  example.com  "), Some(("example.com", "")));
     }
 
     #[test]
@@ -404,27 +355,23 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Add some patterns
-        whitelist.add("example.com/*").unwrap();
-        whitelist.add("https://test.com/specific/path").unwrap();
-        whitelist.add("api.domain.com/v1/*").unwrap();
+        whitelist.add("example.com/*");
+        whitelist.add("https://test.com/specific/path");
+        whitelist.add("api.domain.com/v1/*");
 
         // Test exact matches
-        assert!(whitelist
-            .is_allowed("https://test.com/specific/path")
-            .unwrap());
-        assert!(whitelist.is_allowed("test.com/specific/path").unwrap());
+        assert!(whitelist.is_allowed("https://test.com/specific/path"));
+        assert!(whitelist.is_allowed("test.com/specific/path"));
 
         // Test wildcard matches
-        assert!(whitelist.is_allowed("example.com/anything").unwrap());
-        assert!(whitelist
-            .is_allowed("example.com/path/to/resource")
-            .unwrap());
-        assert!(whitelist.is_allowed("api.domain.com/v1/users").unwrap());
+        assert!(whitelist.is_allowed("example.com/anything"));
+        assert!(whitelist.is_allowed("example.com/path/to/resource"));
+        assert!(whitelist.is_allowed("api.domain.com/v1/users"));
 
         // Test non-matches
-        assert!(!whitelist.is_allowed("other.com/path").unwrap());
-        assert!(!whitelist.is_allowed("test.com/wrong/path").unwrap());
-        assert!(!whitelist.is_allowed("api.domain.com/v2/users").unwrap());
+        assert!(!whitelist.is_allowed("other.com/path"));
+        assert!(!whitelist.is_allowed("test.com/wrong/path"));
+        assert!(!whitelist.is_allowed("api.domain.com/v2/users"));
     }
 
     #[test]
@@ -432,21 +379,21 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Add some patterns
-        whitelist.add("www.google.com/*").unwrap();
+        whitelist.add("www.google.com/*");
 
         // Test root path with and without trailing slash
-        assert!(whitelist.is_allowed("https://www.google.com/").unwrap());
-        assert!(whitelist.is_allowed("https://www.google.com").unwrap());
-        assert!(whitelist.is_allowed("www.google.com/").unwrap());
-        assert!(whitelist.is_allowed("www.google.com").unwrap());
+        assert!(whitelist.is_allowed("https://www.google.com/"));
+        assert!(whitelist.is_allowed("https://www.google.com"));
+        assert!(whitelist.is_allowed("www.google.com/"));
+        assert!(whitelist.is_allowed("www.google.com"));
 
         // Test subpaths
-        assert!(whitelist.is_allowed("www.google.com/search").unwrap());
-        assert!(whitelist.is_allowed("www.google.com/search/").unwrap());
+        assert!(whitelist.is_allowed("www.google.com/search"));
+        assert!(whitelist.is_allowed("www.google.com/search/"));
 
         // Test non-matches
-        assert!(!whitelist.is_allowed("other.com/path").unwrap());
-        assert!(!whitelist.is_allowed("api.google.com").unwrap());
+        assert!(!whitelist.is_allowed("other.com/path"));
+        assert!(!whitelist.is_allowed("api.google.com"));
     }
 
     #[test]
@@ -454,28 +401,24 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Test that example.com/* allows both root and any subpath
-        whitelist.add("example.com/*").unwrap();
+        whitelist.add("example.com/*");
 
         // Should allow root
-        assert!(whitelist.is_allowed("example.com").unwrap());
-        assert!(whitelist.is_allowed("example.com/").unwrap());
-        assert!(whitelist.is_allowed("https://example.com").unwrap());
-        assert!(whitelist.is_allowed("https://example.com/").unwrap());
-        assert!(whitelist.is_allowed("http://example.com").unwrap());
-        assert!(whitelist.is_allowed("http://example.com/").unwrap());
+        assert!(whitelist.is_allowed("example.com"));
+        assert!(whitelist.is_allowed("example.com/"));
+        assert!(whitelist.is_allowed("https://example.com"));
+        assert!(whitelist.is_allowed("https://example.com/"));
+        assert!(whitelist.is_allowed("http://example.com"));
+        assert!(whitelist.is_allowed("http://example.com/"));
 
         // Should also allow any subpath
-        assert!(whitelist.is_allowed("example.com/path").unwrap());
-        assert!(whitelist
-            .is_allowed("example.com/path/to/resource")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("https://example.com/anything")
-            .unwrap());
+        assert!(whitelist.is_allowed("example.com/path"));
+        assert!(whitelist.is_allowed("example.com/path/to/resource"));
+        assert!(whitelist.is_allowed("https://example.com/anything"));
 
         // Should not allow different domains
-        assert!(!whitelist.is_allowed("other.com").unwrap());
-        assert!(!whitelist.is_allowed("other.com/path").unwrap());
+        assert!(!whitelist.is_allowed("other.com"));
+        assert!(!whitelist.is_allowed("other.com/path"));
     }
 
     #[test]
@@ -483,27 +426,23 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Add domain wildcard pattern
-        whitelist.add("www.*.google.com/*").unwrap();
+        whitelist.add("www.*.google.com/*");
 
         // Test matching domains
-        assert!(whitelist.is_allowed("www.test.google.com/test").unwrap());
-        assert!(whitelist.is_allowed("www.dev.google.com/api").unwrap());
-        assert!(whitelist.is_allowed("www.staging.google.com/").unwrap());
-        assert!(whitelist.is_allowed("www.prod.google.com").unwrap());
+        assert!(whitelist.is_allowed("www.test.google.com/test"));
+        assert!(whitelist.is_allowed("www.dev.google.com/api"));
+        assert!(whitelist.is_allowed("www.staging.google.com/"));
+        assert!(whitelist.is_allowed("www.prod.google.com"));
 
         // Test non-matching domains
-        assert!(!whitelist.is_allowed("www.google.com/test").unwrap());
-        assert!(!whitelist.is_allowed("api.test.google.com/test").unwrap());
-        assert!(!whitelist.is_allowed("www.test.google.org/test").unwrap());
+        assert!(!whitelist.is_allowed("www.google.com/test"));
+        assert!(!whitelist.is_allowed("api.test.google.com/test"));
+        assert!(!whitelist.is_allowed("www.test.google.org/test"));
         // Note: www.test.google.com should match because /* allows any path including no path
 
         // Test with protocol
-        assert!(whitelist
-            .is_allowed("https://www.test.google.com/test")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("http://www.dev.google.com/api")
-            .unwrap());
+        assert!(whitelist.is_allowed("https://www.test.google.com/test"));
+        assert!(whitelist.is_allowed("http://www.dev.google.com/api"));
     }
 
     #[test]
@@ -511,21 +450,15 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Add pattern with multiple wildcards
-        whitelist.add("*.test.*.google.com/*").unwrap();
+        whitelist.add("*.test.*.google.com/*");
 
         // Test matching domains
-        assert!(whitelist
-            .is_allowed("www.test.dev.google.com/test")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("api.test.staging.google.com/api")
-            .unwrap());
+        assert!(whitelist.is_allowed("www.test.dev.google.com/test"));
+        assert!(whitelist.is_allowed("api.test.staging.google.com/api"));
 
         // Test non-matching domains
-        assert!(!whitelist.is_allowed("www.test.google.com/test").unwrap()); // Missing subdomain
-        assert!(!whitelist
-            .is_allowed("www.dev.test.google.com/test")
-            .unwrap()); // Wrong order
+        assert!(!whitelist.is_allowed("www.test.google.com/test")); // Missing subdomain
+        assert!(!whitelist.is_allowed("www.dev.test.google.com/test")); // Wrong order
     }
 
     #[test]
@@ -533,16 +466,16 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Add domain wildcard pattern without path
-        whitelist.add("www.*.google.com").unwrap();
+        whitelist.add("www.*.google.com");
 
         // Test matching domains (any path should work)
-        assert!(whitelist.is_allowed("www.staging.google.com").unwrap());
-        assert!(whitelist.is_allowed("www.dev.google.com/").unwrap());
+        assert!(whitelist.is_allowed("www.staging.google.com"));
+        assert!(whitelist.is_allowed("www.dev.google.com/"));
 
         // Test non-matching domains
-        assert!(!whitelist.is_allowed("www.test.google.com/test").unwrap());
-        assert!(!whitelist.is_allowed("www.google.com/test").unwrap());
-        assert!(!whitelist.is_allowed("api.test.google.com/test").unwrap());
+        assert!(!whitelist.is_allowed("www.test.google.com/test"));
+        assert!(!whitelist.is_allowed("www.google.com/test"));
+        assert!(!whitelist.is_allowed("api.test.google.com/test"));
     }
 
     #[test]
@@ -550,17 +483,17 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Add both wildcard and specific patterns
-        whitelist.add("*").unwrap();
-        whitelist.add("example.com/*").unwrap();
-        whitelist.add("https://test.com/specific/path").unwrap();
+        whitelist.add("*");
+        whitelist.add("example.com/*");
+        whitelist.add("https://test.com/specific/path");
 
         // Wildcard should take precedence and allow everything
-        assert!(whitelist.is_allowed("https://example.com").unwrap());
-        assert!(whitelist.is_allowed("http://test.com/path").unwrap());
-        assert!(whitelist.is_allowed("www.google.com/search").unwrap());
-        assert!(whitelist.is_allowed("api.domain.com/v1/users").unwrap());
-        assert!(whitelist.is_allowed("localhost:3000").unwrap());
-        assert!(whitelist.is_allowed("192.168.1.1").unwrap());
+        assert!(whitelist.is_allowed("https://example.com"));
+        assert!(whitelist.is_allowed("http://test.com/path"));
+        assert!(whitelist.is_allowed("www.google.com/search"));
+        assert!(whitelist.is_allowed("api.domain.com/v1/users"));
+        assert!(whitelist.is_allowed("localhost:3000"));
+        assert!(whitelist.is_allowed("192.168.1.1"));
     }
 
     #[test]
@@ -568,65 +501,59 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Add prefix wildcard pattern
-        whitelist.add("*.lottiefiles.com").unwrap();
+        whitelist.add("*.lottiefiles.com");
 
         // Test matching with multiple subdomain levels (root only)
-        assert!(whitelist.is_allowed("www.lottiefiles.com").unwrap());
-        assert!(whitelist.is_allowed("editor.lottiefiles.com").unwrap());
-        assert!(whitelist.is_allowed("www.editor.lottiefiles.com").unwrap());
-        assert!(whitelist.is_allowed("www.creator.lottiefiles.com").unwrap());
-        assert!(whitelist
-            .is_allowed("api.v2.staging.lottiefiles.com")
-            .unwrap());
-        assert!(whitelist.is_allowed("a.b.c.d.lottiefiles.com").unwrap());
-        assert!(whitelist.is_allowed("lottiefiles.com").unwrap());
+        assert!(whitelist.is_allowed("www.lottiefiles.com"));
+        assert!(whitelist.is_allowed("editor.lottiefiles.com"));
+        assert!(whitelist.is_allowed("www.editor.lottiefiles.com"));
+        assert!(whitelist.is_allowed("www.creator.lottiefiles.com"));
+        assert!(whitelist.is_allowed("api.v2.staging.lottiefiles.com"));
+        assert!(whitelist.is_allowed("a.b.c.d.lottiefiles.com"));
+        assert!(whitelist.is_allowed("lottiefiles.com"));
 
         // Test that paths are NOT allowed with domain-only pattern
-        assert!(!whitelist
-            .is_allowed("www.editor.lottiefiles.com/path")
-            .unwrap());
-        assert!(!whitelist.is_allowed("api.lottiefiles.com/v1/data").unwrap());
-        assert!(!whitelist.is_allowed("www.lottiefiles.com/editor").unwrap());
+        assert!(!whitelist.is_allowed("www.editor.lottiefiles.com/path"));
+        assert!(!whitelist.is_allowed("api.lottiefiles.com/v1/data"));
+        assert!(!whitelist.is_allowed("www.lottiefiles.com/editor"));
 
         // Test non-matches
-        assert!(!whitelist.is_allowed("lottiefiles.org").unwrap());
-        assert!(!whitelist.is_allowed("notlottiefiles.com").unwrap());
-        assert!(!whitelist.is_allowed("www.lottiefiles.com.fake").unwrap());
+        assert!(!whitelist.is_allowed("lottiefiles.org"));
+        assert!(!whitelist.is_allowed("notlottiefiles.com"));
+        assert!(!whitelist.is_allowed("www.lottiefiles.com.fake"));
     }
 
     #[test]
     fn test_prefix_wildcard_with_specific_path() {
         let mut whitelist = Whitelist::new();
 
-        whitelist.add("*.api.com/v1/*").unwrap();
+        whitelist.add("*.api.com/v1/*");
 
-        assert!(whitelist.is_allowed("www.api.com/v1/users").unwrap());
-        assert!(whitelist.is_allowed("staging.api.com/v1/data").unwrap());
-        assert!(whitelist.is_allowed("dev.test.api.com/v1/info").unwrap());
+        assert!(whitelist.is_allowed("www.api.com/v1/users"));
+        assert!(whitelist.is_allowed("staging.api.com/v1/data"));
+        assert!(whitelist.is_allowed("dev.test.api.com/v1/info"));
 
         // Test non-matches (wrong path)
-        assert!(!whitelist.is_allowed("www.api.com/v2/users").unwrap());
-        assert!(!whitelist.is_allowed("staging.api.com/users").unwrap());
+        assert!(!whitelist.is_allowed("www.api.com/v2/users"));
+        assert!(!whitelist.is_allowed("staging.api.com/users"));
     }
 
     #[test]
     fn test_all_allowed() {
         let mut whitelist = Whitelist::new();
 
-        whitelist.add("*").unwrap();
+        whitelist.add("*");
 
         // Everything should be allowed when "*" is in the whitelist
-        assert!(whitelist
-            .is_allowed("https://www.api.com/v1/users")
-            .unwrap());
-        assert!(whitelist.is_allowed("www.api.com/v1/users").unwrap());
-        assert!(whitelist.is_allowed("staging.api.com/v1/data").unwrap());
-        assert!(whitelist.is_allowed("dev.test.api.com/v1/info").unwrap());
-        assert!(whitelist.is_allowed("www.api.com/v2/users").unwrap());
-        assert!(whitelist.is_allowed("staging.api.com/users").unwrap());
-        assert!(whitelist.is_allowed("anything.goes.here").unwrap());
-        assert!(whitelist.is_allowed("192.168.1.1").unwrap());
-        assert!(whitelist.is_allowed("localhost:3000").unwrap());
+        assert!(whitelist.is_allowed("https://www.api.com/v1/users"));
+        assert!(whitelist.is_allowed("www.api.com/v1/users"));
+        assert!(whitelist.is_allowed("staging.api.com/v1/data"));
+        assert!(whitelist.is_allowed("dev.test.api.com/v1/info"));
+        assert!(whitelist.is_allowed("www.api.com/v2/users"));
+        assert!(whitelist.is_allowed("staging.api.com/users"));
+        assert!(whitelist.is_allowed("anything.goes.here"));
+        assert!(whitelist.is_allowed("192.168.1.1"));
+        assert!(whitelist.is_allowed("localhost:3000"));
     }
 
     #[test]
@@ -634,15 +561,15 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Test that domain-only pattern (without /*) only allows root
-        whitelist.add("example.com").unwrap();
+        whitelist.add("example.com");
 
         // Should allow root only
-        assert!(whitelist.is_allowed("example.com").unwrap());
-        assert!(whitelist.is_allowed("https://example.com").unwrap());
+        assert!(whitelist.is_allowed("example.com"));
+        assert!(whitelist.is_allowed("https://example.com"));
 
         // Should NOT allow paths
-        assert!(!whitelist.is_allowed("example.com/path").unwrap());
-        assert!(!whitelist.is_allowed("example.com/anything").unwrap());
+        assert!(!whitelist.is_allowed("example.com/path"));
+        assert!(!whitelist.is_allowed("example.com/anything"));
     }
 
     #[test]
@@ -650,19 +577,19 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Test the difference between "/" and "/*"
-        whitelist.add("test.com/").unwrap();
-        assert!(whitelist.is_allowed("test.com/").unwrap());
-        assert!(whitelist.is_allowed("test.com").unwrap()); // Normalized to match
+        whitelist.add("test.com/");
+        assert!(whitelist.is_allowed("test.com/"));
+        assert!(whitelist.is_allowed("test.com")); // Normalized to match
 
-        assert!(!whitelist.is_allowed("test.com/path").unwrap());
+        assert!(!whitelist.is_allowed("test.com/path"));
 
         let mut whitelist2 = Whitelist::new();
-        whitelist2.add("api.com/*").unwrap();
+        whitelist2.add("api.com/*");
 
-        assert!(whitelist2.is_allowed("api.com").unwrap());
-        assert!(whitelist2.is_allowed("api.com/").unwrap());
-        assert!(whitelist2.is_allowed("api.com/v1").unwrap());
-        assert!(whitelist2.is_allowed("api.com/v1/users").unwrap());
+        assert!(whitelist2.is_allowed("api.com"));
+        assert!(whitelist2.is_allowed("api.com/"));
+        assert!(whitelist2.is_allowed("api.com/v1"));
+        assert!(whitelist2.is_allowed("api.com/v1/users"));
     }
 
     #[test]
@@ -670,68 +597,38 @@ mod tests {
         let mut whitelist = Whitelist::new();
 
         // Test the specific case with multiple wildcards in path
-        whitelist.add("example.com/path/*/another/*").unwrap();
+        whitelist.add("example.com/path/*/another/*");
 
-        assert!(whitelist
-            .is_allowed("example.com/path/foo/another/bar")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("example.com/path/segment/another/file.txt")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("example.com/path/x/another/y")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("example.com/path/anything/another/something")
-            .unwrap());
+        assert!(whitelist.is_allowed("example.com/path/foo/another/bar"));
+        assert!(whitelist.is_allowed("example.com/path/segment/another/file.txt"));
+        assert!(whitelist.is_allowed("example.com/path/x/another/y"));
+        assert!(whitelist.is_allowed("example.com/path/anything/another/something"));
 
         // Should also work with longer segments where wildcards are
-        assert!(whitelist
-            .is_allowed("example.com/path/very/long/segment/another/more/stuff")
-            .unwrap());
+        assert!(whitelist.is_allowed("example.com/path/very/long/segment/another/more/stuff"));
 
         // Should not match if missing required path segments
-        assert!(!whitelist
-            .is_allowed("example.com/path/foo/another")
-            .unwrap()); // Missing final segment
-        assert!(!whitelist
-            .is_allowed("example.com/path/another/bar")
-            .unwrap()); // Missing middle segment
-        assert!(!whitelist
-            .is_allowed("example.com/path/foo/wrong/bar")
-            .unwrap()); // Wrong middle segment
-        assert!(!whitelist
-            .is_allowed("example.com/wrong/foo/another/bar")
-            .unwrap()); // Wrong first segment
+        assert!(!whitelist.is_allowed("example.com/path/foo/another")); // Missing final segment
+        assert!(!whitelist.is_allowed("example.com/path/another/bar")); // Missing middle segment
+        assert!(!whitelist.is_allowed("example.com/path/foo/wrong/bar")); // Wrong middle segment
+        assert!(!whitelist.is_allowed("example.com/wrong/foo/another/bar")); // Wrong first segment
 
         // Test more complex patterns
-        whitelist.add("api.com/v*/users/*/profile").unwrap();
-        assert!(whitelist
-            .is_allowed("api.com/v1/users/123/profile")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("api.com/v2/users/john/profile")
-            .unwrap());
-        assert!(!whitelist
-            .is_allowed("api.com/v1/users/123/settings")
-            .unwrap());
+        whitelist.add("api.com/v*/users/*/profile");
+        assert!(whitelist.is_allowed("api.com/v1/users/123/profile"));
+        assert!(whitelist.is_allowed("api.com/v2/users/john/profile"));
+        assert!(!whitelist.is_allowed("api.com/v1/users/123/settings"));
 
         // Test with leading/trailing wildcards
-        whitelist.add("cdn.com/*/assets/*").unwrap();
-        whitelist.add("*.*.cdn.com/*/assets/*").unwrap();
-        assert!(whitelist
-            .is_allowed("cdn.com/2024/assets/image.png")
-            .unwrap());
-        assert!(whitelist
-            .is_allowed("test.test.cdn.com/user/123/assets/doc.pdf")
-            .unwrap());
+        whitelist.add("cdn.com/*/assets/*");
+        whitelist.add("*.*.cdn.com/*/assets/*");
+        assert!(whitelist.is_allowed("cdn.com/2024/assets/image.png"));
+        assert!(whitelist.is_allowed("test.test.cdn.com/user/123/assets/doc.pdf"));
 
         let mut whitelist2 = Whitelist::new();
 
         // Test the specific case with multiple wildcards in path
-        whitelist2.add("cdn.com/*/assets/*/").unwrap();
-        assert!(!whitelist2
-            .is_allowed("cdn.com/test/assets/test/test")
-            .unwrap());
+        whitelist2.add("cdn.com/*/assets/*/");
+        assert!(!whitelist2.is_allowed("cdn.com/test/assets/test/test"));
     }
 }

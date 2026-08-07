@@ -49,9 +49,7 @@ pub use renderer::{
 #[cfg(feature = "tvg")]
 pub use renderer::{TvgAnimation, TvgRenderer, TvgShape};
 #[cfg(feature = "state-machines")]
-pub use state_machine::events::{
-    Event, EventName, PointerEvent, StateMachineEvent, StateMachineInternalEvent,
-};
+pub use state_machine::events::{Event, EventKind, StateMachineEvent, StateMachineInternalEvent};
 #[cfg(feature = "state-machines")]
 pub use state_machine::{OpenUrlPolicy, StateMachineEngine, StateMachineEngineStatus};
 #[cfg(feature = "theming")]

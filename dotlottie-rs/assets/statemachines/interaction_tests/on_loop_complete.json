@@ -61,7 +61,8 @@
       "actions": [
         {
           "type": "Increment",
-          "inputName": "loopCount"
+          "inputName": "loopCount",
+          "value": 1
         }
       ]
     }

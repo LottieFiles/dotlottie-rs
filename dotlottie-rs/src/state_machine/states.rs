@@ -8,18 +8,7 @@ use crate::Rgba;
 
 use super::{actions::StateMachineActionError, transitions::Transition, StateMachineEngine};
 
-use super::actions::{Action, ActionTrait};
-
-pub trait StateTrait {
-    fn enter(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError>;
-    fn exit(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError>;
-    fn animation(&self) -> &str;
-    fn transitions(&self) -> &Vec<Transition>;
-    fn entry_actions(&self) -> Option<&Vec<Action>>;
-    fn exit_actions(&self) -> Option<&Vec<Action>>;
-    fn name(&self) -> &DotString;
-    fn get_type(&self) -> String;
-}
+use super::actions::Action;
 
 #[derive(Debug, Clone)]
 pub enum State {
@@ -84,9 +73,16 @@ pub(crate) fn state_from_json(v: &Value) -> Option<State> {
     })
 }
 
+/// Entry/exit actions never run the transition pipeline themselves.
+fn run_actions(engine: &mut StateMachineEngine, actions: &Option<Vec<Action>>) {
+    for action in actions.iter().flatten() {
+        let _ = action.execute(engine, false, true);
+    }
+}
+
 impl State {
     pub(crate) fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
-        match self {
+        let (name, transitions, entry_actions, exit_actions) = match self {
             State::PlaybackState {
                 name,
                 transitions,
@@ -95,49 +91,31 @@ impl State {
                 exit_actions,
                 ..
             } => {
-                *name = interner.intern(name.as_str());
                 *animation = interner.intern(animation.as_str());
-                for t in transitions {
-                    t.intern_identifiers(interner);
-                }
-                if let Some(actions) = entry_actions {
-                    for a in actions {
-                        a.intern_identifiers(interner);
-                    }
-                }
-                if let Some(actions) = exit_actions {
-                    for a in actions {
-                        a.intern_identifiers(interner);
-                    }
-                }
+                (name, transitions, entry_actions, exit_actions)
             }
             State::GlobalState {
                 name,
                 transitions,
                 entry_actions,
                 exit_actions,
-            } => {
-                *name = interner.intern(name.as_str());
-                for t in transitions {
-                    t.intern_identifiers(interner);
-                }
-                if let Some(actions) = entry_actions {
-                    for a in actions {
-                        a.intern_identifiers(interner);
-                    }
-                }
-                if let Some(actions) = exit_actions {
-                    for a in actions {
-                        a.intern_identifiers(interner);
-                    }
-                }
-            }
+            } => (name, transitions, entry_actions, exit_actions),
+        };
+
+        *name = interner.intern(name.as_str());
+        for transition in transitions {
+            transition.intern_identifiers(interner);
+        }
+        for action in entry_actions
+            .iter_mut()
+            .chain(exit_actions.iter_mut())
+            .flatten()
+        {
+            action.intern_identifiers(interner);
         }
     }
-}
 
-impl StateTrait for State {
-    fn enter(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError> {
+    pub fn enter(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError> {
         match self {
             State::PlaybackState {
                 animation,
@@ -197,93 +175,47 @@ impl StateTrait for State {
 
                 engine.player.set_mode(defined_mode);
                 engine.player.set_autoplay(autoplay.unwrap_or(false));
-                /* Perform entry actions */
-                if let Some(actions) = entry_actions {
-                    for action in actions {
-                        let _ = action.execute(engine, false, true);
-                    }
-                }
 
-                if let Some(is_final) = r#final {
-                    if *is_final {
-                        engine.stop();
-                    }
+                run_actions(engine, entry_actions);
+
+                if *r#final == Some(true) {
+                    engine.stop();
                 }
             }
-            State::GlobalState { entry_actions, .. } => {
-                // Perform entry actions
-                if let Some(actions) = entry_actions {
-                    for action in actions {
-                        let _ = action.execute(engine, false, true);
-                    }
-                }
-            }
+            State::GlobalState { entry_actions, .. } => run_actions(engine, entry_actions),
         }
 
         Ok(())
     }
 
-    fn animation(&self) -> &str {
+    pub fn animation(&self) -> &str {
         match self {
             State::PlaybackState { animation, .. } => animation,
             State::GlobalState { .. } => "",
         }
     }
 
-    fn transitions(&self) -> &Vec<Transition> {
+    pub fn transitions(&self) -> &[Transition] {
         match self {
             State::PlaybackState { transitions, .. } => transitions,
             State::GlobalState { transitions, .. } => transitions,
         }
     }
 
-    fn name(&self) -> &DotString {
+    pub fn name(&self) -> &DotString {
         match self {
             State::PlaybackState { name, .. } => name,
             State::GlobalState { name, .. } => name,
         }
     }
 
-    fn get_type(&self) -> String {
-        match self {
-            State::PlaybackState { .. } => "PlaybackState".to_string(),
-            State::GlobalState { .. } => "GlobalState".to_string(),
-        }
-    }
-
-    fn exit(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError> {
-        match self {
-            State::PlaybackState { exit_actions, .. } => {
-                /* Perform exit actions */
-                if let Some(actions) = exit_actions {
-                    for action in actions {
-                        let _ = action.execute(engine, false, true);
-                    }
-                }
+    pub fn exit(&self, engine: &mut StateMachineEngine) -> Result<(), StateMachineActionError> {
+        let exit_actions = match self {
+            State::PlaybackState { exit_actions, .. } | State::GlobalState { exit_actions, .. } => {
+                exit_actions
             }
-            State::GlobalState { exit_actions, .. } => {
-                if let Some(actions) = exit_actions {
-                    for action in actions {
-                        let _ = action.execute(engine, false, true);
-                    }
-                }
-            }
-        }
-
+        };
+        run_actions(engine, exit_actions);
         Ok(())
-    }
-
-    fn entry_actions(&self) -> Option<&Vec<Action>> {
-        match self {
-            State::PlaybackState { entry_actions, .. } => entry_actions.as_ref(),
-            State::GlobalState { entry_actions, .. } => entry_actions.as_ref(),
-        }
-    }
-
-    fn exit_actions(&self) -> Option<&Vec<Action>> {
-        match self {
-            State::PlaybackState { exit_actions, .. } => exit_actions.as_ref(),
-            State::GlobalState { exit_actions, .. } => exit_actions.as_ref(),
-        }
     }
 }

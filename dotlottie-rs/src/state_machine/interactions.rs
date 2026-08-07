@@ -3,13 +3,7 @@ use crate::state_machine::definition::dot_string;
 use crate::string::{DotString, DotStringInterner};
 
 use super::actions::Action;
-
-pub trait InteractionTrait {
-    fn get_layer_name(&self) -> Option<&DotString>;
-    fn get_state_name(&self) -> Option<String>;
-    fn get_actions(&self) -> &Vec<Action>;
-    fn type_name(&self) -> &'static str;
-}
+use super::events::EventKind;
 
 #[derive(Debug)]
 pub enum Interaction {
@@ -90,8 +84,8 @@ pub(crate) fn interaction_from_json(v: &Value) -> Option<Interaction> {
     })
 }
 
-impl InteractionTrait for Interaction {
-    fn get_layer_name(&self) -> Option<&DotString> {
+impl Interaction {
+    pub fn get_layer_name(&self) -> Option<&DotString> {
         match self {
             Interaction::PointerUp { layer_name, .. } => layer_name.as_ref(),
             Interaction::PointerDown { layer_name, .. } => layer_name.as_ref(),
@@ -104,7 +98,7 @@ impl InteractionTrait for Interaction {
         }
     }
 
-    fn get_actions(&self) -> &Vec<Action> {
+    pub fn actions(&self) -> &[Action] {
         match self {
             Interaction::PointerUp { actions, .. } => actions,
             Interaction::PointerDown { actions, .. } => actions,
@@ -117,29 +111,16 @@ impl InteractionTrait for Interaction {
         }
     }
 
-    fn get_state_name(&self) -> Option<String> {
+    pub fn kind(&self) -> EventKind {
         match self {
-            Interaction::PointerUp { .. } => None,
-            Interaction::PointerDown { .. } => None,
-            Interaction::PointerEnter { .. } => None,
-            Interaction::PointerMove { .. } => None,
-            Interaction::PointerExit { .. } => None,
-            Interaction::Click { .. } => None,
-            Interaction::OnComplete { state_name, .. } => Some(state_name.as_str().to_owned()),
-            Interaction::OnLoopComplete { state_name, .. } => Some(state_name.as_str().to_owned()),
-        }
-    }
-
-    fn type_name(&self) -> &'static str {
-        match self {
-            Interaction::PointerUp { .. } => "PointerUp",
-            Interaction::PointerDown { .. } => "PointerDown",
-            Interaction::PointerEnter { .. } => "PointerEnter",
-            Interaction::PointerMove { .. } => "PointerMove",
-            Interaction::PointerExit { .. } => "PointerExit",
-            Interaction::OnComplete { .. } => "OnComplete",
-            Interaction::OnLoopComplete { .. } => "OnLoopComplete",
-            Interaction::Click { .. } => "Click",
+            Interaction::PointerUp { .. } => EventKind::PointerUp,
+            Interaction::PointerDown { .. } => EventKind::PointerDown,
+            Interaction::PointerEnter { .. } => EventKind::PointerEnter,
+            Interaction::PointerMove { .. } => EventKind::PointerMove,
+            Interaction::PointerExit { .. } => EventKind::PointerExit,
+            Interaction::OnComplete { .. } => EventKind::OnComplete,
+            Interaction::OnLoopComplete { .. } => EventKind::OnLoopComplete,
+            Interaction::Click { .. } => EventKind::Click,
         }
     }
 }

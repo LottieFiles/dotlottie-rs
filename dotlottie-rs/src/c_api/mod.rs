@@ -1752,7 +1752,7 @@ pub unsafe extern "C" fn dotlottie_state_machine_start(
     }
     #[cfg(feature = "state-machines")]
     {
-        use crate::state_machine::actions::open_url_policy::OpenUrlPolicy;
+        use crate::state_machine::actions::OpenUrlPolicy;
         exec_state_machine_op!(sm, |state_machine| {
             let whitelist_vec = if whitelist.is_null() {
                 vec![]

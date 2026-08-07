@@ -40,10 +40,10 @@ pub enum InputValue {
 }
 
 pub struct InputManager {
-    pub(super) numeric: FxHashMap<DotString, (f32, f32)>,
-    pub(super) boolean: FxHashMap<DotString, (bool, bool)>,
-    pub(super) string: FxHashMap<DotString, (String, String)>,
-    pub(super) event: FxHashSet<DotString>,
+    pub(crate) numeric: FxHashMap<DotString, (f32, f32)>,
+    pub(crate) boolean: FxHashMap<DotString, (bool, bool)>,
+    pub(crate) string: FxHashMap<DotString, (String, String)>,
+    pub(crate) event: FxHashSet<DotString>,
 }
 
 /// Replace an existing entry's value in-place, or insert a new `DotString`

@@ -31,7 +31,7 @@ use transitions::{Transition, TransitionTrait};
 use definition::StringNumberBool;
 
 use crate::event_queue::EventQueue;
-use crate::player_state::TweenOutcome;
+use crate::player::TweenOutcome;
 use crate::renderer::Point;
 use crate::state_machine::events::{StateMachineEvent, StateMachineInternalEvent};
 use crate::state_machine::interactions::Interaction;

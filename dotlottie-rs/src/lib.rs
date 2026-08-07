@@ -6,8 +6,6 @@ mod event_queue;
 pub(crate) mod json;
 mod layout;
 pub mod player;
-mod player_state;
-mod poll_events;
 pub mod renderer;
 #[cfg(feature = "state-machines")]
 pub mod state_machine;
@@ -40,8 +38,7 @@ pub use dotlottie::{
     ManifestTheme,
 };
 pub use layout::{Fit, Layout};
-pub use player::{CompletionEvent, Mode, Player, Status};
-pub use poll_events::PlayerEvent;
+pub use player::{CompletionEvent, Mode, Player, PlayerEvent, Status};
 pub use renderer::{
     slots_from_json_string, Animation, Bezier, BezierValue, ColorSlot, ColorSpace, ColorValue,
     Drawable, GlContext, GlDisplay, GlSurface, GradientSlot, GradientStop, ImageSlot,

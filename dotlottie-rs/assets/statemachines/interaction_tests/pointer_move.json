@@ -117,7 +117,8 @@
       "actions": [
         {
           "type": "Increment",
-          "inputName": "rating"
+          "inputName": "rating",
+          "value": 1
         }
       ]
     }

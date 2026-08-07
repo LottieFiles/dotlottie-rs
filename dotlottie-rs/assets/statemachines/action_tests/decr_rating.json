@@ -165,7 +165,8 @@
       "entryActions": [
         {
           "type": "Decrement",
-          "inputName": "rating"
+          "inputName": "rating",
+          "value": 1
         }
       ]
     },

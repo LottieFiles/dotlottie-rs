@@ -1,12 +1,7 @@
 use crate::json::{array_of, opt, Value};
 use crate::string::{DotString, DotStringInterner};
 
-use super::{
-    inputs::Input,
-    interactions::Interaction,
-    states::{State, StateTrait},
-    GLOBAL_INPUT_PREFIX,
-};
+use super::{inputs::Input, interactions::Interaction, states::State, GLOBAL_INPUT_PREFIX};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StringNumberBool {
@@ -36,36 +31,6 @@ pub struct StateMachine {
 }
 
 impl StateMachine {
-    pub fn new(
-        initial: DotString,
-        states: Vec<State>,
-        interactions: Option<Vec<Interaction>>,
-        inputs: Option<Vec<Input>>,
-    ) -> Self {
-        StateMachine {
-            initial,
-            states,
-            interactions,
-            inputs,
-        }
-    }
-
-    pub fn states(&self) -> &Vec<State> {
-        &self.states
-    }
-
-    pub fn interactions(&self) -> Option<&Vec<Interaction>> {
-        self.interactions.as_ref()
-    }
-
-    pub fn inputs(&self) -> Option<&Vec<Input>> {
-        self.inputs.as_ref()
-    }
-
-    pub fn get_state_by_name(&self, name: &str) -> Option<&State> {
-        self.states.iter().find(|state| state.name() == name)
-    }
-
     /// Canonicalize every identifier through the shared interner so runtime
     /// comparisons hit the `Arc::ptr_eq` fast path.
     pub(crate) fn intern_identifiers(&mut self, interner: &mut DotStringInterner) {
@@ -149,8 +114,6 @@ fn state_machine_from_value(root: &Value) -> Option<StateMachine> {
 mod tests {
     use super::*;
     use crate::state_machine::actions::Action;
-    use crate::state_machine::states::StateTrait;
-    use crate::state_machine::transitions::{Transition, TransitionTrait};
 
     const SM: &str = r#"{
         "initial": "a",
@@ -162,7 +125,7 @@ mod tests {
                 {"type": "Tweened", "toState": "b", "duration": 0.5, "easing": [0.4, 0, 0.2, 1],
                  "guards": [{"type": "Numeric", "inputName": "n", "conditionType": "GreaterThan", "compareTo": 5}]}
              ],
-             "entryActions": [{"type": "Increment", "inputName": "n"}, {"type": "SetRandom", "inputName": "n"}]},
+             "entryActions": [{"type": "Increment", "inputName": "n", "value": 1}, {"type": "SetRandom", "inputName": "n"}]},
             {"type": "GlobalState", "name": "b", "transitions": [
                 {"type": "Transition", "toState": "a",
                  "guards": [{"type": "Event", "inputName": "go"}]}
@@ -189,21 +152,24 @@ mod tests {
         assert_eq!(s0.name(), "a");
         assert_eq!(s0.animation(), "anim1");
         let t = &s0.transitions()[0];
-        assert_eq!(t.target_state(), "b");
-        assert_eq!(t.duration(), 500.0); // 0.5s → ms
-        assert_eq!(t.easing(), [0.4, 0.0, 0.2, 1.0]);
+        assert_eq!(t.to_state, "b");
+        assert_eq!(t.tween.duration, 500.0); // 0.5s → ms
+        assert_eq!(t.tween.easing, [0.4, 0.0, 0.2, 1.0]);
+        let State::PlaybackState { entry_actions, .. } = s0 else {
+            panic!("expected playback state");
+        };
         assert!(matches!(
-            s0.entry_actions().unwrap()[1],
+            entry_actions.as_ref().unwrap()[1],
             Action::SetRandom { ref min, ref max, ref integer, .. }
                 if min.is_none() && max.is_none() && integer.is_none()
         ));
-        assert_eq!(sm.interactions().unwrap().len(), 2);
+        assert_eq!(sm.interactions.as_ref().unwrap().len(), 2);
     }
 
     #[test]
     fn at_prefixed_inputs_are_filtered() {
         let sm = state_machine_parse(SM).unwrap();
-        let inputs = sm.inputs().unwrap();
+        let inputs = sm.inputs.as_ref().unwrap();
         assert_eq!(inputs.len(), 3);
         assert!(!inputs.iter().any(|i| matches!(
             i,
@@ -214,10 +180,7 @@ mod tests {
     #[test]
     fn untagged_compare_to_coerces() {
         let sm = state_machine_parse(SM).unwrap();
-        let Transition::Tweened { guards, .. } = &sm.states[0].transitions()[0] else {
-            panic!("expected tweened");
-        };
-        let g = &guards.as_ref().unwrap()[0];
+        let g = &sm.states[0].transitions()[0].guards()[0];
         assert!(matches!(
             g,
             crate::state_machine::transitions::guard::Guard::Numeric {
@@ -225,6 +188,39 @@ mod tests {
                 ..
             } if *v == 5.0
         ));
+    }
+
+    #[test]
+    fn instant_and_zero_duration_tween_are_the_same_thing() {
+        let sm = state_machine_parse(
+            r#"{"initial":"a","states":[{"type":"GlobalState","name":"a","transitions":[
+                {"type":"Transition","toState":"a"},
+                {"type":"Tweened","toState":"a","duration":0,"easing":[0,0,1,1]}]}]}"#,
+        )
+        .unwrap();
+        let transitions = sm.states[0].transitions();
+        assert!(transitions[0].tween.is_instant());
+        assert!(transitions[1].tween.is_instant());
+    }
+
+    #[test]
+    fn increment_without_value_defaults_to_one() {
+        let sm = state_machine_parse(
+            r#"{"initial":"a","states":[{"type":"GlobalState","name":"a","transitions":[],
+                "entryActions":[{"type":"Increment","inputName":"n"},
+                                {"type":"Decrement","inputName":"n"}]}]}"#,
+        )
+        .unwrap();
+        let State::GlobalState { entry_actions, .. } = &sm.states[0] else {
+            panic!("expected global state");
+        };
+        for action in entry_actions.as_ref().unwrap() {
+            assert!(matches!(
+                action,
+                Action::Increment { value: StringNumber::F32(v), .. }
+                | Action::Decrement { value: StringNumber::F32(v), .. } if *v == 1.0
+            ));
+        }
     }
 
     #[test]

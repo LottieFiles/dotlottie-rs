@@ -41,7 +41,7 @@ mod repr {
     ///   2. `bytes[..len-1]` contains no `0`     — no interior nulls
     ///   3. `bytes[..len-1]` is valid UTF-8      — so `as_str` is safe
     #[derive(Clone)]
-    pub(super) struct Storage {
+    pub(crate) struct Storage {
         pub bytes: Arc<[u8]>,
     }
 }
@@ -51,7 +51,7 @@ mod repr {
     use std::sync::Arc;
 
     #[derive(Clone)]
-    pub(super) struct Storage {
+    pub(crate) struct Storage {
         pub inner: Arc<str>,
     }
 }

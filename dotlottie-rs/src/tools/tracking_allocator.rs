@@ -5,7 +5,7 @@
 use std::alloc::GlobalAlloc;
 use std::sync::atomic::{AtomicIsize, AtomicU64, Ordering};
 
-pub(super) struct AllocStats {
+pub(crate) struct AllocStats {
     current_bytes: AtomicIsize,
     peak_bytes: AtomicIsize,
     total_allocs: AtomicU64,
@@ -13,7 +13,7 @@ pub(super) struct AllocStats {
 }
 
 impl AllocStats {
-    pub(super) const fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             current_bytes: AtomicIsize::new(0),
             peak_bytes: AtomicIsize::new(0),
@@ -22,7 +22,7 @@ impl AllocStats {
         }
     }
 
-    pub(super) fn record_alloc(&self, size: usize) {
+    pub(crate) fn record_alloc(&self, size: usize) {
         let current = self
             .current_bytes
             .fetch_add(size as isize, Ordering::Relaxed)
@@ -31,13 +31,13 @@ impl AllocStats {
         self.peak_bytes.fetch_max(current, Ordering::Relaxed);
     }
 
-    pub(super) fn record_free(&self, size: usize) {
+    pub(crate) fn record_free(&self, size: usize) {
         self.current_bytes
             .fetch_sub(size as isize, Ordering::Relaxed);
         self.total_frees.fetch_add(1, Ordering::Relaxed);
     }
 
-    pub(super) fn record_realloc(&self, old_size: usize, new_size: usize) {
+    pub(crate) fn record_realloc(&self, old_size: usize, new_size: usize) {
         let delta = new_size as isize - old_size as isize;
         let current = self.current_bytes.fetch_add(delta, Ordering::Relaxed) + delta;
         self.total_frees.fetch_add(1, Ordering::Relaxed);
@@ -47,7 +47,7 @@ impl AllocStats {
         }
     }
 
-    pub(super) fn snapshot(&self) -> MemoryStats {
+    pub(crate) fn snapshot(&self) -> MemoryStats {
         MemoryStats {
             current_bytes: self.current_bytes.load(Ordering::Relaxed) as i64,
             peak_bytes: self.peak_bytes.load(Ordering::Relaxed) as i64,
@@ -56,7 +56,7 @@ impl AllocStats {
         }
     }
 
-    pub(super) fn reset(&self) {
+    pub(crate) fn reset(&self) {
         self.current_bytes.store(0, Ordering::Relaxed);
         self.peak_bytes.store(0, Ordering::Relaxed);
         self.total_allocs.store(0, Ordering::Relaxed);
@@ -75,7 +75,7 @@ pub struct MemoryStats {
 static HEAP_STATS: AllocStats = AllocStats::new();
 
 #[cfg(feature = "tvg")]
-pub(super) static TVG_STATS: AllocStats = AllocStats::new();
+pub(crate) static TVG_STATS: AllocStats = AllocStats::new();
 
 /// An allocator that wraps [`std::alloc::System`] and tracks memory usage.
 ///

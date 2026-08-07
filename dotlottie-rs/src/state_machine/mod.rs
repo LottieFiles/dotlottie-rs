@@ -1,14 +1,6 @@
-use core::result::Result::Ok;
 use std::ffi::{CStr, CString};
 
 use rustc_hash::FxHashSet;
-
-use crate::string::{DotString, DotStringInterner};
-
-pub(crate) const GLOBAL_INPUT_PREFIX: char = '@';
-pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
-
-const DEFAULT_RNG_SEED: u64 = 0x853c_49e6_748f_ea9b;
 
 pub mod actions;
 pub mod definition;
@@ -19,30 +11,27 @@ pub mod security;
 pub mod states;
 pub mod transitions;
 
-pub use actions::open_url_policy::OpenUrlPolicy;
-use actions::{Action, ActionTrait};
-use definition::StateMachine;
-use inputs::{Input, InputManager, InputValue};
-use interactions::InteractionTrait;
-use states::StateTrait;
-use transitions::guard::{Guard, GuardTrait};
-use transitions::{Transition, TransitionTrait};
+pub use actions::OpenUrlPolicy;
 
-use definition::StringNumberBool;
+use actions::whitelist::Whitelist;
+use definition::{state_machine_parse, StateMachine, StringNumberBool};
+use events::{Event, EventKind, StateMachineEvent, StateMachineInternalEvent};
+use inputs::{Input, InputManager, InputValue};
+use interactions::Interaction;
+use security::state_machine_state_check_pipeline;
+use states::State;
+use transitions::{guard::Guard, Transition, Tween};
 
 use crate::event_queue::EventQueue;
 use crate::player::TweenOutcome;
 use crate::renderer::Point;
-use crate::state_machine::events::{StateMachineEvent, StateMachineInternalEvent};
-use crate::state_machine::interactions::Interaction;
-use crate::{
-    event_type_name, CompletionEvent, EventName, Layout, Mode, Player, PointerEvent, Rgba, Segment,
-};
-use actions::whitelist::Whitelist;
-use security::state_machine_state_check_pipeline;
+use crate::string::{DotString, DotStringInterner};
+use crate::{CompletionEvent, Layout, Mode, Player, Rgba, Segment};
 
-use self::definition::state_machine_parse;
-use self::{events::Event, states::State};
+pub(crate) const GLOBAL_INPUT_PREFIX: char = '@';
+pub(crate) const ELAPSED_TIME: &str = "@elapsedTime";
+
+const DEFAULT_RNG_SEED: u64 = 0x853c_49e6_748f_ea9b;
 
 #[derive(PartialEq, Debug)]
 pub enum StateMachineEngineStatus {
@@ -80,7 +69,7 @@ struct PointerData {
     // DotString so comparisons against interned interaction layer names
     // hit the Arc::ptr_eq fast path.
     curr_entered_layer: DotString,
-    listened_layers: Vec<(DotString, &'static str)>,
+    listened_layers: Vec<(DotString, EventKind)>,
     most_recent_event: Option<Event>,
     pointer_x: f32,
     pointer_y: f32,
@@ -224,6 +213,18 @@ impl<'a> StateMachineEngine<'a> {
         self.inputs.get_numeric(key)
     }
 
+    /// Resolve a `"$input"` / `"@builtin"` numeric reference; anything else is
+    /// not a reference.
+    pub(crate) fn resolve_numeric_ref(&self, reference: &str) -> Option<f32> {
+        if reference.starts_with(GLOBAL_INPUT_PREFIX) {
+            self.get_numeric_input(reference)
+        } else if reference.starts_with('$') {
+            self.get_numeric_input(reference.trim_start_matches('$'))
+        } else {
+            None
+        }
+    }
+
     pub fn set_seed(&mut self, seed: u64) {
         self.rng_seed = seed;
         self.rng = oorandom::Rand32::new(seed);
@@ -347,7 +348,6 @@ impl<'a> StateMachineEngine<'a> {
     }
 
     // Parses the JSON of the state machine definition and creates the states and transitions
-    // Previously called create_state_machine
     pub fn from_definition(
         sm_definition: &str,
         player: &'a mut Player,
@@ -448,7 +448,6 @@ impl<'a> StateMachineEngine<'a> {
 
         new_state_machine.init_listened_layers();
 
-        // Run the security check pipeline
         let check_report = Self::security_check_pipeline(&new_state_machine);
 
         match check_report {
@@ -488,9 +487,8 @@ impl<'a> StateMachineEngine<'a> {
         if !open_url.whitelist.is_empty() {
             let mut whitelist = Whitelist::new();
 
-            // Add patterns to whitelist
             for entry in &open_url.whitelist {
-                let _ = whitelist.add(entry);
+                whitelist.add(entry);
             }
 
             self.open_url_whitelist = whitelist;
@@ -552,120 +550,82 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
-    pub fn status(&self) -> String {
+    pub fn status(&self) -> &'static str {
         match self.status {
-            StateMachineEngineStatus::Running => "Running".to_string(),
-            StateMachineEngineStatus::Tweening => "Tweening".to_string(),
-            StateMachineEngineStatus::Stopped => "Stopped".to_string(),
+            StateMachineEngineStatus::Running => "Running",
+            StateMachineEngineStatus::Tweening => "Tweening",
+            StateMachineEngineStatus::Stopped => "Stopped",
         }
     }
 
-    pub fn get_current_state(&self) -> Option<State> {
-        self.current_state.clone()
+    pub fn interactions(&self) -> impl Iterator<Item = &Interaction> {
+        self.state_machine.interactions.iter().flatten()
     }
 
-    pub fn interactions<'b>(
-        &'b self,
-        event_type_filter: Option<&'b str>,
-    ) -> impl Iterator<Item = &'b Interaction> {
+    /// The event types the host framework has to forward to the engine.
+    pub fn framework_setup(&self) -> Vec<String> {
+        let mut kinds: Vec<EventKind> = Vec::new();
+
+        for interaction in self.interactions() {
+            let kind = interaction.kind();
+            kinds.push(kind);
+            if matches!(kind, EventKind::PointerEnter | EventKind::PointerExit) {
+                kinds.push(EventKind::PointerMove);
+            }
+        }
+
+        kinds.sort_unstable_by_key(|kind| kind.as_str());
+        kinds.dedup();
+        kinds
+            .into_iter()
+            .map(|kind| kind.as_str().to_owned())
+            .collect()
+    }
+
+    /// Positions (within the flattened interaction list) of the interactions
+    /// matching `event_type_filter` and `predicate`.
+    fn interaction_indices(
+        &self,
+        event_type_filter: Option<EventKind>,
+        predicate: &dyn Fn(&Interaction) -> bool,
+    ) -> Vec<usize> {
         self.state_machine
             .interactions
             .iter()
             .flatten()
-            .filter(move |interaction| {
-                event_type_filter.is_none_or(|f| f == interaction.type_name())
+            .enumerate()
+            .filter(|(_, interaction)| {
+                event_type_filter.is_none_or(|kind| kind == interaction.kind())
+                    && predicate(interaction)
             })
-    }
-
-    pub fn framework_setup(&self) -> Vec<String> {
-        let mut interaction_types = vec![];
-
-        for interaction in self.interactions(None) {
-            match interaction {
-                interactions::Interaction::PointerUp { .. } => {
-                    interaction_types.push("PointerUp".to_string())
-                }
-                interactions::Interaction::PointerDown { .. } => {
-                    interaction_types.push("PointerDown".to_string())
-                }
-                interactions::Interaction::PointerEnter { .. } => {
-                    // In case framework self detects pointer entering layers, push pointerExit
-                    interaction_types.push("PointerEnter".to_string());
-                    // We push PointerMove too so that we can do hit detection instead of the framework
-                    interaction_types.push("PointerMove".to_string());
-                }
-                interactions::Interaction::PointerMove { .. } => {
-                    interaction_types.push("PointerMove".to_string())
-                }
-                interactions::Interaction::PointerExit { .. } => {
-                    // In case framework self detects pointer exiting layers, push pointerExit
-                    interaction_types.push("PointerExit".to_string());
-                    // We push PointerMove too so that we can do hit detection instead of the framework
-                    interaction_types.push("PointerMove".to_string());
-                }
-                interactions::Interaction::OnComplete { .. } => {
-                    interaction_types.push("OnComplete".to_string())
-                }
-                interactions::Interaction::OnLoopComplete { .. } => {
-                    interaction_types.push("OnLoopComplete".to_string())
-                }
-                interactions::Interaction::Click { .. } => {
-                    interaction_types.push("Click".to_string());
-                }
-            }
-        }
-
-        interaction_types.sort();
-        interaction_types.dedup();
-        interaction_types
+            .map(|(index, _)| index)
+            .collect()
     }
 
     fn init_listened_layers(&mut self) {
-        let interactions: Vec<_> = self.interactions(None).collect();
-
-        let mut all_listened_layers: Vec<(DotString, &'static str)> = vec![];
-
-        for interaction in interactions {
-            match interaction {
-                Interaction::PointerEnter {
-                    layer_name: Some(layer),
-                    ..
-                } => {
-                    all_listened_layers.push((layer.clone(), event_type_name!(PointerEnter)));
-                }
-                Interaction::PointerExit {
-                    layer_name: Some(layer),
-                    ..
-                } => all_listened_layers.push((layer.clone(), event_type_name!(PointerExit))),
-                Interaction::PointerUp {
-                    layer_name: Some(layer),
-                    ..
-                } => all_listened_layers.push((layer.clone(), event_type_name!(PointerUp))),
-                Interaction::PointerDown {
-                    layer_name: Some(layer),
-                    ..
-                } => all_listened_layers.push((layer.clone(), event_type_name!(PointerDown))),
-                _ => {}
-            }
-        }
-
-        self.pointer_management.listened_layers = all_listened_layers;
+        self.pointer_management.listened_layers = self
+            .interactions()
+            .filter_map(|interaction| {
+                let layer = interaction.get_layer_name()?;
+                let kind = interaction.kind();
+                matches!(
+                    kind,
+                    EventKind::PointerEnter
+                        | EventKind::PointerExit
+                        | EventKind::PointerUp
+                        | EventKind::PointerDown
+                )
+                .then(|| (layer.clone(), kind))
+            })
+            .collect();
     }
 
     fn get_state(&self, state_name: &str) -> Option<State> {
-        if let Some(global_state) = &self.global_state {
-            if global_state.name() == state_name {
-                return Some(global_state.clone());
-            }
-        }
-
-        for state in self.state_machine.states.iter() {
-            if state.name() == state_name {
-                return Some(state.clone());
-            }
-        }
-
-        None
+        self.global_state
+            .iter()
+            .chain(&self.state_machine.states)
+            .find(|state| state.name() == state_name)
+            .cloned()
     }
 
     pub fn resume_from_tweening(&mut self) {
@@ -676,19 +636,14 @@ impl<'a> StateMachineEngine<'a> {
         self.status = StateMachineEngineStatus::Running;
 
         if let Some(target_state) = &self.tween_transition_target_state {
-            // Assign the new state to the current_state
             self.current_state = Some(target_state.clone());
 
             self.tween_transition_target_state = None;
 
-            // Emit transtion occured event
-            self.observe_on_state_entered(&self.get_current_state_name());
+            self.observe_on_state_entered(self.current_state_name());
 
-            // Perform entry actions
-            // Execute its type of state
             let state = self.current_state.take();
 
-            // Now use the extracted information
             if let Some(state) = state {
                 let _ = state.enter(self);
 
@@ -696,8 +651,6 @@ impl<'a> StateMachineEngine<'a> {
                     self.player.sync_tween_frame(target_frame);
                 }
 
-                // Don't forget to put things back
-                // new_state becomes the current state
                 self.current_state = Some(state);
             }
         }
@@ -718,7 +671,7 @@ impl<'a> StateMachineEngine<'a> {
     fn set_current_state(
         &mut self,
         state_name: &str,
-        causing_transition: Option<&Transition>,
+        causing_transition: Option<Tween>,
         called_from_global: bool,
     ) -> Result<(), Error> {
         let interrupting_tween = self.status == StateMachineEngineStatus::Tweening;
@@ -736,100 +689,89 @@ impl<'a> StateMachineEngine<'a> {
         let source_already_exited = interrupting_tween && self.tween_source_exited;
 
         let new_state = self.get_state(state_name);
-        // We have a new state
         if let Some(new_state) = new_state {
-            // Emit transtion occured event
-            self.observe_on_transition(&self.get_current_state_name(), new_state.name());
-            // Perform exit actions on the current state if there is one.
+            let entering = new_state.name().clone();
+            self.observe_on_transition(self.current_state_name(), entering);
             if self.current_state.is_some() && !source_already_exited {
                 let state = self.current_state.take();
-                // Now use the extracted information
                 if let Some(state) = state {
                     if !called_from_global {
                         let _ = state.exit(self);
                     }
-                    // Don't forget to put things back
-                    // new_state becomes the current state
                     self.current_state = Some(state);
                 }
             }
             if !source_already_exited {
-                // Emit transtion occured event
-                self.observe_on_state_exit(&self.get_current_state_name());
+                self.observe_on_state_exit(self.current_state_name());
             }
 
             // Since the blended transition will take time
             // We have to save the target state and do the final transition when tweening has completed
             // The state machine is alerted of tweening finishing because the player calls the resume_from_tweening() method
-            if let Some(causing_transition) = causing_transition {
-                // If we dealing with a tweened transition
-                if let Transition::Tweened { .. } = causing_transition {
-                    let segment_ref = match &new_state {
-                        State::PlaybackState { segment, .. } => segment.as_deref(),
-                        _ => None,
-                    };
-                    let is_reverse = match &new_state {
-                        State::PlaybackState { mode, .. } => {
-                            matches!(mode, Some(Mode::Reverse | Mode::ReverseBounce))
-                        }
-                        _ => false,
-                    };
-                    match &new_state {
-                        State::PlaybackState {
-                            animation: target_animation,
-                            ..
-                        } => {
-                            let same_animation = self
-                                .current_state
-                                .as_ref()
-                                .map(|s| s.animation() == target_animation.as_str())
-                                .unwrap_or(false);
+            if let Some(Tween { duration, easing }) =
+                causing_transition.filter(|tween| !tween.is_instant())
+            {
+                let segment_ref = match &new_state {
+                    State::PlaybackState { segment, .. } => segment.as_deref(),
+                    _ => None,
+                };
+                let is_reverse = match &new_state {
+                    State::PlaybackState { mode, .. } => {
+                        matches!(mode, Some(Mode::Reverse | Mode::ReverseBounce))
+                    }
+                    _ => false,
+                };
+                match &new_state {
+                    State::PlaybackState {
+                        animation: target_animation,
+                        ..
+                    } => {
+                        let same_animation = self
+                            .current_state
+                            .as_ref()
+                            .map(|s| s.animation() == target_animation.as_str())
+                            .unwrap_or(false);
 
-                            if same_animation {
-                                let target_frame = if let Some(target_segment) = segment_ref {
-                                    let marker_lookup = self
-                                        .player
-                                        .markers()
-                                        .iter()
-                                        .find(|m| m.name.to_str() == Ok(target_segment));
+                        if same_animation {
+                            let target_frame = if let Some(target_segment) = segment_ref {
+                                let marker_lookup = self
+                                    .player
+                                    .markers()
+                                    .iter()
+                                    .find(|m| m.name.to_str() == Ok(target_segment));
 
-                                    marker_lookup.map(|m| {
-                                        if is_reverse {
-                                            m.segment.end.min(self.player.total_frames() - 1.0)
-                                        } else {
-                                            m.segment.start
-                                        }
-                                    })
-                                } else {
-                                    Some(if is_reverse {
-                                        self.player.total_frames() - 1.0
+                                marker_lookup.map(|m| {
+                                    if is_reverse {
+                                        m.segment.end.min(self.player.total_frames() - 1.0)
                                     } else {
-                                        0.0
-                                    })
-                                };
-
-                                if let Some(target_frame) = target_frame {
-                                    let tween_result = self.player.tween(
-                                        target_frame,
-                                        causing_transition.duration(),
-                                        causing_transition.easing(),
-                                    );
-
-                                    if tween_result.is_ok() {
-                                        self.tween_transition_target_state =
-                                            Some(new_state.clone());
-                                        self.tween_target_frame = Some(target_frame);
-                                        self.tween_source_exited =
-                                            source_already_exited || !called_from_global;
-                                        self.status = StateMachineEngineStatus::Tweening;
-                                        return Ok(());
+                                        m.segment.start
                                     }
+                                })
+                            } else {
+                                Some(if is_reverse {
+                                    self.player.total_frames() - 1.0
+                                } else {
+                                    0.0
+                                })
+                            };
+
+                            if let Some(target_frame) = target_frame {
+                                let tween_result =
+                                    self.player.tween(target_frame, duration, easing);
+
+                                if tween_result.is_ok() {
+                                    self.tween_transition_target_state = Some(new_state.clone());
+                                    self.tween_target_frame = Some(target_frame);
+                                    self.tween_source_exited =
+                                        source_already_exited || !called_from_global;
+                                    self.status = StateMachineEngineStatus::Tweening;
+                                    return Ok(());
                                 }
                             }
                         }
-                        State::GlobalState { .. } => {
-                            return Ok(());
-                        }
+                    }
+                    State::GlobalState { .. } => {
+                        return Ok(());
                     }
                 }
             }
@@ -840,20 +782,12 @@ impl<'a> StateMachineEngine<'a> {
                 self.abort_tweening();
             }
 
-            // Assign the new state to the current_state
             self.current_state = Some(new_state);
 
-            // Emit transtion occured event
-            self.observe_on_state_entered(&self.get_current_state_name());
-            // Perform entry actions
-            // Execute its type of state
+            self.observe_on_state_entered(self.current_state_name());
             let state = self.current_state.take();
-            // Now use the extracted information
             if let Some(state) = state {
-                // Enter the state
                 let _ = state.enter(self);
-                // Don't forget to put things back
-                // new_state becomes the current state
                 self.current_state = Some(state);
             } else {
                 return Err(Error::SetStateError);
@@ -863,81 +797,35 @@ impl<'a> StateMachineEngine<'a> {
         Err(Error::CreationError)
     }
 
-    // Returns: The target state and the causing transition
     fn evaluate_transitions(
         &self,
         state_to_evaluate: &State,
         event: Option<&DotString>,
-    ) -> Option<(String, Transition)> {
-        let transitions = state_to_evaluate.transitions();
+    ) -> Option<(DotString, Tween)> {
         let mut guardless_transition: Option<&Transition> = None;
 
-        for transition in transitions {
-            if transition.guards().is_none() || transition.guards().as_ref().unwrap().is_empty() {
+        for transition in state_to_evaluate.transitions() {
+            let guards = transition.guards();
+
+            if guards.is_empty() {
                 guardless_transition = Some(transition);
+                continue;
             }
-            // If in the transitions we need an event, and there wasn't one fired, don't run the checks.
-            // If there wasn't an event needed, but we are sending an event, still do the checks.
 
-            // Guards on a transition are evaluated in order of priority, all of them have to be valid to transition (&& not ||).
-            else if (transition.transitions_contain_event() && event.is_some())
-                || (!transition.transitions_contain_event() && event.is_none())
-            {
-                if let Some(guards) = transition.guards() {
-                    let mut all_guards_satisfied = true;
+            // Event-guarded transitions need an event; the rest need none.
+            if transition.contains_event_guard() != event.is_some() {
+                continue;
+            }
 
-                    for guard in guards {
-                        match guard {
-                            transitions::guard::Guard::Numeric { .. } => {
-                                if !guard
-                                    .numeric_input_is_satisfied(&self.inputs, self.elapsed_time)
-                                {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
-                            }
-                            transitions::guard::Guard::String { .. } => {
-                                if !guard.string_input_is_satisfied(&self.inputs) {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
-                            }
-                            transitions::guard::Guard::Boolean { .. } => {
-                                if !guard.boolean_input_is_satisfied(&self.inputs) {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
-                            }
-                            transitions::guard::Guard::Event { .. } => {
-                                /* If theres a guard, but no event has been fired, we can't validate any guards. */
-                                if event.is_none() {
-                                    all_guards_satisfied = false;
-                                    break;
-                                }
-
-                                if let Some(event) = event {
-                                    if !guard.event_input_is_satisfied(event.as_str()) {
-                                        all_guards_satisfied = false;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    /* If all guard are satsified, take the transition as they are in order of priority inside the vec */
-                    if all_guards_satisfied {
-                        let target_state = transition.target_state();
-
-                        return Some((target_state.to_string(), transition.clone()));
-                    }
-                }
+            // Guards are AND-ed; transitions are in priority order.
+            if guards.iter().all(|guard| guard.is_satisfied(self, event)) {
+                return Some((transition.to_state.clone(), transition.tween));
             }
         }
 
-        // Enforces the rule that a guardless transition should be taken in to account last
-        let target_state = guardless_transition?.target_state();
-        Some((target_state.to_string(), guardless_transition?.clone()))
+        // Enforces the rule that a guardless transition is considered last
+        let guardless = guardless_transition?;
+        Some((guardless.to_state.clone(), guardless.tween))
     }
 
     fn evaluate_global_state(&mut self) -> bool {
@@ -950,18 +838,15 @@ impl<'a> StateMachineEngine<'a> {
                 // Prevent re-entering the current state again. While tweening, the state
                 // we are settling into is the tween's target, not the source we are leaving.
                 let settled_state = match (&self.status, &self.tween_transition_target_state) {
-                    (StateMachineEngineStatus::Tweening, Some(target)) => {
-                        target.name().as_str().to_owned()
-                    }
-                    _ => self.get_current_state_name(),
+                    (StateMachineEngineStatus::Tweening, Some(target)) => Some(target.name()),
+                    _ => self.current_state.as_ref().map(State::name),
                 };
 
-                if target_state == settled_state {
+                if settled_state == Some(&target_state) {
                     return false;
                 }
 
-                let success =
-                    self.set_current_state(&target_state, Some(&causing_transition), true);
+                let success = self.set_current_state(&target_state, Some(causing_transition), true);
 
                 match success {
                     Ok(()) => {
@@ -1012,8 +897,7 @@ impl<'a> StateMachineEngine<'a> {
             }
 
             if let Some(state) = &self.current_state {
-                let name = self.str_interner.intern(state.name());
-                self.state_history.push(name);
+                self.state_history.push(state.name().clone());
             }
 
             // --------------- End infinite loop detection
@@ -1053,7 +937,7 @@ impl<'a> StateMachineEngine<'a> {
                         self.curr_event = None;
 
                         let success =
-                            self.set_current_state(&target_state, Some(&causing_transition), false);
+                            self.set_current_state(&target_state, Some(causing_transition), false);
 
                         match success {
                             Ok(()) => {
@@ -1106,65 +990,70 @@ impl<'a> StateMachineEngine<'a> {
         }
     }
 
+    /// Run the actions of the interactions at `indices`. The list is moved
+    /// out while the actions run (they need `&mut self`), then put back.
+    fn run_interaction_actions(&mut self, indices: &[usize]) {
+        if indices.is_empty() {
+            return;
+        }
+        let interactions = self.state_machine.interactions.take();
+        if let Some(list) = &interactions {
+            for &index in indices {
+                for action in list[index].actions() {
+                    // Run the pipeline because interactions are outside of the evaluation pipeline loop
+                    let _ = action.execute(self, true, false);
+                }
+            }
+        }
+        self.state_machine.interactions = interactions;
+    }
+
     fn manage_explicit_events(&mut self, event: &Event, x: f32, y: f32) {
-        let mut actions_to_execute: Vec<Action> = Vec::new();
+        let mut matched = Vec::new();
         let mut entered_layer = self.pointer_management.curr_entered_layer.clone();
 
-        for interaction in self.interactions(None) {
-            if interaction.type_name() == event.type_name() {
-                // User defined a specific layer to check if hit
-                if let Some(layer) = interaction.get_layer_name() {
-                    // If we have a pointer exit event, check if the pointer is outside of the layer
-                    if let Event::PointerExit { x, y } = event {
-                        if self.pointer_management.curr_entered_layer == *layer
-                            && !self
-                                .player
-                                .renderer
-                                .hit_test(Point { x: *x, y: *y }, layer)
-                                .unwrap_or(false)
-                        {
-                            entered_layer = DotString::empty();
-                            actions_to_execute.extend(interaction.get_actions().clone());
-                        }
-                    } else {
-                        // Hit check will return true if the layer was hit
-                        if self
-                            .player
-                            .renderer
-                            .hit_test(Point { x, y }, layer)
-                            .unwrap_or(false)
-                        {
-                            entered_layer = layer.clone();
-                            actions_to_execute.extend(interaction.get_actions().clone());
-                        }
-                    }
-                } else {
-                    // No layer was specified, add all actions
-                    actions_to_execute.extend(interaction.get_actions().clone());
+        for (index, interaction) in self.state_machine.interactions.iter().flatten().enumerate() {
+            if interaction.kind() != event.kind() {
+                continue;
+            }
+
+            let Some(layer) = interaction.get_layer_name() else {
+                matched.push(index);
+                continue;
+            };
+
+            if let Event::PointerExit { x, y } = event {
+                if self.pointer_management.curr_entered_layer == *layer
+                    && !self
+                        .player
+                        .renderer
+                        .hit_test(Point { x: *x, y: *y }, layer)
+                        .unwrap_or(false)
+                {
+                    entered_layer = DotString::empty();
+                    matched.push(index);
                 }
+            } else if self
+                .player
+                .renderer
+                .hit_test(Point { x, y }, layer)
+                .unwrap_or(false)
+            {
+                entered_layer = layer.clone();
+                matched.push(index);
             }
         }
 
         self.pointer_management.curr_entered_layer = entered_layer;
-
-        for action in actions_to_execute {
-            // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            let _ = action.execute(self, true, false);
-        }
+        self.run_interaction_actions(&matched);
     }
 
     fn manage_cross_platform_events(&mut self, event: &Event, x: f32, y: f32) {
-        let mut actions_to_execute = Vec::new();
+        let mut matched = Vec::new();
 
         // Manage pointerMove interactions
-        if event.type_name() == "PointerMove" {
-            let pointer_move_interactions = self.interactions(Some(event_type_name!(PointerMove)));
-
-            for interaction in pointer_move_interactions {
-                if let Interaction::PointerMove { actions } = interaction {
-                    actions_to_execute.extend(actions.clone());
-                }
-            }
+        if event.kind() == EventKind::PointerMove {
+            matched.extend(self.interaction_indices(Some(EventKind::PointerMove), &|_| true));
         }
 
         // Check if we've moved the pointer over any of the pointerEnter/Exit interactions
@@ -1175,63 +1064,48 @@ impl<'a> StateMachineEngine<'a> {
 
         // Loop through all layers we're listening to
         for i in 0..self.pointer_management.listened_layers.len() {
+            let (layer, listened_for) = &self.pointer_management.listened_layers[i];
+
             // We're only interested in the listened layers that need enter / exit event
-            if (self.pointer_management.listened_layers[i].1 == event_type_name!(PointerEnter)
-                || self.pointer_management.listened_layers[i].1 == event_type_name!(PointerExit))
-                && self
+            if (*listened_for != EventKind::PointerEnter && *listened_for != EventKind::PointerExit)
+                || !self
                     .player
                     .renderer
-                    .hit_test(
-                        Point { x, y },
-                        &self.pointer_management.listened_layers[i].0,
-                    )
+                    .hit_test(Point { x, y }, layer)
                     .unwrap_or(false)
             {
-                hit = true;
-
-                // If it's that same current layer, do nothing
-                if self.pointer_management.curr_entered_layer
-                    == self.pointer_management.listened_layers[i].0
-                {
-                    break;
-                }
-
-                self.pointer_management.curr_entered_layer =
-                    self.pointer_management.listened_layers[i].0.clone();
-
-                // Get all pointer_enter interactions
-                // Add their actions if their layer name matches the current layer name in loop
-                for interaction in self.interactions(Some(event_type_name!(PointerEnter))) {
-                    if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                        if *interaction_layer_name == self.pointer_management.curr_entered_layer {
-                            actions_to_execute.extend(interaction.get_actions().clone());
-                        }
-                    }
-                }
+                continue;
             }
+
+            hit = true;
+
+            if self.pointer_management.curr_entered_layer == *layer {
+                break;
+            }
+
+            let entered = layer.clone();
+            self.pointer_management.curr_entered_layer = entered.clone();
+
+            matched.extend(
+                self.interaction_indices(Some(EventKind::PointerEnter), &|i| {
+                    i.get_layer_name() == Some(&entered)
+                }),
+            );
         }
 
         // We didn't hit any listened layers
         if !hit && !old_layer.is_empty() {
             self.pointer_management.curr_entered_layer = DotString::empty();
 
-            let pointer_exit_interactions = self.interactions(Some(event_type_name!(PointerExit)));
-
             // Add the actions of every PointerExit interaction that depended on the layer we've just exited
-            for interaction in pointer_exit_interactions {
-                if let Some(interaction_layer_name) = interaction.get_layer_name() {
-                    // We've exited the desired layer, add its actions to execute
-                    if *interaction_layer_name == old_layer {
-                        actions_to_execute.extend(interaction.get_actions().clone());
-                    }
-                }
-            }
+            matched.extend(
+                self.interaction_indices(Some(EventKind::PointerExit), &|i| {
+                    i.get_layer_name() == Some(&old_layer)
+                }),
+            );
         }
 
-        for action in actions_to_execute {
-            // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            let _ = action.execute(self, true, false);
-        }
+        self.run_interaction_actions(&matched);
     }
 
     // How pointer event are managed depending on the interaction's event and the sent event.
@@ -1259,66 +1133,49 @@ impl<'a> StateMachineEngine<'a> {
     // It would override PointerDown with layers, which is not a great experience.
     // With the current setup we can have an action that happens when the cursor is over the canvas
     // and another action that happens when the cursor is over a specific layer.
-    fn manage_pointer_event(&mut self, event: &Event, x: f32, y: f32) {
+    fn manage_pointer_event(&mut self, event: &Event) {
+        let (x, y) = event.position();
         self.pointer_management.pointer_x = x;
         self.pointer_management.pointer_y = y;
 
         // This will handle PointerDown, PointerUp, PointerEnter, PointerExit, Click
-        if event.type_name() != "PointerMove" {
+        if !matches!(event, Event::PointerMove { .. }) {
             self.manage_explicit_events(event, x, y);
         }
 
         // We're left with PointerMove
         // Also perform checks for PointerDown and PointerUp, a mobile framework could of sent them and validate PointerEnter/Exit interactions.
-        if event.type_name() == "PointerMove"
-            || event.type_name() == "PointerDown"
-            || event.type_name() == "PointerUp"
-        {
+        if matches!(
+            event,
+            Event::PointerMove { .. } | Event::PointerDown { .. } | Event::PointerUp { .. }
+        ) {
             self.manage_cross_platform_events(event, x, y);
         }
     }
 
     fn manage_player_events(&mut self, event: &Event) {
-        let mut actions_to_execute = Vec::new();
+        let Some(current_state) = self.current_state.as_ref().map(State::name) else {
+            return;
+        };
 
-        for interaction in self.interactions(Some(event.type_name())) {
-            if let Interaction::OnComplete {
-                state_name,
-                actions,
-            } = interaction
-            {
-                if let Some(current_state) = &self.current_state {
-                    if *current_state.name() == *state_name {
-                        actions_to_execute.extend(actions.clone());
-                    }
-                }
-            }
-            if let Interaction::OnLoopComplete {
-                state_name,
-                actions,
-            } = interaction
-            {
-                if let Some(current_state) = &self.current_state {
-                    if *current_state.name() == *state_name {
-                        actions_to_execute.extend(actions.clone());
-                    }
-                }
-            }
-        }
+        let matched: Vec<usize> = self.interaction_indices(Some(event.kind()), &|interaction| {
+            matches!(
+                interaction,
+                Interaction::OnComplete { state_name, .. }
+                    | Interaction::OnLoopComplete { state_name, .. }
+                    if state_name == current_state
+            )
+        });
 
-        for action in actions_to_execute {
-            // Run the pipeline because interactions are outside of the evaluation pipeline loop
-            let _ = action.execute(self, true, false);
-        }
+        self.run_interaction_actions(&matched);
     }
 
     pub fn post_event(&mut self, event: &Event) {
         self.pointer_management.most_recent_event = Some(event.clone());
 
-        if event.type_name().contains("Pointer") || event.type_name().contains("Click") {
-            self.manage_pointer_event(event, event.x(), event.y());
-        } else {
-            self.manage_player_events(event);
+        match event.kind() {
+            EventKind::OnComplete | EventKind::OnLoopComplete => self.manage_player_events(event),
+            _ => self.manage_pointer_event(event),
         }
     }
 
@@ -1349,29 +1206,31 @@ impl<'a> StateMachineEngine<'a> {
         Ok(())
     }
 
+    /// Owned name for the FFI boundary. Internally prefer [`Self::current_state_name`].
     pub fn get_current_state_name(&self) -> String {
-        if let Some(state) = &self.current_state {
-            return state.name().as_str().to_owned();
-        }
-
-        "".to_string()
+        self.current_state
+            .as_ref()
+            .map_or_else(String::new, |state| state.name().as_str().to_owned())
     }
 
-    fn observe_on_state_entered(&mut self, entering_state: &str) {
-        let state = self.str_interner.intern(entering_state);
+    /// The current state's interned name.
+    fn current_state_name(&self) -> DotString {
+        self.current_state
+            .as_ref()
+            .map_or_else(DotString::empty, |state| state.name().clone())
+    }
+
+    fn observe_on_state_entered(&mut self, state: DotString) {
         self.event_queue
             .push(StateMachineEvent::StateEntered { state });
     }
 
-    fn observe_on_state_exit(&mut self, leaving_state: &str) {
-        let state = self.str_interner.intern(leaving_state);
+    fn observe_on_state_exit(&mut self, state: DotString) {
         self.event_queue
             .push(StateMachineEvent::StateExit { state });
     }
 
-    fn observe_on_transition(&mut self, previous_state: &str, new_state: &str) {
-        let previous_state = self.str_interner.intern(previous_state);
-        let new_state = self.str_interner.intern(new_state);
+    fn observe_on_transition(&mut self, previous_state: DotString, new_state: DotString) {
         self.event_queue.push(StateMachineEvent::Transition {
             previous_state,
             new_state,
@@ -1576,10 +1435,7 @@ fn compute_elapsed_time_states(state_machine: &StateMachine) -> (FxHashSet<DotSt
 
 fn guards_reference_elapsed_time(transitions: &[Transition]) -> bool {
     for transition in transitions {
-        let Some(guards) = transition.guards() else {
-            continue;
-        };
-        for guard in guards {
+        for guard in transition.guards() {
             match guard {
                 Guard::Numeric {
                     input_name,

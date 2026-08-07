@@ -115,6 +115,11 @@ mod tests {
         assert!(r.contains(&"PointerEnter".to_string()));
         assert!(r.contains(&"PointerExit".to_string()));
         assert!(r.contains(&"OnComplete".to_string()));
+
+        let mut expected = r.clone();
+        expected.sort();
+        expected.dedup();
+        assert_eq!(r, expected, "must be sorted and free of duplicates");
     }
 
     #[test]

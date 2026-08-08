@@ -338,4 +338,148 @@ mod tests {
             "reset_theme must restore the slot to its initial value"
         );
     }
+
+    // ── BezierPath rule (experimental) ────────────────────────────
+
+    const BEZIER_PATH_THEME: &str = r#"{
+        "rules": [
+            {
+                "id": "shape_path",
+                "type": "BezierPath",
+                "value": {
+                    "vertices": [[-80, -80], [80, -80], [80, 80], [-80, 80]],
+                    "closed": true
+                }
+            }
+        ]
+    }"#;
+
+    fn load_bezier_path_player() -> Player {
+        let mut player = Player::new();
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = CString::new(include_str!("../assets/animations/lottie/bezier_path.json"))
+            .expect("Failed to create CString");
+        assert_eq!(player.load_animation_data(&data), Ok(()));
+        player
+    }
+
+    #[test]
+    fn test_bezier_path_rule_transforms_to_slot() {
+        let slots = dotlottie_rs::transform_theme_to_lottie_slots(BEZIER_PATH_THEME, "");
+        assert!(
+            slots.contains(r#""shape_path":{"p":{"a":0,"k":{"#),
+            "theme should emit a static path slot, got: {slots}"
+        );
+        assert!(
+            slots.contains(r#""i":[[0,0],[0,0],[0,0],[0,0]]"#),
+            "omitted tangents should default to zero, got: {slots}"
+        );
+        assert!(slots.contains(r#""v":[[-80,-80],[80,-80],[80,80],[-80,80]]"#));
+        assert!(slots.contains(r#""c":true"#));
+    }
+
+    #[test]
+    fn test_bezier_path_rule_applies_to_animation() {
+        let mut player = load_bezier_path_player();
+        let default_path = player.get_slot_str("shape_path");
+
+        let theme = CString::new(BEZIER_PATH_THEME).unwrap();
+        assert_eq!(player.set_theme_data(&theme), Ok(()));
+
+        let themed = player.get_slot_str("shape_path");
+        assert_ne!(default_path, themed, "theme should override the path slot");
+        assert_eq!(player.get_slot_type("shape_path"), "bezier_path");
+
+        assert_eq!(player.reset_theme(), Ok(()));
+        assert_eq!(player.get_slot_str("shape_path"), default_path);
+    }
+
+    #[test]
+    fn test_bezier_path_rule_animated() {
+        let theme = r#"{
+            "rules": [
+                {
+                    "id": "shape_path",
+                    "type": "BezierPath",
+                    "keyframes": [
+                        {
+                            "frame": 0,
+                            "value": {"vertices": [[-50, -50], [50, -50], [0, 50]], "closed": true},
+                            "inTangent": {"x": 0.833, "y": 0.833},
+                            "outTangent": {"x": 0.167, "y": 0.167}
+                        },
+                        {
+                            "frame": 60,
+                            "value": {"vertices": [[-90, -90], [90, -90], [0, 90]], "closed": true}
+                        }
+                    ]
+                }
+            ]
+        }"#;
+
+        let mut player = load_bezier_path_player();
+        assert_eq!(
+            player.set_theme_data(&CString::new(theme).unwrap()),
+            Ok(()),
+            "an animated path rule should apply"
+        );
+
+        let json = player.get_slot_str("shape_path");
+        assert!(
+            json.starts_with(r#"{"a":1,"k":[{"#),
+            "keyframed rule should emit an animated property, got: {json}"
+        );
+        assert!(json.contains(r#""t":60"#));
+    }
+
+    #[test]
+    fn test_bezier_path_rule_empty_keyframes_falls_back_to_value() {
+        let theme = r#"{
+            "rules": [
+                {
+                    "id": "shape_path",
+                    "type": "BezierPath",
+                    "keyframes": [],
+                    "value": {"vertices": [[0, 0], [10, 0], [0, 10]], "closed": true}
+                }
+            ]
+        }"#;
+        let slots = dotlottie_rs::transform_theme_to_lottie_slots(theme, "");
+        assert!(
+            slots.contains(r#""shape_path":{"p":{"a":0,"k":{"#),
+            "empty keyframes must fall back to the static value, got: {slots}"
+        );
+    }
+
+    #[test]
+    fn test_bezier_path_rule_without_value_is_dropped() {
+        let theme = r#"{"rules":[{"id":"shape_path","type":"BezierPath"}]}"#;
+        let slots = dotlottie_rs::transform_theme_to_lottie_slots(theme, "");
+        assert_eq!(slots, "{}");
+    }
+
+    #[test]
+    fn test_bezier_path_rule_rejects_mismatched_tangents() {
+        let theme = r#"{
+            "rules": [
+                {
+                    "id": "shape_path",
+                    "type": "BezierPath",
+                    "value": {
+                        "vertices": [[0, 0], [10, 0], [0, 10]],
+                        "inTangents": [[0, 0]]
+                    }
+                }
+            ]
+        }"#;
+        assert_eq!(
+            dotlottie_rs::transform_theme_to_lottie_slots(theme, ""),
+            "",
+            "a tangent count that doesn't match the vertices is an invalid theme"
+        );
+    }
 }

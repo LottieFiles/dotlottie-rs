@@ -40,11 +40,11 @@ pub use dotlottie::{
 pub use layout::{Fit, Layout};
 pub use player::{CompletionEvent, Mode, Player, PlayerEvent, Status};
 pub use renderer::{
-    slots_from_json_string, Animation, Bezier, BezierValue, ColorSlot, ColorSpace, ColorValue,
-    Drawable, GlContext, GlDisplay, GlSurface, GradientSlot, GradientStop, ImageSlot,
-    LottieKeyframe, LottieProperty, Marker, PositionSlot, Renderer, Rgba, ScalarSlot, ScalarValue,
-    Segment, Shape, SlotType, TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot,
-    VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
+    slots_from_json_string, Animation, Bezier, BezierPath, BezierPathSlot, BezierValue, ColorSlot,
+    ColorSpace, ColorValue, Drawable, GlContext, GlDisplay, GlSurface, GradientSlot, GradientStop,
+    ImageSlot, LottieKeyframe, LottieProperty, Marker, PositionSlot, Renderer, Rgba, ScalarSlot,
+    ScalarValue, Segment, Shape, SlotType, TextCaps, TextDocument, TextJustify, TextKeyframe,
+    TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget, WgpuTargetType,
 };
 #[cfg(feature = "tvg")]
 pub use renderer::{TvgAnimation, TvgRenderer, TvgShape};
@@ -54,8 +54,9 @@ pub use state_machine::events::{Event, EventKind, StateMachineEvent, StateMachin
 pub use state_machine::{OpenUrlPolicy, StateMachineEngine, StateMachineEngineStatus};
 #[cfg(feature = "theming")]
 pub use theme::{
-    transform_theme_to_lottie_slots, ColorKeyframe, ColorRule, GradientKeyframe, GradientRule,
-    ImageRule, ImageValue, PositionKeyframe, PositionRule, ScalarKeyframe, ScalarRule, TextRule,
-    TextRuleKeyframe, TextValue, Theme, ThemeRule, VectorKeyframe, VectorRule,
+    transform_theme_to_lottie_slots, BezierPathKeyframe, BezierPathRule, ColorKeyframe, ColorRule,
+    GradientKeyframe, GradientRule, ImageRule, ImageValue, PositionKeyframe, PositionRule,
+    ScalarKeyframe, ScalarRule, TextRule, TextRuleKeyframe, TextValue, Theme, ThemeRule,
+    VectorKeyframe, VectorRule,
 };
 pub use tween::TweenStatus;

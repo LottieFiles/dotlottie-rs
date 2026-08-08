@@ -1,3 +1,4 @@
+mod bezier_path;
 mod color;
 mod gradient;
 mod image;
@@ -6,6 +7,7 @@ mod scalar;
 mod text;
 mod vector;
 
+pub use bezier_path::{BezierPath, BezierPathSlot};
 pub use color::{ColorSlot, ColorValue};
 pub use gradient::{GradientSlot, GradientStop};
 pub use image::ImageSlot;
@@ -14,6 +16,8 @@ pub use scalar::{ScalarSlot, ScalarValue};
 pub use text::{TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot};
 pub use vector::VectorSlot;
 
+use bezier_path::is_bezier_path_value;
+pub(crate) use bezier_path::points;
 use gradient::{gradient_slot_from_json, write_gradient_slot};
 use image::{image_slot_from_json, write_image_slot};
 use std::collections::BTreeMap;
@@ -93,6 +97,10 @@ use std::fmt::Write as _;
 pub(crate) trait SlotValue: Sized {
     fn from_json(v: &Value) -> Option<Self>;
     fn write(&self, out: &mut String);
+    /// How the value appears inside a keyframe's "s" field.
+    fn write_keyframe_value(&self, out: &mut String) {
+        self.write(out);
+    }
 }
 
 impl SlotValue for [f32; 2] {
@@ -161,7 +169,7 @@ fn keyframe_from_json<T: SlotValue>(v: &Value) -> Option<LottieKeyframe<T>> {
 fn write_keyframe<T: SlotValue>(kf: &LottieKeyframe<T>, out: &mut String) {
     let mut o = ObjWriter::new(out);
     let _ = write!(o.field("t"), "{}", kf.frame);
-    kf.start_value.write(o.field("s"));
+    kf.start_value.write_keyframe_value(o.field("s"));
     if let Some(b) = &kf.in_tangent {
         write_bezier(b, o.field("i"));
     }
@@ -221,6 +229,8 @@ pub enum SlotType {
     Scalar(ScalarSlot),
     Vector(VectorSlot),
     Position(PositionSlot),
+    /// Experimental, pending a dotLottie theming spec proposal.
+    BezierPath(BezierPathSlot),
 }
 
 fn write_slot(slot: &SlotType, out: &mut String) {
@@ -232,6 +242,7 @@ fn write_slot(slot: &SlotType, out: &mut String) {
         SlotType::Scalar(s) => write_property(s, out),
         SlotType::Vector(s) => write_property(s, out),
         SlotType::Position(s) => write_property(s, out),
+        SlotType::BezierPath(s) => write_property(s, out),
     }
 }
 
@@ -276,6 +287,7 @@ pub fn slot_type_name(slot: &SlotType) -> &'static str {
         SlotType::Scalar(_) => "scalar",
         SlotType::Vector(_) => "vector",
         SlotType::Position(_) => "position",
+        SlotType::BezierPath(_) => "bezier_path",
     }
 }
 
@@ -286,6 +298,7 @@ pub fn parse_slot_from_json(slot_type: &str, json: &str) -> Option<SlotType> {
         "scalar" => property_from_json::<ScalarValue>(&v).map(SlotType::Scalar),
         "vector" => property_from_json::<[f32; 2]>(&v).map(SlotType::Vector),
         "position" => property_from_json::<[f32; 2]>(&v).map(SlotType::Position),
+        "bezier_path" => property_from_json::<BezierPath>(&v).map(SlotType::BezierPath),
         "gradient" => gradient_slot_from_json(&v).map(SlotType::Gradient),
         "image" => image_slot_from_json(&v).map(SlotType::Image),
         "text" => text_slot_from_json(&v).map(SlotType::Text),
@@ -342,9 +355,11 @@ fn collect_sid_slots(value: &Value, result: &mut BTreeMap<String, SlotType>) {
                     result.insert(sid.to_string(), slot_type);
                 }
             }
-            // Continue walking children regardless
-            for (_, v) in pairs {
-                collect_sid_slots(v, result);
+            // Continue walking children, except masks: ThorVG does not slot mask properties.
+            for (k, v) in pairs {
+                if *k != "masksProperties" {
+                    collect_sid_slots(v, result);
+                }
             }
         }
         Value::Array(arr) => {
@@ -375,6 +390,9 @@ fn parse_slot_type(value: &Value) -> Option<SlotType> {
 
             if is_keyframe_array {
                 if let Some(start_value) = first_element.get("s") {
+                    if is_bezier_path_value(start_value) {
+                        return property_from_json::<BezierPath>(value).map(SlotType::BezierPath);
+                    }
                     if let Some(start_arr) = start_value.as_array() {
                         let len = start_arr.len();
 
@@ -413,12 +431,17 @@ fn parse_slot_type(value: &Value) -> Option<SlotType> {
                 } else {
                     None
                 }
+            } else if is_bezier_path_value(k) {
+                // Static path values may be wrapped in a single-element array.
+                property_from_json::<BezierPath>(value).map(SlotType::BezierPath)
             } else {
                 // Non-numeric array, treat as text slot
                 text_slot_from_json(value).map(SlotType::Text)
             }
         } else if k.is_number() {
             property_from_json::<ScalarValue>(value).map(SlotType::Scalar)
+        } else if is_bezier_path_value(k) {
+            property_from_json::<BezierPath>(value).map(SlotType::BezierPath)
         } else if k.is_object() {
             parse_animated_slot(k)
         } else {
@@ -967,5 +990,101 @@ mod tests {
         // "x" present but not a string — serde errors, so must we.
         let v = Value::parse(r#"{"a":0,"k":[1],"x":5}"#).unwrap();
         assert!(property_from_json::<ScalarValue>(&v).is_none());
+    }
+
+    // ── Group I: bezier path slots (experimental) ─────────────────
+
+    const STATIC_PATH: &str = r#"{"a":0,"k":{"i":[[0,0],[1,1],[2,2]],"o":[[0,0],[-1,-1],[-2,-2]],"v":[[-50,-50],[50,-50],[0,50]],"c":true}}"#;
+
+    #[test]
+    fn static_bezier_path_round_trips() {
+        let v = Value::parse(STATIC_PATH).unwrap();
+        let slot = property_from_json::<BezierPath>(&v).unwrap();
+        match &slot.value {
+            PropertyValue::Static(p) => {
+                assert_eq!(p.vertices, vec![[-50.0, -50.0], [50.0, -50.0], [0.0, 50.0]]);
+                assert!(p.closed);
+            }
+            _ => panic!("expected a static path"),
+        }
+        let mut out = String::new();
+        write_property(&slot, &mut out);
+        assert_eq!(out, STATIC_PATH);
+    }
+
+    #[test]
+    fn animated_bezier_path_round_trips_array_wrapped_keyframe_values() {
+        let src = r#"{"a":1,"k":[{"t":0,"s":[{"i":[[0,0]],"o":[[0,0]],"v":[[1,2]],"c":false}]}]}"#;
+        let v = Value::parse(src).unwrap();
+        let slot = property_from_json::<BezierPath>(&v).unwrap();
+        match &slot.value {
+            PropertyValue::Animated(kfs) => {
+                assert_eq!(kfs.len(), 1);
+                assert_eq!(kfs[0].start_value.vertices, vec![[1.0, 2.0]]);
+            }
+            _ => panic!("expected an animated path"),
+        }
+        let mut out = String::new();
+        write_property(&slot, &mut out);
+        assert_eq!(out, src, "keyframed path values must stay array-wrapped");
+    }
+
+    #[test]
+    fn bezier_path_rejects_mismatched_tangent_counts() {
+        let v = Value::parse(r#"{"i":[[0,0]],"o":[[0,0]],"v":[[1,2],[3,4]]}"#).unwrap();
+        assert!(BezierPath::from_json(&v).is_none());
+    }
+
+    #[test]
+    fn bezier_path_rejects_empty_vertices() {
+        let v = Value::parse(r#"{"i":[],"o":[],"v":[]}"#).unwrap();
+        assert!(BezierPath::from_json(&v).is_none());
+    }
+
+    #[test]
+    fn bezier_path_rejects_non_finite_coordinates() {
+        let mut p = BezierPath::polygon(vec![[0.0, 0.0], [1.0, 0.0]], false);
+        assert!(p.is_valid());
+        p.vertices[0][0] = f32::NAN;
+        assert!(!p.is_valid());
+    }
+
+    #[test]
+    fn parse_slot_type_infers_array_wrapped_static_bezier_path() {
+        let v = Value::parse(r#"{"a":0,"k":[{"i":[[0,0]],"o":[[0,0]],"v":[[1,2]],"c":true}]}"#)
+            .unwrap();
+        assert_eq!(slot_type_name(&parse_slot_type(&v).unwrap()), "bezier_path");
+    }
+
+    #[test]
+    fn mask_path_sid_is_not_a_slot() {
+        let anim = r#"{"layers":[{"masksProperties":[{"pt":{"a":0,"k":{"i":[[0,0]],"o":[[0,0]],"v":[[1,2]],"c":true},"sid":"mask_path"}}]}]}"#;
+        assert!(extract_slots_from_animation(anim).is_empty());
+    }
+
+    #[test]
+    fn parse_slot_type_infers_static_bezier_path() {
+        let v = Value::parse(STATIC_PATH).unwrap();
+        assert_eq!(slot_type_name(&parse_slot_type(&v).unwrap()), "bezier_path");
+    }
+
+    #[test]
+    fn parse_slot_type_infers_animated_bezier_path() {
+        let src = r#"{"a":1,"k":[{"t":0,"s":[{"i":[[0,0]],"o":[[0,0]],"v":[[1,2]],"c":true}]},{"t":30,"s":[{"i":[[0,0]],"o":[[0,0]],"v":[[3,4]],"c":true}]}]}"#;
+        let v = Value::parse(src).unwrap();
+        assert_eq!(slot_type_name(&parse_slot_type(&v).unwrap()), "bezier_path");
+    }
+
+    #[test]
+    fn extract_bezier_path_slot_from_sid() {
+        let anim = r#"{"layers":[{"shapes":[{"ty":"sh","ks":{"a":0,"k":{"i":[[0,0]],"o":[[0,0]],"v":[[1,2]],"c":true},"sid":"my_path"}}]}]}"#;
+        let slots = extract_slots_from_animation(anim);
+        assert_eq!(slot_type_name(slots.get("my_path").unwrap()), "bezier_path");
+    }
+
+    #[test]
+    fn parse_slot_from_json_bezier_path() {
+        let slot = parse_slot_from_json("bezier_path", STATIC_PATH).unwrap();
+        assert_eq!(slot_type_name(&slot), "bezier_path");
     }
 }

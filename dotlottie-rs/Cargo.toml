@@ -137,6 +137,10 @@ required-features = ["state-machines"]
 name = "audio_player"
 required-features = ["audio", "dev"]
 
+[[example]]
+name = "bezier_path_slot"
+test = true
+
 [[bench]]
 name = "benchmarks"
 harness = false

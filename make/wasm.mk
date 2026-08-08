@@ -54,6 +54,9 @@ comma := ,
 wasm:
 	$(call wasm_build,,,release/wasm)
 
+wasm-video:
+	$(call wasm_build,video,,release/wasm-video)
+
 wasm-webgl:
 	$(call wasm_build,tvg-gl$(comma)webgl,,release/wasm-webgl)
 

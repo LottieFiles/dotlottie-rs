@@ -478,6 +478,15 @@ fn load_missing_image_placeholder(paint: tvg::Tvg_Paint) -> bool {
     .is_ok()
 }
 
+fn media_mimetype(src: &str) -> &'static CStr {
+    let ext = src.rsplit('.').next().unwrap_or_default();
+    if ext.eq_ignore_ascii_case("mp4") {
+        c"mp4"
+    } else {
+        c""
+    }
+}
+
 unsafe extern "C" fn asset_resolver_trampoline(
     paint: tvg::Tvg_Paint,
     src: *const c_char,
@@ -502,7 +511,7 @@ unsafe extern "C" fn asset_resolver_trampoline(
                 paint,
                 bytes.as_ptr() as *const c_char,
                 bytes.len() as u32,
-                c"".as_ptr(),
+                media_mimetype(src).as_ptr(),
                 ptr::null(),
                 true,
             )

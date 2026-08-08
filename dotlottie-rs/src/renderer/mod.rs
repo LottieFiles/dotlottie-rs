@@ -10,6 +10,9 @@ mod fallback_font;
 #[cfg(feature = "tvg")]
 mod thorvg;
 
+#[cfg(all(feature = "tvg", feature = "video"))]
+mod media;
+
 pub(crate) use backend::Point;
 pub use backend::{
     Animation, AssetResolver, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker,

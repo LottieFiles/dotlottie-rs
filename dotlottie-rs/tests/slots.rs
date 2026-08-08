@@ -297,5 +297,193 @@ mod tests {
             ]))),
             "gradient"
         );
+        assert_eq!(
+            renderer::slots::slot_type_name(&SlotType::BezierPath(BezierPathSlot::new(
+                BezierPath::polygon(vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], true)
+            ))),
+            "bezier_path"
+        );
+    }
+
+    // ── Bezier path slots (experimental) ──────────────────────────
+
+    fn load_bezier_path() -> Player {
+        let mut player = Player::new();
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = include_str!("../assets/animations/lottie/bezier_path.json");
+        let c_data = CString::new(data).unwrap();
+        player.load_animation_data(&c_data).unwrap();
+        player
+    }
+
+    #[test]
+    fn test_bezier_path_slot_discovered_from_animation() {
+        let player = load_bezier_path();
+
+        let mut ids = player.get_slot_ids();
+        ids.sort();
+        assert_eq!(ids, vec!["shape_color", "shape_path"]);
+        assert_eq!(player.get_slot_type("shape_path"), "bezier_path");
+        assert_eq!(player.get_slot_type("shape_color"), "color");
+    }
+
+    #[test]
+    fn test_set_and_get_bezier_path_slot() {
+        use dotlottie_rs::{BezierPath, BezierPathSlot};
+
+        let mut player = load_bezier_path();
+        let original = player.get_slot_str("shape_path");
+
+        player
+            .set_bezier_path_slot(
+                "shape_path",
+                BezierPathSlot::new(BezierPath::polygon(
+                    vec![[-80.0, -80.0], [80.0, -80.0], [80.0, 80.0], [-80.0, 80.0]],
+                    true,
+                )),
+            )
+            .unwrap();
+
+        let json = player.get_slot_str("shape_path");
+        assert_ne!(original, json, "slot value should change after set");
+        assert!(
+            json.contains("[-80,-80]") && json.contains("\"c\":true"),
+            "path slot JSON should contain the set value, got: {json}"
+        );
+
+        player.reset_slot("shape_path").unwrap();
+        assert_eq!(player.get_slot_str("shape_path"), original);
+    }
+
+    #[test]
+    fn test_set_bezier_path_slot_rejects_invalid_paths() {
+        use dotlottie_rs::{BezierPath, BezierPathSlot, LottieProperty};
+
+        let mut player = load_bezier_path();
+
+        let mismatched = BezierPath {
+            in_tangents: vec![[0.0, 0.0]],
+            out_tangents: vec![],
+            vertices: vec![[0.0, 0.0], [10.0, 0.0], [0.0, 10.0]],
+            closed: true,
+        };
+        assert!(player
+            .set_bezier_path_slot("shape_path", BezierPathSlot::new(mismatched))
+            .is_err());
+
+        let non_finite = BezierPath::polygon(vec![[f32::NAN, 0.0], [1.0, 0.0], [0.0, 1.0]], true);
+        assert!(player
+            .set_bezier_path_slot("shape_path", BezierPathSlot::new(non_finite))
+            .is_err());
+
+        let no_keyframes: BezierPathSlot = LottieProperty::animated(vec![]);
+        assert!(player
+            .set_bezier_path_slot("shape_path", no_keyframes)
+            .is_err());
+    }
+
+    #[test]
+    fn test_set_bezier_path_slot_str() {
+        let mut player = load_bezier_path();
+
+        let result = player.set_slot_str(
+            "shape_path",
+            r#"{"a":0,"k":{"i":[[0,0],[0,0],[0,0]],"o":[[0,0],[0,0],[0,0]],"v":[[-20,-20],[20,-20],[0,20]],"c":true}}"#,
+        );
+        assert!(result.is_ok(), "set_slot_str should succeed for path slot");
+        assert_eq!(player.get_slot_type("shape_path"), "bezier_path");
+    }
+
+    #[test]
+    fn test_bezier_path_slot_changes_rendered_frame() {
+        use dotlottie_rs::{BezierPath, BezierPathSlot};
+
+        let mut player = Player::new();
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = include_str!("../assets/animations/lottie/bezier_path.json");
+        player
+            .load_animation_data(&CString::new(data).unwrap())
+            .unwrap();
+        player.set_frame(1.0).unwrap();
+        player.render().unwrap();
+        let before = buffer.clone();
+        assert!(
+            before.iter().any(|&px| px != 0),
+            "baseline frame should have drawn the triangle"
+        );
+
+        player
+            .set_bezier_path_slot(
+                "shape_path",
+                BezierPathSlot::new(BezierPath::polygon(
+                    vec![[-90.0, -90.0], [90.0, -90.0], [90.0, 90.0], [-90.0, 90.0]],
+                    true,
+                )),
+            )
+            .unwrap();
+        player.render().unwrap();
+
+        assert_ne!(
+            before, buffer,
+            "overriding the path slot should change the rendered frame"
+        );
+    }
+
+    #[test]
+    fn test_animated_bezier_path_slot_interpolates() {
+        use dotlottie_rs::{BezierPath, LottieKeyframe, LottieProperty};
+
+        let mut player = Player::new();
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        player
+            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = include_str!("../assets/animations/lottie/bezier_path.json");
+        player
+            .load_animation_data(&CString::new(data).unwrap())
+            .unwrap();
+
+        let keyframe = |frame: u32, scale: f32| LottieKeyframe {
+            frame,
+            start_value: BezierPath::polygon(
+                vec![
+                    [-50.0 * scale, -50.0 * scale],
+                    [50.0 * scale, -50.0 * scale],
+                    [0.0, 50.0 * scale],
+                ],
+                true,
+            ),
+            in_tangent: None,
+            out_tangent: None,
+            value_in_tangent: None,
+            value_out_tangent: None,
+            hold: None,
+        };
+
+        player
+            .set_bezier_path_slot(
+                "shape_path",
+                LottieProperty::animated(vec![keyframe(0, 0.4), keyframe(60, 1.8)]),
+            )
+            .unwrap();
+
+        let mut frames = Vec::new();
+        for frame in [1.0, 30.0, 59.0] {
+            player.set_frame(frame).unwrap();
+            player.render().unwrap();
+            frames.push(buffer.clone());
+        }
+
+        assert_ne!(frames[0], frames[1], "path should interpolate over time");
+        assert_ne!(frames[1], frames[2], "path should interpolate over time");
     }
 }

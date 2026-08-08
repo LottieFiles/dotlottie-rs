@@ -1,9 +1,9 @@
 use crate::json::{array_of, f32_array, f32_vec, opt, Value};
-use crate::renderer::slots::bezier_from_json;
+use crate::renderer::slots::{bezier_from_json, points};
 use crate::renderer::slots::{
-    Bezier, ColorSlot, ColorValue, GradientSlot, GradientStop, ImageSlot, LottieKeyframe,
-    LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType, TextCaps, TextDocument,
-    TextJustify, TextKeyframe, TextSlot, VectorSlot,
+    Bezier, BezierPath, BezierPathSlot, ColorSlot, ColorValue, GradientSlot, GradientStop,
+    ImageSlot, LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType,
+    TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot, VectorSlot,
 };
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -234,6 +234,27 @@ pub struct PositionKeyframe {
     pub hold: Option<bool>,
 }
 
+/// Bezier path theme rule - overrides the shape of a path (`ty: "sh"`) property.
+///
+/// Experimental, pending a dotLottie theming spec proposal.
+#[derive(Debug, Clone)]
+pub struct BezierPathRule {
+    pub id: String,
+    pub animations: Option<Vec<String>>,
+    pub value: Option<BezierPath>,
+    pub keyframes: Option<Vec<BezierPathKeyframe>>,
+    pub expression: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BezierPathKeyframe {
+    pub frame: u32,
+    pub value: BezierPath,
+    pub in_tangent: Option<Bezier>,
+    pub out_tangent: Option<Bezier>,
+    pub hold: Option<bool>,
+}
+
 /// Theme rule enum wrapping all rule types
 #[derive(Debug, Clone)]
 pub enum ThemeRule {
@@ -244,6 +265,8 @@ pub enum ThemeRule {
     Text(TextRule),
     Vector(VectorRule),
     Position(PositionRule),
+    /// Experimental, pending a dotLottie theming spec proposal.
+    BezierPath(BezierPathRule),
 }
 
 impl ThemeRule {
@@ -256,6 +279,7 @@ impl ThemeRule {
             ThemeRule::Text(r) => &r.id,
             ThemeRule::Vector(r) => &r.id,
             ThemeRule::Position(r) => &r.id,
+            ThemeRule::BezierPath(r) => &r.id,
         }
     }
 
@@ -268,6 +292,7 @@ impl ThemeRule {
             ThemeRule::Text(r) => r.animations.as_ref(),
             ThemeRule::Vector(r) => r.animations.as_ref(),
             ThemeRule::Position(r) => r.animations.as_ref(),
+            ThemeRule::BezierPath(r) => r.animations.as_ref(),
         }
     }
 
@@ -288,6 +313,7 @@ impl ThemeRule {
             ThemeRule::Text(rule) => SlotType::Text(TextSlot::from(rule)),
             ThemeRule::Vector(rule) => SlotType::Vector(VectorSlot::from(rule)),
             ThemeRule::Position(rule) => SlotType::Position(PositionSlot::from(rule)),
+            ThemeRule::BezierPath(rule) => SlotType::BezierPath(rule.to_slot()?),
         };
         Some((slot_id, slot))
     }
@@ -302,6 +328,7 @@ fn theme_rule_from_json(v: &Value) -> Option<ThemeRule> {
         "Text" => ThemeRule::Text(text_rule_from_json(v)?),
         "Vector" => ThemeRule::Vector(vector_rule_from_json(v)?),
         "Position" => ThemeRule::Position(position_rule_from_json(v)?),
+        "BezierPath" => ThemeRule::BezierPath(bezier_path_rule_from_json(v)?),
         _ => return None,
     })
 }
@@ -516,6 +543,38 @@ fn position_rule_from_json(v: &Value) -> Option<PositionRule> {
                 out_tangent: kf.out_tangent,
                 value_in_tangent,
                 value_out_tangent,
+                hold: kf.hold,
+            })
+        })?,
+        expression: opt_expression(v)?,
+    })
+}
+
+fn bezier_path_value_from_json(v: &Value) -> Option<BezierPath> {
+    let vertices = points(v.get("vertices")?)?;
+    let count = vertices.len();
+    let zeros = || vec![[0.0, 0.0]; count];
+    let path = BezierPath {
+        in_tangents: opt(v.get("inTangents"), points)?.unwrap_or_else(zeros),
+        out_tangents: opt(v.get("outTangents"), points)?.unwrap_or_else(zeros),
+        vertices,
+        closed: opt(v.get("closed"), Value::as_bool)?.unwrap_or(false),
+    };
+    path.is_valid().then_some(path)
+}
+
+fn bezier_path_rule_from_json(v: &Value) -> Option<BezierPathRule> {
+    Some(BezierPathRule {
+        id: rule_id(v)?,
+        animations: opt_animations(v)?,
+        value: opt(v.get("value"), bezier_path_value_from_json)?,
+        keyframes: opt_keyframes(v, |kf| {
+            let kf = keyframe_fields(kf, bezier_path_value_from_json)?;
+            Some(BezierPathKeyframe {
+                frame: kf.frame,
+                value: kf.value,
+                in_tangent: kf.in_tangent,
+                out_tangent: kf.out_tangent,
                 hold: kf.hold,
             })
         })?,
@@ -787,6 +846,33 @@ impl From<&PositionRule> for PositionSlot {
         } else {
             LottieProperty::static_value([0.0, 0.0])
         }
+    }
+}
+
+impl BezierPathRule {
+    fn to_slot(&self) -> Option<BezierPathSlot> {
+        let mut slot = match self.keyframes.as_deref() {
+            Some(keyframes) if !keyframes.is_empty() => LottieProperty::animated(
+                keyframes
+                    .iter()
+                    .map(|kf| LottieKeyframe {
+                        frame: kf.frame,
+                        start_value: kf.value.clone(),
+                        in_tangent: kf.in_tangent.clone(),
+                        out_tangent: kf.out_tangent.clone(),
+                        value_in_tangent: None,
+                        value_out_tangent: None,
+                        hold: kf.hold.map(|b| if b { 1 } else { 0 }),
+                    })
+                    .collect(),
+            ),
+            _ => LottieProperty::static_value(self.value.clone()?),
+        };
+
+        if let Some(expr) = &self.expression {
+            slot = slot.with_expression(expr.clone());
+        }
+        Some(slot)
     }
 }
 

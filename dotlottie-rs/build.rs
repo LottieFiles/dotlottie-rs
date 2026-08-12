@@ -372,10 +372,27 @@ mod thorvg {
             "deps/thorvg/src/renderer",
         ];
 
+        // ThorVG picks its media backend at link time, by defining MediaLoader::gen().
+        // Use the one it ships where it has one (AVFoundation on Apple) and fall back
+        // to our own, which forwards to a player written in Rust.
         let video = env::var("CARGO_FEATURE_VIDEO").is_ok();
+        let apple_media = video && target_triple.contains("apple");
         if video {
             src.push("deps/thorvg/src/loaders/media");
-            src.push("cpp");
+            if apple_media {
+                src.push("deps/thorvg/src/loaders/media/apple");
+                for framework in [
+                    "AVFoundation",
+                    "CoreMedia",
+                    "CoreVideo",
+                    "Foundation",
+                    "CoreFoundation",
+                ] {
+                    println!("cargo:rustc-link-lib=framework={framework}");
+                }
+            } else {
+                src.push("cpp");
+            }
         }
 
         // --- config.h generation ---

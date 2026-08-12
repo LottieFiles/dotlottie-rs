@@ -1,4 +1,22 @@
 use std::ffi::c_void;
+use std::sync::Mutex;
+
+/// Every open player, so the crate can halt them when the animation is not
+/// advancing. ThorVG owns the players and only touches them while a video layer
+/// renders, so nothing else would ever pause them.
+static OPEN_PLAYERS: Mutex<Vec<usize>> = Mutex::new(Vec::new());
+
+/// Pause or resume every open video, following the player's playback state.
+pub(crate) fn set_all_playing(playing: bool) {
+    let Ok(players) = OPEN_PLAYERS.lock() else {
+        return;
+    };
+    for handle in players.iter() {
+        if let Some(player) = unsafe { as_player(*handle as *mut c_void) } {
+            player.set_playing(playing);
+        }
+    }
+}
 
 trait MediaPlayer {
     fn seek(&mut self, seconds: f32);
@@ -31,7 +49,11 @@ pub unsafe extern "C" fn dlMediaOpen(data: *const u8, size: u32) -> *mut c_void 
     match PlatformPlayer::open(bytes) {
         Some(player) => {
             let boxed: Box<dyn MediaPlayer> = Box::new(player);
-            Box::into_raw(Box::new(boxed)) as *mut c_void
+            let handle = Box::into_raw(Box::new(boxed)) as *mut c_void;
+            if let Ok(mut players) = OPEN_PLAYERS.lock() {
+                players.push(handle as usize);
+            }
+            handle
         }
         None => std::ptr::null_mut(),
     }
@@ -42,6 +64,9 @@ pub unsafe extern "C" fn dlMediaOpen(data: *const u8, size: u32) -> *mut c_void 
 #[no_mangle]
 pub unsafe extern "C" fn dlMediaClose(player: *mut c_void) {
     if !player.is_null() {
+        if let Ok(mut players) = OPEN_PLAYERS.lock() {
+            players.retain(|handle| *handle != player as usize);
+        }
         drop(unsafe { Box::from_raw(player as *mut Box<dyn MediaPlayer>) });
     }
 }

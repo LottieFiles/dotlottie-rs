@@ -19,6 +19,7 @@ pub struct WebVideoPlayer {
     target: f32,
     step: f32,
     since_kick: u32,
+    halted: bool,
 }
 
 impl WebVideoPlayer {
@@ -68,6 +69,7 @@ impl WebVideoPlayer {
             target: 0.0,
             step: 0.0,
             since_kick: 0,
+            halted: false,
         })
     }
 
@@ -138,6 +140,7 @@ impl MediaPlayer for WebVideoPlayer {
     fn seek(&mut self, seconds: f32) {
         self.step = seconds - self.target;
         self.target = seconds;
+        self.halted = false;
     }
 
     fn info(&self) -> Option<(u32, u32, f32)> {
@@ -175,7 +178,15 @@ impl MediaPlayer for WebVideoPlayer {
         }
     }
 
-    fn set_playing(&mut self, _playing: bool) {}
+    /// Playback is driven by `seek()` while the layer renders, so the only thing
+    /// that matters here is halting: once the layer is out of range nothing syncs
+    /// this player again, and an element left running would play on unattended.
+    fn set_playing(&mut self, playing: bool) {
+        self.halted = !playing;
+        if self.halted && !self.element.paused() {
+            let _ = self.element.pause();
+        }
+    }
 
     fn set_volume(&mut self, volume: f32) {
         self.element.set_volume(volume as f64);

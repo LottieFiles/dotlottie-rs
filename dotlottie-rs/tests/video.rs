@@ -60,10 +60,11 @@ fn video_frames_reach_the_canvas() {
     );
 }
 
-/// A paused player must not leave a video running: nothing syncs the media once
-/// the animation stops advancing, so the pause has to be pushed to it.
+/// Smoke test only: play/pause/stop must stay well-behaved with a video loaded.
+/// Whether the pause actually reaches a player is covered by the registry unit
+/// test in `renderer::media`, since the backend here is ThorVG's own.
 #[test]
-fn player_lifecycle_reaches_video() {
+fn player_lifecycle_runs_with_video() {
     let mut player = Player::new();
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
     assert!(player

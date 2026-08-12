@@ -7,15 +7,23 @@ use std::sync::Mutex;
 static OPEN_PLAYERS: Mutex<Vec<usize>> = Mutex::new(Vec::new());
 
 /// Pause or resume every open video, following the player's playback state.
-pub(crate) fn set_all_playing(playing: bool) {
+/// Returns how many players were reached.
+///
+/// Only backends that run a clock of their own need this - a player that moves
+/// solely when seeked is already still. ThorVG's own backends are not reachable
+/// from here; on those platforms a paused animation leaves its video running.
+pub(crate) fn set_all_playing(playing: bool) -> usize {
     let Ok(players) = OPEN_PLAYERS.lock() else {
-        return;
+        return 0;
     };
+    let mut reached = 0;
     for handle in players.iter() {
         if let Some(player) = unsafe { as_player(*handle as *mut c_void) } {
             player.set_playing(playing);
+            reached += 1;
         }
     }
+    reached
 }
 
 trait MediaPlayer {
@@ -151,4 +159,34 @@ unsafe fn as_player(player: *mut c_void) -> Option<&'static mut dyn MediaPlayer>
     }
     let boxed = unsafe { &mut *(player as *mut Box<dyn MediaPlayer>) };
     Some(boxed.as_mut())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// ThorVG owns the players, so the registry is the only handle the crate has
+    /// on them - if it drifts, pausing the animation reaches nothing.
+    #[test]
+    fn registry_follows_open_and_close() {
+        let clip = [0u8; 8];
+        let first = unsafe { dlMediaOpen(clip.as_ptr(), clip.len() as u32) };
+        let second = unsafe { dlMediaOpen(clip.as_ptr(), clip.len() as u32) };
+        assert!(!first.is_null() && !second.is_null());
+
+        assert_eq!(set_all_playing(false), 2, "both players must be reached");
+
+        unsafe { dlMediaClose(first) };
+        assert_eq!(set_all_playing(true), 1, "a closed player must be dropped");
+
+        unsafe { dlMediaClose(second) };
+        assert_eq!(set_all_playing(true), 0);
+    }
+
+    #[test]
+    fn open_rejects_empty_data() {
+        assert!(unsafe { dlMediaOpen(std::ptr::null(), 0) }.is_null());
+        let empty: [u8; 0] = [];
+        assert!(unsafe { dlMediaOpen(empty.as_ptr(), 0) }.is_null());
+    }
 }

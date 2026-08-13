@@ -86,7 +86,7 @@ fn main() {
             if is_animated {
                 let color_slot = ColorSlot::with_keyframes(vec![
                     LottieKeyframe {
-                        frame: 0,
+                        frame: 0.0,
                         start_value: ColorValue([1.0, 0.0, 0.0]), // Red
                         in_tangent: None,
                         out_tangent: None,
@@ -95,7 +95,7 @@ fn main() {
                         hold: None,
                     },
                     LottieKeyframe {
-                        frame: 60,
+                        frame: 60.0,
                         start_value: ColorValue([0.0, 0.0, 1.0]), // Blue
                         in_tangent: None,
                         out_tangent: None,

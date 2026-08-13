@@ -42,7 +42,7 @@ pub struct Bezier {
 
 #[derive(Debug, Clone)]
 pub struct LottieKeyframe<T> {
-    pub frame: u32,
+    pub frame: f32,
     pub start_value: T,
     pub in_tangent: Option<Bezier>,
     pub out_tangent: Option<Bezier>,
@@ -148,7 +148,7 @@ pub(crate) fn write_bezier(b: &Bezier, out: &mut String) {
 
 fn keyframe_from_json<T: SlotValue>(v: &Value) -> Option<LottieKeyframe<T>> {
     Some(LottieKeyframe {
-        frame: v.u32_field("t")?,
+        frame: v.f32_field("t")?,
         start_value: T::from_json(v.get("s")?)?,
         in_tangent: opt(v.get("i"), bezier_from_json)?,
         out_tangent: opt(v.get("o"), bezier_from_json)?,
@@ -160,7 +160,7 @@ fn keyframe_from_json<T: SlotValue>(v: &Value) -> Option<LottieKeyframe<T>> {
 
 fn write_keyframe<T: SlotValue>(kf: &LottieKeyframe<T>, out: &mut String) {
     let mut o = ObjWriter::new(out);
-    let _ = write!(o.field("t"), "{}", kf.frame);
+    write_f32(kf.frame, o.field("t"));
     kf.start_value.write(o.field("s"));
     if let Some(b) = &kf.in_tangent {
         write_bezier(b, o.field("i"));
@@ -893,6 +893,16 @@ mod tests {
         let v = Value::parse(src).unwrap();
         let p = property_from_json::<ColorValue>(&v).unwrap();
         assert!(matches!(&p.value, PropertyValue::Animated(kfs) if kfs.len() == 2));
+        let mut out = String::new();
+        write_property(&p, &mut out);
+        assert_eq!(out, src);
+    }
+
+    #[test]
+    fn property_fractional_keyframe_times_roundtrip() {
+        let src = r#"{"a":1,"k":[{"t":0.1,"s":[1,0,0]},{"t":119.999,"s":[0,1,0]},{"t":284.998,"s":[0,0,1]}]}"#;
+        let v = Value::parse(src).unwrap();
+        let p = property_from_json::<ColorValue>(&v).unwrap();
         let mut out = String::new();
         write_property(&p, &mut out);
         assert_eq!(out, src);

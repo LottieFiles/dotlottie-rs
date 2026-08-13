@@ -178,7 +178,7 @@ impl TextDocument {
 
 #[derive(Debug, Clone)]
 pub struct TextKeyframe {
-    pub frame: u32,
+    pub frame: f32,
     pub text_document: TextDocument,
 }
 
@@ -192,7 +192,7 @@ impl TextSlot {
     pub fn new(text: impl Into<String>) -> Self {
         Self {
             keyframes: vec![TextKeyframe {
-                frame: 0,
+                frame: 0.0,
                 text_document: TextDocument::new(text),
             }],
             expression: None,
@@ -202,7 +202,7 @@ impl TextSlot {
     pub fn with_document(document: TextDocument) -> Self {
         Self {
             keyframes: vec![TextKeyframe {
-                frame: 0,
+                frame: 0.0,
                 text_document: document,
             }],
             expression: None,
@@ -290,7 +290,7 @@ pub(crate) fn text_slot_from_json(v: &Value) -> Option<TextSlot> {
     Some(TextSlot {
         keyframes: array_of(v.get("k")?, |kf| {
             Some(TextKeyframe {
-                frame: kf.u32_field("t")?,
+                frame: kf.f32_field("t")?,
                 text_document: text_document_from_json(kf.get("s")?)?,
             })
         })?,
@@ -302,7 +302,7 @@ pub(crate) fn write_text_slot(t: &TextSlot, out: &mut String) {
     let mut o = ObjWriter::new(out);
     write_seq(o.field("k"), &t.keyframes, |kf, out| {
         let mut kfo = ObjWriter::new(out);
-        let _ = write!(kfo.field("t"), "{}", kf.frame);
+        write_f32(kf.frame, kfo.field("t"));
         write_text_document(&kf.text_document, kfo.field("s"));
         kfo.finish();
     });

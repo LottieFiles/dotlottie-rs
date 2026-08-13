@@ -96,7 +96,7 @@ pub struct ColorRule {
 
 #[derive(Debug, Clone)]
 pub struct ColorKeyframe {
-    pub frame: u32,
+    pub frame: f32,
     pub value: Vec<f32>,
     pub in_tangent: Option<Bezier>,
     pub out_tangent: Option<Bezier>,
@@ -117,7 +117,7 @@ pub struct ScalarRule {
 
 #[derive(Debug, Clone)]
 pub struct ScalarKeyframe {
-    pub frame: u32,
+    pub frame: f32,
     pub value: f32,
     pub in_tangent: Option<Bezier>,
     pub out_tangent: Option<Bezier>,
@@ -138,7 +138,7 @@ pub struct GradientRule {
 
 #[derive(Debug, Clone)]
 pub struct GradientKeyframe {
-    pub frame: u32,
+    pub frame: f32,
     pub value: Vec<GradientStop>,
     pub in_tangent: Option<Bezier>,
     pub out_tangent: Option<Bezier>,
@@ -190,7 +190,7 @@ pub struct TextValue {
 
 #[derive(Debug, Clone)]
 pub struct TextRuleKeyframe {
-    pub frame: u32,
+    pub frame: f32,
     pub value: TextValue,
 }
 
@@ -206,7 +206,7 @@ pub struct VectorRule {
 
 #[derive(Debug, Clone)]
 pub struct VectorKeyframe {
-    pub frame: u32,
+    pub frame: f32,
     pub value: Vec<f32>,
     pub in_tangent: Option<Bezier>,
     pub out_tangent: Option<Bezier>,
@@ -225,7 +225,7 @@ pub struct PositionRule {
 
 #[derive(Debug, Clone)]
 pub struct PositionKeyframe {
-    pub frame: u32,
+    pub frame: f32,
     pub value: Vec<f32>,
     pub in_tangent: Option<Bezier>,
     pub out_tangent: Option<Bezier>,
@@ -324,7 +324,7 @@ fn opt_keyframes<T>(v: &Value, parse: impl Fn(&Value) -> Option<T>) -> Option<Op
 
 /// The field block shared by every theme keyframe shape.
 struct KeyframeFields<T> {
-    frame: u32,
+    frame: f32,
     value: T,
     in_tangent: Option<Bezier>,
     out_tangent: Option<Bezier>,
@@ -336,7 +336,7 @@ fn keyframe_fields<'a, T>(
     parse_value: impl Fn(&Value<'a>) -> Option<T>,
 ) -> Option<KeyframeFields<T>> {
     Some(KeyframeFields {
-        frame: v.u32_field("frame")?,
+        frame: v.f32_field("frame")?,
         value: parse_value(v.get("value")?)?,
         in_tangent: opt(v.get("inTangent"), bezier_from_json)?,
         out_tangent: opt(v.get("outTangent"), bezier_from_json)?,
@@ -474,7 +474,7 @@ fn text_rule_from_json(v: &Value) -> Option<TextRule> {
         value: opt(v.get("value"), text_value_from_json)?,
         keyframes: opt_keyframes(v, |kf| {
             Some(TextRuleKeyframe {
-                frame: kf.u32_field("frame")?,
+                frame: kf.f32_field("frame")?,
                 value: text_value_from_json(kf.get("value")?)?,
             })
         })?,
@@ -921,6 +921,19 @@ mod tests {
         // Rule targeting: "c" only applies to a1.
         assert_eq!(theme.to_slot_types("a1").len(), 8);
         assert_eq!(theme.to_slot_types("other").len(), 7);
+    }
+
+    #[test]
+    fn fractional_keyframe_frames_parse() {
+        let theme: Theme = r#"{"rules":[
+            {"id":"BG","type":"Color","value":[0.2353,0.0627,0.3255]},
+            {"id":"Page1","type":"Color","keyframes":[
+                {"value":[0.3725,0.3333,0.4],"frame":239.998,"inTangent":{"x":0.243,"y":1},"outTangent":{"x":0.47,"y":-0.001}},
+                {"value":[0.7451,0.6,0.902],"frame":284.998}]}
+        ]}"#
+            .parse()
+            .expect("fractional frames must parse");
+        assert_eq!(theme.rules.len(), 2);
     }
 
     #[test]

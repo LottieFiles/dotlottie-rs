@@ -183,7 +183,7 @@ fn main() {
             if is_animated {
                 let gradient_slot = GradientSlot::with_keyframes(vec![
                     LottieKeyframe {
-                        frame: 0,
+                        frame: 0.0,
                         start_value: vec![
                             GradientStop {
                                 offset: 0.0,
@@ -205,7 +205,7 @@ fn main() {
                         hold: None,
                     },
                     LottieKeyframe {
-                        frame: 60,
+                        frame: 60.0,
                         start_value: vec![
                             GradientStop {
                                 offset: 0.0,

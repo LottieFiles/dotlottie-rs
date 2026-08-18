@@ -303,9 +303,55 @@ impl Player {
     /// Create the audio manager and attach the renderer's audio resolver.
     #[cfg(feature = "audio")]
     fn setup_audio(&mut self) {
+        let volume = self.audio_volume();
         let lookup = self.build_audio_lookup();
         self.audio = Some(Rc::new(RefCell::new(AudioManager::new(lookup))));
         self.attach_audio_resolver();
+        if let Some(am) = &self.audio {
+            let mut am = am.borrow_mut();
+            am.set_rate(self.speed);
+            am.set_direction(self.direction == Direction::Forward);
+            am.set_volume(volume);
+        }
+        // Anchor at the loaded frame (end_frame for reverse modes), not 0.
+        self.audio_set_playhead(self.current_frame());
+    }
+
+    /// Sync audio to the playhead after a jump (seek, segment start, tween end).
+    #[cfg(feature = "audio")]
+    fn audio_sync(&self) {
+        if let Some(am) = &self.audio {
+            am.borrow_mut().sync();
+        }
+    }
+
+    #[cfg(feature = "audio")]
+    fn audio_set_playhead(&self, frame_no: f32) {
+        if let Some(am) = &self.audio {
+            let fps = self.frame_rate();
+            if fps > 0.0 {
+                am.borrow_mut().set_playhead(frame_no / fps);
+            }
+        }
+    }
+
+    #[cfg(feature = "audio")]
+    fn audio_set_direction(&self) {
+        if let Some(am) = &self.audio {
+            am.borrow_mut()
+                .set_direction(self.direction == Direction::Forward);
+        }
+    }
+
+    /// Frames per second; `duration()` is in milliseconds.
+    #[cfg(feature = "audio")]
+    fn frame_rate(&self) -> f32 {
+        let duration_ms = self.duration();
+        if duration_ms > 0.0 {
+            self.total_frames() * 1000.0 / duration_ms
+        } else {
+            0.0
+        }
     }
 
     #[cfg(feature = "audio")]
@@ -347,6 +393,32 @@ impl Player {
         self.audio
             .as_ref()
             .map_or(0, |am| am.borrow().active_layer_count())
+    }
+
+    #[cfg(all(test, feature = "audio"))]
+    pub(crate) fn audio_layer_offsets(&self) -> Vec<f32> {
+        self.audio
+            .as_ref()
+            .map_or_else(Vec::new, |am| am.borrow().layer_offsets())
+    }
+
+    #[cfg(all(test, feature = "audio"))]
+    pub(crate) fn audio_started_count(&self) -> usize {
+        self.audio
+            .as_ref()
+            .map_or(0, |am| am.borrow().started_layer_count())
+    }
+
+    #[cfg(all(test, feature = "audio"))]
+    pub(crate) fn audio_rate(&self) -> f32 {
+        self.audio.as_ref().map_or(1.0, |am| am.borrow().rate())
+    }
+
+    #[cfg(all(test, feature = "audio"))]
+    pub(crate) fn audio_is_forward(&self) -> bool {
+        self.audio
+            .as_ref()
+            .is_none_or(|am| am.borrow().is_forward())
     }
 
     pub fn pop_completion_event(&mut self) -> CompletionEvent {
@@ -397,7 +469,9 @@ impl Player {
 
                 #[cfg(feature = "audio")]
                 if let Some(am) = &self.audio {
-                    am.borrow_mut().set_playing(true);
+                    let mut am = am.borrow_mut();
+                    am.sync();
+                    am.set_playing(true);
                 }
 
                 self.event_queue.push(PlayerEvent::Play);
@@ -430,7 +504,10 @@ impl Player {
 
         #[cfg(feature = "audio")]
         if let Some(am) = &self.audio {
-            am.borrow_mut().set_playing(true);
+            let mut am = am.borrow_mut();
+            am.set_direction(self.direction == Direction::Forward);
+            am.sync();
+            am.set_playing(true);
         }
 
         self.event_queue.push(PlayerEvent::Play);
@@ -607,6 +684,8 @@ impl Player {
                 if next_frame >= end_frame {
                     self.direction = Direction::Reverse;
                     self.elapsed_frames = 0.0;
+                    #[cfg(feature = "audio")]
+                    self.audio_set_direction();
 
                     end_frame
                 } else {
@@ -619,6 +698,8 @@ impl Player {
                         self.current_loop_count += 1;
                         self.direction = Direction::Forward;
                         self.elapsed_frames = 0.0;
+                        #[cfg(feature = "audio")]
+                        self.audio_set_direction();
                     }
 
                     start_frame
@@ -641,6 +722,8 @@ impl Player {
                 if next_frame <= start_frame {
                     self.direction = Direction::Forward;
                     self.elapsed_frames = 0.0;
+                    #[cfg(feature = "audio")]
+                    self.audio_set_direction();
                     start_frame
                 } else {
                     next_frame
@@ -652,6 +735,8 @@ impl Player {
                         self.current_loop_count += 1;
                         self.direction = Direction::Reverse;
                         self.elapsed_frames = 0.0;
+                        #[cfg(feature = "audio")]
+                        self.audio_set_direction();
                     }
 
                     end_frame
@@ -685,13 +770,16 @@ impl Player {
     ///
     /// The frame number is considered valid if it's within the range of the start and end frames.
     ///
-    /// Internal: set the renderer frame, push events, sync audio.
+    /// Internal: set the renderer frame and push events.
     /// Does NOT update `elapsed_frames`.
     fn apply_frame(&mut self, no: f32) -> Result<()> {
         if no < self.start_frame() || no > self.end_frame() {
             return Err(Error::InvalidParameter);
         }
 
+        // Must precede set_frame: resolver events anchor against the playhead.
+        #[cfg(feature = "audio")]
+        self.audio_set_playhead(no);
         self.renderer.set_frame(no)?;
         self.event_queue.push(PlayerEvent::Frame { frame_no: no });
 
@@ -707,6 +795,8 @@ impl Player {
             Direction::Forward => no - self.start_frame(),
             Direction::Reverse => self.end_frame() - no,
         };
+        #[cfg(feature = "audio")]
+        self.audio_sync();
         Ok(())
     }
 
@@ -747,13 +837,16 @@ impl Player {
                     let _ = self.stop();
                 }
 
-                // Replay audio on loop; the resolver won't re-announce layers
-                // that stay in range across the wrap.
+                // The resolver won't re-announce layers that stay in range
+                // across the wrap, so resync to the new cycle's start.
                 #[cfg(feature = "audio")]
                 if !count_complete {
-                    if let Some(am) = &self.audio {
-                        am.borrow_mut().restart();
-                    }
+                    let wrap_frame = match self.mode {
+                        Mode::Forward | Mode::Bounce => self.start_frame(),
+                        Mode::Reverse | Mode::ReverseBounce => self.end_frame(),
+                    };
+                    self.audio_set_playhead(wrap_frame);
+                    self.audio_sync();
                 }
 
                 self.emit_on_loop();
@@ -819,6 +912,8 @@ impl Player {
                 if frame < seg.start || frame > seg.end {
                     self.elapsed_frames = 0.0;
                     let _ = self.apply_frame(seg.start);
+                    #[cfg(feature = "audio")]
+                    self.audio_sync();
                 }
             }
         } else {
@@ -868,6 +963,8 @@ impl Player {
                 Direction::Forward => frame - self.start_frame(),
                 Direction::Reverse => self.end_frame() - frame,
             };
+            #[cfg(feature = "audio")]
+            self.audio_set_direction();
         }
     }
 
@@ -884,6 +981,10 @@ impl Player {
     pub fn set_speed(&mut self, speed: f32) {
         if self.speed != speed && speed > 0.0 {
             self.speed = speed;
+            #[cfg(feature = "audio")]
+            if let Some(am) = &self.audio {
+                am.borrow_mut().set_rate(speed);
+            }
         }
     }
 
@@ -1603,6 +1704,8 @@ impl Player {
         self.end_tween(TweenOutcome::Cancelled);
         self.renderer.sync_current_frame(from);
         let _ = self.apply_frame(from);
+        #[cfg(feature = "audio")]
+        self.audio_sync();
     }
 
     #[inline]
@@ -1639,6 +1742,11 @@ impl Player {
                 Direction::Forward => to - self.start_frame(),
                 Direction::Reverse => self.end_frame() - to,
             };
+            #[cfg(feature = "audio")]
+            {
+                self.audio_set_playhead(to);
+                self.audio_sync();
+            }
             self.end_tween(TweenOutcome::Completed);
         }
 
@@ -2043,6 +2151,110 @@ mod audio_render_tests {
         );
     }
 
+    /// Seeking into the middle of active clips must land on the same audio
+    /// positions as entering that frame directly (the segment-start bug).
+    #[test]
+    fn seek_matches_direct_entry_offsets() {
+        let mut buffer1 = vec![0u32; 512 * 512];
+        let mut seeked = loaded_audio_player(&mut buffer1);
+        seeked.play().unwrap();
+        // A first tick renders near frame 0 and activates early layers.
+        assert!(seeked.tick(1000.0 / 60.0).unwrap());
+        seeked.set_frame(100.0).unwrap();
+        seeked.render().unwrap();
+        let mut via_seek = seeked.audio_layer_offsets();
+
+        let mut buffer2 = vec![0u32; 512 * 512];
+        let mut direct = loaded_audio_player(&mut buffer2);
+        direct.play().unwrap();
+        direct.set_frame(100.0).unwrap();
+        direct.render().unwrap(); // first activation happens at frame 100
+        let mut via_direct = direct.audio_layer_offsets();
+
+        via_seek.sort_by(f32::total_cmp);
+        via_direct.sort_by(f32::total_cmp);
+        assert_eq!(via_seek.len(), via_direct.len());
+        assert!(!via_seek.is_empty(), "audio active at frame 100");
+        for (s, d) in via_seek.iter().zip(&via_direct) {
+            assert!(
+                (s - d).abs() < 0.02,
+                "seeked offset {s} must match direct-entry offset {d}"
+            );
+        }
+    }
+
+    /// `set_speed` must reach the audio manager, before and after load.
+    #[test]
+    fn speed_propagates_to_audio() {
+        let mut buffer = vec![0u32; 512 * 512];
+        let mut player = Player::new();
+        player
+            .set_sw_target(&mut buffer, 512, 512, ColorSpace::ABGR8888)
+            .unwrap();
+        player.set_speed(2.0);
+
+        let data = include_bytes!("../assets/animations/dotlottie/v2/happy_birthday_audio.lottie");
+        assert!(player.load_dotlottie_data(data).is_ok());
+        assert_eq!(player.audio_rate(), 2.0, "pre-load speed applied on load");
+
+        player.set_speed(0.5);
+        assert_eq!(player.audio_rate(), 0.5, "post-load speed applied");
+    }
+
+    /// Reverse playback suspends audio; returning to forward resumes it.
+    #[test]
+    fn reverse_direction_suspends_audio() {
+        let mut buffer = vec![0u32; 512 * 512];
+        let mut player = loaded_audio_player(&mut buffer);
+
+        assert!(player.audio_is_forward());
+        player.set_mode(crate::Mode::Reverse);
+        assert!(!player.audio_is_forward(), "reverse suspends audio");
+        player.set_mode(crate::Mode::Forward);
+        assert!(player.audio_is_forward(), "forward resumes audio");
+    }
+
+    /// A loop wrap inside a segment must restart clips at the segment start's
+    /// offset, not from the beginning of the clip.
+    #[test]
+    fn loop_wrap_resyncs_to_segment_start() {
+        let mut buffer = vec![0u32; 512 * 512];
+        let mut player = loaded_audio_player(&mut buffer);
+        // Inside the piano_keys layer range (75..254): its clip offset at the
+        // segment start is (90 - 75) / 30 = 0.5s, never 0.
+        player
+            .set_segment(Some(crate::Segment {
+                start: 90.0,
+                end: 120.0,
+            }))
+            .unwrap();
+
+        player.set_frame(90.0).unwrap();
+        player.play().unwrap();
+        player.render().unwrap();
+        let mut at_start = player.audio_layer_offsets();
+        assert!(!at_start.is_empty(), "audio active at segment start");
+
+        for _ in 0..500 {
+            let _ = player.tick(1000.0 / 60.0);
+            if player.current_loop_count() > 0 {
+                break;
+            }
+        }
+        assert!(player.current_loop_count() > 0, "segment looped");
+
+        let mut after_wrap = player.audio_layer_offsets();
+        at_start.sort_by(f32::total_cmp);
+        after_wrap.sort_by(f32::total_cmp);
+        assert_eq!(at_start.len(), after_wrap.len());
+        for (s, w) in at_start.iter().zip(&after_wrap) {
+            assert!(
+                (s - w).abs() < 0.1,
+                "post-wrap offset {w} must match segment-start offset {s}"
+            );
+        }
+    }
+
     /// The example's S→P flow: pause keeps the active set so resume continues.
     #[test]
     fn audio_survives_pause_resume() {
@@ -2067,5 +2279,34 @@ mod audio_render_tests {
             player.audio_active_count() > 0,
             "audio still active after resume"
         );
+    }
+
+    /// Stop rewinds to the start; the next play must hand every layer that is
+    /// active there back to the player, not just keep it in the active set.
+    #[test]
+    fn stop_then_play_restarts_every_active_clip() {
+        let mut buffer = vec![0u32; 512 * 512];
+        let mut player = loaded_audio_player(&mut buffer);
+
+        player.play().unwrap();
+        for _ in 0..200 {
+            let _ = player.tick(1000.0 / 60.0);
+        }
+        assert!(
+            player.audio_started_count() > 0,
+            "clips play during playback"
+        );
+
+        player.stop().unwrap();
+        assert_eq!(player.audio_started_count(), 0, "stop halts every clip");
+
+        player.play().unwrap();
+        tick_some(&mut player);
+        assert_eq!(
+            player.audio_started_count(),
+            player.audio_active_count(),
+            "every active layer plays again after stop then play"
+        );
+        assert!(player.audio_started_count() > 0);
     }
 }

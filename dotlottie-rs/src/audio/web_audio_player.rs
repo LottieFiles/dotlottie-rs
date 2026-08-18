@@ -18,6 +18,8 @@ pub struct WebAudioPlayer {
     elements: FxHashMap<String, AudioEntry>,
     /// Global multiplier in [0.0, 1.0], applied on top of per-layer volume.
     global_volume: f32,
+    /// Playback rate multiplier (`playbackRate`; the browser preserves pitch).
+    rate: f32,
 }
 
 impl Default for WebAudioPlayer {
@@ -31,6 +33,7 @@ impl WebAudioPlayer {
         Self {
             elements: FxHashMap::default(),
             global_volume: 1.0,
+            rate: 1.0,
         }
     }
 
@@ -63,6 +66,7 @@ impl WebAudioPlayer {
         };
 
         element.set_volume((layer_volume * self.global_volume) as f64);
+        element.set_playback_rate(self.rate as f64);
         if offset_secs > 0.0 {
             element.set_current_time(offset_secs as f64);
         }
@@ -87,13 +91,6 @@ impl WebAudioPlayer {
         }
     }
 
-    /// Whether an element for `key` exists and has not finished playing.
-    pub fn is_active(&self, key: &str) -> bool {
-        self.elements
-            .get(key)
-            .is_some_and(|entry| !entry.element.ended())
-    }
-
     pub fn pause_all(&mut self) {
         for entry in self.elements.values() {
             let _ = entry.element.pause();
@@ -113,6 +110,25 @@ impl WebAudioPlayer {
         }
     }
 
+    /// Update one clip's per-layer volume without restarting it.
+    pub fn set_volume(&mut self, key: &str, layer_volume: f32) {
+        if let Some(entry) = self.elements.get_mut(key) {
+            entry.layer_volume = layer_volume;
+            entry
+                .element
+                .set_volume((layer_volume * self.global_volume) as f64);
+        }
+    }
+
+    /// Set the playback rate multiplier for live and future elements, clamped
+    /// to [0.0625, 16] — Chrome throws NotSupportedError outside that range.
+    pub fn set_rate(&mut self, rate: f32) {
+        self.rate = rate.clamp(0.0625, 16.0);
+        for entry in self.elements.values() {
+            entry.element.set_playback_rate(self.rate as f64);
+        }
+    }
+
     pub fn set_global_volume(&mut self, volume: f32) {
         self.global_volume = volume;
         for entry in self.elements.values() {
@@ -124,5 +140,13 @@ impl WebAudioPlayer {
 
     pub fn global_volume(&self) -> f32 {
         self.global_volume
+    }
+}
+
+/// Media elements keep playing after the Rust handle is dropped; pause them
+/// and revoke their object URLs on teardown.
+impl Drop for WebAudioPlayer {
+    fn drop(&mut self) {
+        self.stop_all();
     }
 }

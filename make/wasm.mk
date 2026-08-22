@@ -1,5 +1,5 @@
 WASM_TARGET  := wasm32-unknown-unknown
-WASM_FEATURES_COMMON := tvg,tvg-cpu,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-otf,tvg-lottie-expressions,dotlottie,theming,state-machines,audio,wasm-bindgen-api
+WASM_FEATURES_COMMON := tvg,tvg-cpu,tvg-png,tvg-jpg,tvg-webp,tvg-ttf,tvg-otf,tvg-lottie-expressions,dotlottie,theming,state-machines,audio,video,wasm-bindgen-api
 WASM_MANIFEST := dotlottie-rs/Cargo.toml
 WASM_ARTIFACT := dotlottie-rs/target/$(WASM_TARGET)/release/dotlottie_rs.wasm
 
@@ -53,9 +53,6 @@ comma := ,
 
 wasm:
 	$(call wasm_build,,,release/wasm)
-
-wasm-video:
-	$(call wasm_build,video,,release/wasm-video)
 
 wasm-webgl:
 	$(call wasm_build,tvg-gl$(comma)webgl,,release/wasm-webgl)

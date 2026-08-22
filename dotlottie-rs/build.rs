@@ -186,8 +186,7 @@ mod thorvg {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                // .mm carries the Apple media backend; clang infers Objective-C++ from it
-                if path.is_file() && path.extension().is_some_and(|e| e == "cpp" || e == "mm") {
+                if path.is_file() && path.extension().is_some_and(|e| e == "cpp") {
                     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
                     if EXCLUDED_CPP.contains(&name) {
                         continue;
@@ -372,27 +371,11 @@ mod thorvg {
             "deps/thorvg/src/renderer",
         ];
 
-        // ThorVG picks its media backend at link time, by defining MediaLoader::gen().
-        // Use the one it ships where it has one (AVFoundation on Apple) and fall back
-        // to our own, which forwards to a player written in Rust.
-        let video = env::var("CARGO_FEATURE_VIDEO").is_ok();
-        let apple_media = video && target_triple.contains("apple");
+        // Web-only: cpp/ defines ThorVG's MediaLoader::gen() over a Rust player.
+        let video = env::var("CARGO_FEATURE_VIDEO").is_ok() && is_wasm;
         if video {
             src.push("deps/thorvg/src/loaders/media");
-            if apple_media {
-                src.push("deps/thorvg/src/loaders/media/apple");
-                for framework in [
-                    "AVFoundation",
-                    "CoreMedia",
-                    "CoreVideo",
-                    "Foundation",
-                    "CoreFoundation",
-                ] {
-                    println!("cargo:rustc-link-lib=framework={framework}");
-                }
-            } else {
-                src.push("cpp");
-            }
+            src.push("cpp");
         }
 
         // --- config.h generation ---

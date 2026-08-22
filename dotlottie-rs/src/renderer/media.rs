@@ -1,17 +1,11 @@
 use std::ffi::c_void;
 use std::sync::Mutex;
 
-/// Every open player, so the crate can halt them when the animation is not
-/// advancing. ThorVG owns the players and only touches them while a video layer
-/// renders, so nothing else would ever pause them.
+mod web_video_player;
+use web_video_player::WebVideoPlayer;
+
 static OPEN_PLAYERS: Mutex<Vec<usize>> = Mutex::new(Vec::new());
 
-/// Pause or resume every open video, following the player's playback state.
-/// Returns how many players were reached.
-///
-/// Only backends that run a clock of their own need this - a player that moves
-/// solely when seeked is already still. ThorVG's own backends are not reachable
-/// from here; on those platforms a paused animation leaves its video running.
 pub(crate) fn set_all_playing(playing: bool) -> usize {
     let Ok(players) = OPEN_PLAYERS.lock() else {
         return 0;
@@ -26,26 +20,6 @@ pub(crate) fn set_all_playing(playing: bool) -> usize {
     reached
 }
 
-trait MediaPlayer {
-    fn seek(&mut self, seconds: f32);
-    fn info(&self) -> Option<(u32, u32, f32)>;
-    fn frame(&mut self) -> Option<&[u8]>;
-    fn set_playing(&mut self, _playing: bool) {}
-    fn set_volume(&mut self, _volume: f32) {}
-    fn set_muted(&mut self, _muted: bool) {}
-    fn time(&self) -> f32;
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-mod synthetic;
-#[cfg(not(target_arch = "wasm32"))]
-use synthetic::SyntheticPlayer as PlatformPlayer;
-
-#[cfg(target_arch = "wasm32")]
-mod web_video_player;
-#[cfg(target_arch = "wasm32")]
-use web_video_player::WebVideoPlayer as PlatformPlayer;
-
 /// # Safety
 /// `data` must point to `size` readable bytes for the duration of the call.
 #[no_mangle]
@@ -54,10 +28,9 @@ pub unsafe extern "C" fn dlMediaOpen(data: *const u8, size: u32) -> *mut c_void 
         return std::ptr::null_mut();
     }
     let bytes = unsafe { std::slice::from_raw_parts(data, size as usize) };
-    match PlatformPlayer::open(bytes) {
+    match WebVideoPlayer::open(bytes) {
         Some(player) => {
-            let boxed: Box<dyn MediaPlayer> = Box::new(player);
-            let handle = Box::into_raw(Box::new(boxed)) as *mut c_void;
+            let handle = Box::into_raw(Box::new(player)) as *mut c_void;
             if let Ok(mut players) = OPEN_PLAYERS.lock() {
                 players.push(handle as usize);
             }
@@ -75,13 +48,12 @@ pub unsafe extern "C" fn dlMediaClose(player: *mut c_void) {
         if let Ok(mut players) = OPEN_PLAYERS.lock() {
             players.retain(|handle| *handle != player as usize);
         }
-        drop(unsafe { Box::from_raw(player as *mut Box<dyn MediaPlayer>) });
+        drop(unsafe { Box::from_raw(player as *mut WebVideoPlayer) });
     }
 }
 
 /// # Safety
 /// `player` must come from [`dlMediaOpen`]; the out-pointers must be writable.
-/// `*frame` stays valid until the next call for the same player.
 #[no_mangle]
 pub unsafe extern "C" fn dlMediaSync(
     player: *mut c_void,
@@ -153,40 +125,9 @@ pub unsafe extern "C" fn dlMediaSetMute(player: *mut c_void, on: i32) {
 
 /// # Safety
 /// `player` must be null or a pointer previously returned by [`dlMediaOpen`].
-unsafe fn as_player(player: *mut c_void) -> Option<&'static mut dyn MediaPlayer> {
+unsafe fn as_player(player: *mut c_void) -> Option<&'static mut WebVideoPlayer> {
     if player.is_null() {
         return None;
     }
-    let boxed = unsafe { &mut *(player as *mut Box<dyn MediaPlayer>) };
-    Some(boxed.as_mut())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// ThorVG owns the players, so the registry is the only handle the crate has
-    /// on them - if it drifts, pausing the animation reaches nothing.
-    #[test]
-    fn registry_follows_open_and_close() {
-        let clip = [0u8; 8];
-        let first = unsafe { dlMediaOpen(clip.as_ptr(), clip.len() as u32) };
-        let second = unsafe { dlMediaOpen(clip.as_ptr(), clip.len() as u32) };
-        assert!(!first.is_null() && !second.is_null());
-
-        assert_eq!(set_all_playing(false), 2, "both players must be reached");
-
-        unsafe { dlMediaClose(first) };
-        assert_eq!(set_all_playing(true), 1, "a closed player must be dropped");
-
-        unsafe { dlMediaClose(second) };
-        assert_eq!(set_all_playing(true), 0);
-    }
-
-    #[test]
-    fn open_rejects_empty_data() {
-        assert!(unsafe { dlMediaOpen(std::ptr::null(), 0) }.is_null());
-        let empty: [u8; 0] = [];
-        assert!(unsafe { dlMediaOpen(empty.as_ptr(), 0) }.is_null());
-    }
+    Some(unsafe { &mut *(player as *mut WebVideoPlayer) })
 }

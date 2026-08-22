@@ -23,16 +23,11 @@ use std::sync::Arc;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Follow the player's playback state with any video the animation is holding.
-/// ThorVG drives video position while a layer renders; nothing else would stop
-/// a video element once the animation itself stops advancing.
-///
-/// Reaches only the players this crate owns, so it does nothing on platforms
-/// where ThorVG supplies the media backend.
+/// Pause or resume any video the animation holds (web-only).
 fn set_videos_playing(playing: bool) {
-    #[cfg(all(feature = "tvg", feature = "video"))]
+    #[cfg(all(feature = "tvg", feature = "video", target_arch = "wasm32"))]
     let _ = crate::renderer::set_videos_playing(playing);
-    #[cfg(not(all(feature = "tvg", feature = "video")))]
+    #[cfg(not(all(feature = "tvg", feature = "video", target_arch = "wasm32")))]
     let _ = playing;
 }
 

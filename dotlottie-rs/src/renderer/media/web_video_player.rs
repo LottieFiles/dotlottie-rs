@@ -4,8 +4,6 @@ use web_sys::{
     Blob, BlobPropertyBag, CanvasRenderingContext2d, HtmlCanvasElement, HtmlVideoElement, Url,
 };
 
-use super::MediaPlayer;
-
 const DRIFT_TOLERANCE: f32 = 0.10;
 const JUMP_THRESHOLD: f32 = 0.34;
 const MAX_PLAYBACK_STEP: f32 = 0.20;
@@ -136,14 +134,14 @@ impl WebVideoPlayer {
     }
 }
 
-impl MediaPlayer for WebVideoPlayer {
-    fn seek(&mut self, seconds: f32) {
+impl WebVideoPlayer {
+    pub fn seek(&mut self, seconds: f32) {
         self.step = seconds - self.target;
         self.target = seconds;
         self.halted = false;
     }
 
-    fn info(&self) -> Option<(u32, u32, f32)> {
+    pub fn info(&self) -> Option<(u32, u32, f32)> {
         let width = self.element.video_width();
         let height = self.element.video_height();
         let duration = self.element.duration() as f32;
@@ -153,7 +151,7 @@ impl MediaPlayer for WebVideoPlayer {
         Some((width, height, duration))
     }
 
-    fn frame(&mut self) -> Option<&[u8]> {
+    pub fn frame(&mut self) -> Option<&[u8]> {
         let (width, height, _) = self.info()?;
 
         if self.element.ready_state() < 2 {
@@ -178,25 +176,22 @@ impl MediaPlayer for WebVideoPlayer {
         }
     }
 
-    /// Playback is driven by `seek()` while the layer renders, so the only thing
-    /// that matters here is halting: once the layer is out of range nothing syncs
-    /// this player again, and an element left running would play on unattended.
-    fn set_playing(&mut self, playing: bool) {
+    pub fn set_playing(&mut self, playing: bool) {
         self.halted = !playing;
         if self.halted && !self.element.paused() {
             let _ = self.element.pause();
         }
     }
 
-    fn set_volume(&mut self, volume: f32) {
+    pub fn set_volume(&mut self, volume: f32) {
         self.element.set_volume(volume as f64);
     }
 
-    fn set_muted(&mut self, muted: bool) {
+    pub fn set_muted(&mut self, muted: bool) {
         self.element.set_muted(muted);
     }
 
-    fn time(&self) -> f32 {
+    pub fn time(&self) -> f32 {
         self.element.current_time() as f32
     }
 }

@@ -1,3 +1,52 @@
+## 0.1.59 (2026-08-22)
+
+### Features
+
+#### single src field for image rules (#585)
+
+#### expose set_image_slot binding (#590)
+
+#### state machine tweening redirection (#592)
+
+#### external assets resolver (#602)
+
+#### render a placeholder for images that fail to resolve (#604)
+
+#### feat: state machine tweening redirection
+
+Tweened transitions are now interruptible. A transition arriving while a tween is in
+flight retargets it from the currently interpolated pose instead of being ignored until
+the tween finishes.
+
+Behavioural changes with no opt-out:
+
+- All tweened transitions are interruptible. Blocking can be recreated with a
+  boolean-input guard where it is actually wanted.
+- Inputs can be set while tweening; the previous no-op guards on
+  `set_numeric` / `set_string` / `set_boolean` are gone.
+- The transition pipeline now runs during a tween, evaluating the source state.
+
+`current_frame()` now settles on the target frame once a tween completes, instead of
+keeping the frame the tween started from.
+
+Also bumps ThorVG to v1.1.0 for the dynamic tweening API.
+
+#### refactor: rework error handling
+
+### Fixes
+
+#### initialize audio manager when loading JSON animations (#582)
+
+#### 🐛 reset_theme clear slots instead of reseting the slots (#586)
+
+#### normalize image slots before handing them to ThorVG (#591)
+
+#### accept fractional keyframe frames in themes and slots (#610)
+
+#### sync audio playback with seek, segments, speed and direction (#611)
+
+#### refactor: audit wasm GL/WebGPU stubs
+
 ## 0.1.58 (2026-06-22)
 
 ### Features

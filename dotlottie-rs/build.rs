@@ -178,8 +178,6 @@ mod thorvg {
         std::env::var("CARGO_CFG_UNIX").is_ok()
     }
 
-    const EXCLUDED_CPP: &[&str] = &["tvgLoader.cpp"];
-
     pub(super) fn collect_files(dir: &str) -> Vec<String> {
         let mut files = Vec::new();
 
@@ -187,10 +185,6 @@ mod thorvg {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_file() && path.extension().is_some_and(|e| e == "cpp") {
-                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                    if EXCLUDED_CPP.contains(&name) {
-                        continue;
-                    }
                     files.push(path.to_string_lossy().into_owned());
                 }
             }
@@ -378,7 +372,7 @@ mod thorvg {
             .write(true)
             .open(out_dir.join("config.h"))?;
 
-        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.0\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.1\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;

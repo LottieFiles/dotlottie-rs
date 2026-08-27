@@ -10,6 +10,12 @@ mod fallback_font;
 #[cfg(feature = "tvg")]
 mod thorvg;
 
+#[cfg(all(feature = "tvg", feature = "video", target_arch = "wasm32"))]
+mod media;
+
+#[cfg(all(feature = "tvg", feature = "video", target_arch = "wasm32"))]
+pub(crate) use media::set_all_playing as set_videos_playing;
+
 pub(crate) use backend::Point;
 pub use backend::{
     Animation, AssetResolver, ColorSpace, Drawable, GlContext, GlDisplay, GlSurface, Marker,

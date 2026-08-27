@@ -23,6 +23,14 @@ use std::sync::Arc;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Pause or resume any video the animation holds (web-only).
+fn set_videos_playing(playing: bool) {
+    #[cfg(all(feature = "tvg", feature = "video", target_arch = "wasm32"))]
+    let _ = crate::renderer::set_videos_playing(playing);
+    #[cfg(not(all(feature = "tvg", feature = "video", target_arch = "wasm32")))]
+    let _ = playing;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
@@ -473,6 +481,7 @@ impl Player {
                     am.sync();
                     am.set_playing(true);
                 }
+                set_videos_playing(true);
 
                 self.event_queue.push(PlayerEvent::Play);
                 return Ok(());
@@ -509,6 +518,7 @@ impl Player {
             am.sync();
             am.set_playing(true);
         }
+        set_videos_playing(true);
 
         self.event_queue.push(PlayerEvent::Play);
 
@@ -526,6 +536,7 @@ impl Player {
                 if let Some(am) = &self.audio {
                     am.borrow_mut().set_playing(false);
                 }
+                set_videos_playing(false);
 
                 self.event_queue.push(PlayerEvent::Pause);
                 return Ok(());
@@ -538,6 +549,7 @@ impl Player {
         if let Some(am) = &self.audio {
             am.borrow_mut().set_playing(false);
         }
+        set_videos_playing(false);
 
         self.event_queue.push(PlayerEvent::Pause);
         Ok(())
@@ -571,6 +583,7 @@ impl Player {
         if let Some(am) = &self.audio {
             am.borrow_mut().stop();
         }
+        set_videos_playing(false);
 
         self.event_queue.push(PlayerEvent::Stop);
 

@@ -178,6 +178,8 @@ mod thorvg {
         std::env::var("CARGO_CFG_UNIX").is_ok()
     }
 
+    const EXCLUDED_CPP: &[&str] = &["tvgMediaLoader.cpp"];
+
     pub(super) fn collect_files(dir: &str) -> Vec<String> {
         let mut files = Vec::new();
 
@@ -185,6 +187,10 @@ mod thorvg {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_file() && path.extension().is_some_and(|e| e == "cpp") {
+                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    if EXCLUDED_CPP.contains(&name) {
+                        continue;
+                    }
                     files.push(path.to_string_lossy().into_owned());
                 }
             }
@@ -365,6 +371,13 @@ mod thorvg {
             "deps/thorvg/src/renderer",
         ];
 
+        // Web-only: cpp/ defines ThorVG's MediaLoader::gen() over a Rust player.
+        let video = env::var("CARGO_FEATURE_VIDEO").is_ok() && is_wasm;
+        if video {
+            src.push("deps/thorvg/src/loaders/media");
+            src.push("cpp");
+        }
+
         // --- config.h generation ---
         let mut thorvg_config_h = OpenOptions::new()
             .create(true)
@@ -374,6 +387,9 @@ mod thorvg {
 
         writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.1\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
+        if video {
+            writeln!(thorvg_config_h, "#define THORVG_MEDIA_LOADER_SUPPORT")?;
+        }
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;
 

@@ -1,3 +1,4 @@
 [submodule "dotlottie-rs/deps/thorvg"]
 	path = dotlottie-rs/deps/thorvg
-	url = https://github.com/thorvg/thorvg.git
+	url = https://github.com/theashraf/thorvg.git
+	branch = dotlottie/video-20260812

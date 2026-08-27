@@ -1,8 +1,30 @@
 use js_sys::Array;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{
     Blob, BlobPropertyBag, CanvasRenderingContext2d, HtmlCanvasElement, HtmlVideoElement, Url,
 };
+
+thread_local! {
+    /// Reused no-op rejection handler for [`play`]; built once so the per-frame
+    /// calls in `track` do not allocate a closure each time.
+    static IGNORE_REJECTION: Closure<dyn FnMut(JsValue)> = Closure::new(|_| {});
+}
+
+/// Start playback, absorbing the promise rejection.
+///
+/// `HTMLMediaElement.play()` rejects routinely here — the browser blocks
+/// autoplay, or a `load()`/seek interrupts the pending request, since the
+/// element is driven from the animation frame rather than by the user. Dropping
+/// the promise would surface those as unhandled rejections in the host page.
+fn play(element: &HtmlVideoElement) {
+    let Ok(promise) = element.play() else {
+        return;
+    };
+    IGNORE_REJECTION.with(|noop| {
+        let _ = promise.catch(noop);
+    });
+}
 
 const DRIFT_TOLERANCE: f32 = 0.10;
 const JUMP_THRESHOLD: f32 = 0.34;
@@ -57,7 +79,7 @@ impl WebVideoPlayer {
             let _ = body.append_child(&element);
         }
         let _ = element.load();
-        let _ = element.play();
+        play(&element);
 
         Some(Self {
             element,
@@ -99,7 +121,7 @@ impl WebVideoPlayer {
             self.element.set_current_time(self.target as f64);
         } else {
             if self.element.paused() {
-                let _ = self.element.play();
+                play(&self.element);
             }
             let rate = if drift.abs() > DRIFT_TOLERANCE {
                 (1.0 + drift * 2.0).clamp(0.5, 1.5)
@@ -159,7 +181,7 @@ impl WebVideoPlayer {
             if self.since_kick >= KICK_INTERVAL {
                 self.since_kick = 0;
                 let _ = self.element.load();
-                let _ = self.element.play();
+                play(&self.element);
             }
             return None;
         }

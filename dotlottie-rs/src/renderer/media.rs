@@ -20,6 +20,22 @@ pub(crate) fn set_all_playing(playing: bool) -> usize {
     reached
 }
 
+/// Whether `bytes` is an MP4, the one container dotLottie packages video in.
+///
+/// ThorVG picks a loader by asking each one in turn to open the buffer and
+/// taking the first that says yes, so a loader that accepts anything swallows
+/// payloads meant for the loaders behind it: without this check a malformed
+/// Lottie reaches an `HTMLVideoElement` and surfaces as a decode error instead
+/// of a parse error. Only the magic bytes are read; the browser still decides
+/// whether it can actually play the stream.
+///
+/// ISO base media file format: a `ftyp` box at offset 4. This deliberately
+/// matches the one type the asset resolver routes here as `FileType::Media`;
+/// widening it would claim containers nothing upstream asks us to play.
+fn is_mp4(bytes: &[u8]) -> bool {
+    bytes.len() >= 12 && &bytes[4..8] == b"ftyp"
+}
+
 /// # Safety
 /// `data` must point to `size` readable bytes for the duration of the call.
 #[no_mangle]
@@ -28,6 +44,9 @@ pub unsafe extern "C" fn dlMediaOpen(data: *const u8, size: u32) -> *mut c_void 
         return std::ptr::null_mut();
     }
     let bytes = unsafe { std::slice::from_raw_parts(data, size as usize) };
+    if !is_mp4(bytes) {
+        return std::ptr::null_mut();
+    }
     match WebVideoPlayer::open(bytes) {
         Some(player) => {
             let handle = Box::into_raw(Box::new(player)) as *mut c_void;

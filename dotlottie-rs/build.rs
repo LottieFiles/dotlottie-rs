@@ -385,7 +385,7 @@ mod thorvg {
             .write(true)
             .open(out_dir.join("config.h"))?;
 
-        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.1\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.2.0\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         if video {
             writeln!(thorvg_config_h, "#define THORVG_MEDIA_LOADER_SUPPORT")?;

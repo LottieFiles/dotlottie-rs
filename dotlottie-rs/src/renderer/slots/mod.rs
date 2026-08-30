@@ -1,6 +1,7 @@
 mod color;
 mod gradient;
 mod image;
+mod lerp;
 mod position;
 mod scalar;
 mod text;
@@ -13,6 +14,8 @@ pub use position::PositionSlot;
 pub use scalar::{ScalarSlot, ScalarValue};
 pub use text::{TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot};
 pub use vector::VectorSlot;
+
+pub(crate) use lerp::lerp_slot;
 
 use gradient::{gradient_slot_from_json, write_gradient_slot};
 use image::{image_slot_from_json, write_image_slot};

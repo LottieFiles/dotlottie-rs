@@ -21,10 +21,10 @@ struct DotLottieMediaLoader : MediaLoader
         tvg::free(surface.buf32);
     }
 
-    bool open(const char* data, uint32_t size, const LoaderOps* ops, bool copy) override
+    Result open(const char* data, uint32_t size, const LoaderOps& ops) override
     {
         player = dlMediaOpen(reinterpret_cast<const uint8_t*>(data), size);
-        return player != nullptr;
+        return player ? Result::Success : Result::NonSupport;
     }
 
     bool sync() override

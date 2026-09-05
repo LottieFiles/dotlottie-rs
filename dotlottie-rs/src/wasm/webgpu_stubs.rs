@@ -856,6 +856,13 @@ struct WGPUColorTargetState {
 }
 
 #[repr(C)]
+struct WGPUComputePassDescriptor {
+    next_in_chain: *const WGPUChainedStruct,
+    label: WGPUStringView,
+    timestamp_writes: Option<NonNull<WGPUPassTimestampWrites>>,
+}
+
+#[repr(C)]
 struct WGPUComputePipelineDescriptor {
     next_in_chain: *const WGPUChainedStruct,
     label: WGPUStringView,
@@ -1417,6 +1424,30 @@ fn convert_wgpu_color_target_state(target: &WGPUColorTargetState) -> GpuColorTar
     out
 }
 
+fn convert_wgpu_compute_pass_timestamp_writes(
+    writes: &WGPUPassTimestampWrites,
+) -> GpuComputePassTimestampWrites {
+    let out = GpuComputePassTimestampWrites::new(unsafe { &*writes.query_set });
+    out.set_beginning_of_pass_write_index(writes.beginning_of_pass_write_index);
+    out.set_end_of_pass_write_index(writes.end_of_pass_write_index);
+    out
+}
+
+fn convert_wgpu_compute_pass_descriptor(
+    descriptor: &WGPUComputePassDescriptor,
+) -> GpuComputePassDescriptor {
+    let out = GpuComputePassDescriptor::new();
+    set_descriptor_label(&out, &descriptor.label);
+
+    if let Some(timestamp_writes) = descriptor.timestamp_writes {
+        out.set_timestamp_writes(&convert_wgpu_compute_pass_timestamp_writes(unsafe {
+            &*timestamp_writes.as_ptr()
+        }));
+    }
+
+    out
+}
+
 fn convert_wgpu_compute_pipeline_descriptor(
     descriptor: &WGPUComputePipelineDescriptor,
 ) -> GpuComputePipelineDescriptor {
@@ -1598,6 +1629,21 @@ unsafe extern "C" fn wgpuCommandBufferRelease(buffer: *mut GpuCommandBuffer) {
 // Methods of CommandEncoder
 
 #[no_mangle]
+unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
+    encoder: *mut GpuCommandEncoder,
+    descriptor: *const WGPUComputePassDescriptor,
+) -> *mut GpuComputePassEncoder {
+    let encoder = &*encoder;
+    let compute_pass = if descriptor.is_null() {
+        encoder.begin_compute_pass()
+    } else {
+        let descriptor = convert_wgpu_compute_pass_descriptor(&*descriptor);
+        encoder.begin_compute_pass_with_descriptor(&descriptor)
+    };
+    Box::into_raw(Box::new(compute_pass))
+}
+
+#[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     encoder: *mut GpuCommandEncoder,
     descriptor: *const WGPURenderPassDescriptor,
@@ -1646,6 +1692,66 @@ unsafe extern "C" fn wgpuCommandEncoderFinish(
 #[no_mangle]
 unsafe extern "C" fn wgpuCommandEncoderRelease(encoder: *mut GpuCommandEncoder) {
     drop(Box::from_raw(encoder));
+}
+
+// Methods of ComputePassEncoder
+
+#[no_mangle]
+unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
+    pass: *mut GpuComputePassEncoder,
+    workgroup_count_x: u32,
+    workgroup_count_y: u32,
+    workgroup_count_z: u32,
+) {
+    let pass = &*pass;
+    pass.dispatch_workgroups_with_workgroup_count_y_and_workgroup_count_z(
+        workgroup_count_x,
+        workgroup_count_y,
+        workgroup_count_z,
+    );
+}
+
+#[no_mangle]
+unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: *mut GpuComputePassEncoder) {
+    let pass = &*pass;
+    pass.end();
+}
+
+#[no_mangle]
+unsafe extern "C" fn wgpuComputePassEncoderRelease(pass: *mut GpuComputePassEncoder) {
+    drop(Box::from_raw(pass));
+}
+
+#[no_mangle]
+unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
+    pass: *mut GpuComputePassEncoder,
+    index: u32,
+    bind_group: Option<NonNull<GpuBindGroup>>,
+    dynamic_offsets_count: usize,
+    dynamic_offsets: *const u32,
+) {
+    let pass = &*pass;
+    let bind_group = bind_group.map(|b| b.as_ref());
+    if !dynamic_offsets.is_null() && dynamic_offsets_count > 0 {
+        let offsets = unsafe { std::slice::from_raw_parts(dynamic_offsets, dynamic_offsets_count) };
+        let js_offsets = js_sys::Array::new();
+        for &offset in offsets {
+            js_offsets.push(&JsValue::from(offset));
+        }
+        pass.set_bind_group_with_u32_sequence(index, bind_group, &js_offsets.into());
+    } else {
+        pass.set_bind_group(index, bind_group);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
+    pass: *mut GpuComputePassEncoder,
+    pipeline: *mut GpuComputePipeline,
+) {
+    let pass = &*pass;
+    let pipeline = &*pipeline;
+    pass.set_pipeline(pipeline);
 }
 
 // Methods of ComputePipeline

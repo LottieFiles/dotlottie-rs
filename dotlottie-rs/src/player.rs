@@ -31,6 +31,14 @@ fn set_videos_playing(playing: bool) {
     let _ = playing;
 }
 
+/// Match any video's rate to the player's speed and direction (web-only).
+fn set_videos_rate(rate: f32) {
+    #[cfg(all(feature = "tvg", feature = "video", target_arch = "wasm32"))]
+    let _ = crate::renderer::set_videos_rate(rate);
+    #[cfg(not(all(feature = "tvg", feature = "video", target_arch = "wasm32")))]
+    let _ = rate;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
@@ -351,6 +359,13 @@ impl Player {
         }
     }
 
+    fn sync_video_rate(&self) {
+        set_videos_rate(match self.direction {
+            Direction::Forward => self.speed,
+            Direction::Reverse => -self.speed,
+        });
+    }
+
     /// Frames per second; `duration()` is in milliseconds.
     #[cfg(feature = "audio")]
     fn frame_rate(&self) -> f32 {
@@ -481,6 +496,7 @@ impl Player {
                     am.sync();
                     am.set_playing(true);
                 }
+                self.sync_video_rate();
                 set_videos_playing(true);
 
                 self.event_queue.push(PlayerEvent::Play);
@@ -518,6 +534,7 @@ impl Player {
             am.sync();
             am.set_playing(true);
         }
+        self.sync_video_rate();
         set_videos_playing(true);
 
         self.event_queue.push(PlayerEvent::Play);
@@ -699,6 +716,7 @@ impl Player {
                     self.elapsed_frames = 0.0;
                     #[cfg(feature = "audio")]
                     self.audio_set_direction();
+                    self.sync_video_rate();
 
                     end_frame
                 } else {
@@ -713,6 +731,7 @@ impl Player {
                         self.elapsed_frames = 0.0;
                         #[cfg(feature = "audio")]
                         self.audio_set_direction();
+                        self.sync_video_rate();
                     }
 
                     start_frame
@@ -737,6 +756,7 @@ impl Player {
                     self.elapsed_frames = 0.0;
                     #[cfg(feature = "audio")]
                     self.audio_set_direction();
+                    self.sync_video_rate();
                     start_frame
                 } else {
                     next_frame
@@ -750,6 +770,7 @@ impl Player {
                         self.elapsed_frames = 0.0;
                         #[cfg(feature = "audio")]
                         self.audio_set_direction();
+                        self.sync_video_rate();
                     }
 
                     end_frame
@@ -870,6 +891,7 @@ impl Player {
                 }
             } else {
                 self.state = State::Stopped;
+                set_videos_playing(false);
                 self.emit_on_complete();
             }
         }
@@ -978,6 +1000,7 @@ impl Player {
             };
             #[cfg(feature = "audio")]
             self.audio_set_direction();
+            self.sync_video_rate();
         }
     }
 
@@ -994,6 +1017,7 @@ impl Player {
     pub fn set_speed(&mut self, speed: f32) {
         if self.speed != speed && speed > 0.0 {
             self.speed = speed;
+            self.sync_video_rate();
             #[cfg(feature = "audio")]
             if let Some(am) = &self.audio {
                 am.borrow_mut().set_rate(speed);
@@ -1142,6 +1166,7 @@ impl Player {
         self.state = State::Idle;
         self.elapsed_frames = 0.0;
         self.current_loop_count = 0;
+        set_videos_playing(false);
 
         let loaded = loader(&mut *self.renderer).is_ok();
 
@@ -1164,6 +1189,7 @@ impl Player {
                 self.direction = Direction::Reverse;
             }
         }
+        self.sync_video_rate();
 
         let _ = self.renderer.render();
 

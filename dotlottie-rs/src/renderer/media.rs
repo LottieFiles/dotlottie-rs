@@ -18,12 +18,13 @@ static SHARED: Mutex<Shared> = Mutex::new(Shared {
 });
 
 fn for_each_player(f: impl Fn(&mut WebVideoPlayer)) -> usize {
-    let Ok(players) = OPEN_PLAYERS.lock() else {
+    // Copy the handles out so the lock is not held across DOM calls.
+    let Ok(handles) = OPEN_PLAYERS.lock().map(|players| players.clone()) else {
         return 0;
     };
     let mut reached = 0;
-    for handle in players.iter() {
-        if let Some(player) = unsafe { as_player(*handle as *mut c_void) } {
+    for handle in handles {
+        if let Some(player) = unsafe { as_player(handle as *mut c_void) } {
             f(player);
             reached += 1;
         }

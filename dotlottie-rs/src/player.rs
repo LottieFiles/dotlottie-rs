@@ -496,6 +496,7 @@ impl Player {
                     am.sync();
                     am.set_playing(true);
                 }
+                self.sync_video_rate();
                 set_videos_playing(true);
 
                 self.event_queue.push(PlayerEvent::Play);
@@ -890,6 +891,7 @@ impl Player {
                 }
             } else {
                 self.state = State::Stopped;
+                set_videos_playing(false);
                 self.emit_on_complete();
             }
         }
@@ -1164,6 +1166,7 @@ impl Player {
         self.state = State::Idle;
         self.elapsed_frames = 0.0;
         self.current_loop_count = 0;
+        set_videos_playing(false);
 
         let loaded = loader(&mut *self.renderer).is_ok();
 
@@ -1186,6 +1189,7 @@ impl Player {
                 self.direction = Direction::Reverse;
             }
         }
+        self.sync_video_rate();
 
         let _ = self.renderer.render();
 

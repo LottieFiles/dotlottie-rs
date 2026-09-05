@@ -1,3 +1,6 @@
+use std::cell::Cell;
+use std::rc::Rc;
+
 use js_sys::Array;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
@@ -36,8 +39,13 @@ const MAX_RATE: f64 = 16.0;
 /// ThorVG lets the clip free-run and only seeks it when it drifts more than a
 /// second from the animation clock, so the element's own clock carries
 /// playback. It plays only while ThorVG wants the layer playing *and* the
-/// dotLottie player is not paused, at the player's speed; it cannot play
-/// backwards, so reverse playback holds the frame between ThorVG's seeks.
+/// dotLottie player is not paused, at the player's speed.
+///
+/// Whenever the element is not playing — reverse playback, or scrubbing a
+/// paused animation — the frame only moves on ThorVG's seeks, in ~1s steps.
+/// ThorVG also stretches the clip over the layer's span, so a clip whose
+/// duration differs from its layer drifts and is hard-seeked once per second
+/// of mismatch. Both are properties of the upstream seek contract.
 pub struct WebVideoPlayer {
     element: HtmlVideoElement,
     url: String,
@@ -49,6 +57,9 @@ pub struct WebVideoPlayer {
     halted: bool,
     /// Signed speed; negative means the animation runs backwards.
     rate: f32,
+    /// What [`apply`](Self::apply) last decided, for the `loadeddata` handler.
+    desired: Rc<Cell<bool>>,
+    on_loaded: Closure<dyn FnMut()>,
     since_kick: u32,
 }
 
@@ -85,9 +96,22 @@ impl WebVideoPlayer {
                 .set_css_text("position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0");
             let _ = body.append_child(&element);
         }
+
         // `preload` is only a hint; a muted play() makes the browser fetch and
-        // decode. `apply` pauses it again once frames are available if nothing
-        // wants it playing.
+        // decode. Nothing wants the clip playing until ThorVG says so, so pause
+        // it again as soon as frames exist.
+        let desired = Rc::new(Cell::new(false));
+        let on_loaded = {
+            let element = element.clone();
+            let desired = desired.clone();
+            Closure::new(move || {
+                if !desired.get() && !element.paused() {
+                    let _ = element.pause();
+                }
+            })
+        };
+        let _ = element
+            .add_event_listener_with_callback("loadeddata", on_loaded.as_ref().unchecked_ref());
         let _ = element.load();
         play(&element);
 
@@ -99,6 +123,8 @@ impl WebVideoPlayer {
             wanted: false,
             halted,
             rate,
+            desired,
+            on_loaded,
             since_kick: 0,
         })
     }
@@ -118,15 +144,19 @@ impl WebVideoPlayer {
 
     /// Bring the element's play state and rate in line with what is wanted.
     fn apply(&mut self) {
+        let desired = self.wanted && !self.halted && self.rate > 0.0;
+        self.desired.set(desired);
         if self.element.ready_state() < 2 {
             return;
         }
-        if self.wanted && !self.halted && self.rate > 0.0 {
+        if desired {
             let rate = (self.rate as f64).clamp(MIN_RATE, MAX_RATE);
             if (self.element.playback_rate() - rate).abs() > f64::EPSILON {
                 self.element.set_playback_rate(rate);
             }
-            if self.element.paused() {
+            // play() on an ended element restarts it from 0; a clip shorter
+            // than its layer holds its last frame until ThorVG seeks it.
+            if self.element.paused() && !self.element.ended() {
                 play(&self.element);
             }
         } else if !self.element.paused() {
@@ -177,14 +207,18 @@ impl WebVideoPlayer {
         let (width, height, _) = self.info()?;
 
         if self.element.ready_state() < 2 {
-            self.since_kick += 1;
-            if self.since_kick >= KICK_INTERVAL {
-                self.since_kick = 0;
-                let _ = self.element.load();
-                play(&self.element);
+            // Chrome drops readyState on every seek; only a load that stays
+            // stuck (hidden tab, deferred media) needs another nudge.
+            if !self.element.seeking() {
+                self.since_kick += 1;
+                if self.since_kick >= KICK_INTERVAL {
+                    self.since_kick = 0;
+                    play(&self.element);
+                }
             }
             return None;
         }
+        self.since_kick = 0;
 
         self.apply();
 
@@ -230,6 +264,10 @@ impl WebVideoPlayer {
 
 impl Drop for WebVideoPlayer {
     fn drop(&mut self) {
+        let _ = self.element.remove_event_listener_with_callback(
+            "loadeddata",
+            self.on_loaded.as_ref().unchecked_ref(),
+        );
         let _ = self.element.pause();
         self.element.remove();
         let _ = Url::revoke_object_url(&self.url);

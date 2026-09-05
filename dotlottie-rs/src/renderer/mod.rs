@@ -14,7 +14,7 @@ mod thorvg;
 mod media;
 
 #[cfg(all(feature = "tvg", feature = "video", target_arch = "wasm32"))]
-pub(crate) use media::set_all_playing as set_videos_playing;
+pub(crate) use media::{set_all_playing as set_videos_playing, set_all_rate as set_videos_rate};
 
 pub(crate) use backend::Point;
 pub use backend::{

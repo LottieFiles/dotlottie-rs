@@ -6,18 +6,44 @@ use web_video_player::WebVideoPlayer;
 
 static OPEN_PLAYERS: Mutex<Vec<usize>> = Mutex::new(Vec::new());
 
-pub(crate) fn set_all_playing(playing: bool) -> usize {
+/// The dotLottie player's state, applied to videos opened later.
+struct Shared {
+    playing: bool,
+    rate: f32,
+}
+
+static SHARED: Mutex<Shared> = Mutex::new(Shared {
+    playing: false,
+    rate: 1.0,
+});
+
+fn for_each_player(f: impl Fn(&mut WebVideoPlayer)) -> usize {
     let Ok(players) = OPEN_PLAYERS.lock() else {
         return 0;
     };
     let mut reached = 0;
     for handle in players.iter() {
         if let Some(player) = unsafe { as_player(*handle as *mut c_void) } {
-            player.set_playing(playing);
+            f(player);
             reached += 1;
         }
     }
     reached
+}
+
+pub(crate) fn set_all_playing(playing: bool) -> usize {
+    if let Ok(mut shared) = SHARED.lock() {
+        shared.playing = playing;
+    }
+    for_each_player(|player| player.set_playing(playing))
+}
+
+/// Signed rate: the player's speed, negative while it runs backwards.
+pub(crate) fn set_all_rate(rate: f32) -> usize {
+    if let Ok(mut shared) = SHARED.lock() {
+        shared.rate = rate;
+    }
+    for_each_player(|player| player.set_rate(rate))
 }
 
 /// Whether `bytes` is an MP4, the one container dotLottie packages video in.
@@ -47,7 +73,11 @@ pub unsafe extern "C" fn dlMediaOpen(data: *const u8, size: u32) -> *mut c_void 
     if !is_mp4(bytes) {
         return std::ptr::null_mut();
     }
-    match WebVideoPlayer::open(bytes) {
+    let (playing, rate) = SHARED
+        .lock()
+        .map(|shared| (shared.playing, shared.rate))
+        .unwrap_or((false, 1.0));
+    match WebVideoPlayer::open(bytes, !playing, rate) {
         Some(player) => {
             let handle = Box::into_raw(Box::new(player)) as *mut c_void;
             if let Ok(mut players) = OPEN_PLAYERS.lock() {
@@ -120,7 +150,7 @@ pub unsafe extern "C" fn dlMediaSeek(player: *mut c_void, seconds: f32) {
 #[no_mangle]
 pub unsafe extern "C" fn dlMediaSetPlaying(player: *mut c_void, on: i32) {
     if let Some(player) = unsafe { as_player(player) } {
-        player.set_playing(on != 0);
+        player.set_layer_playing(on != 0);
     }
 }
 

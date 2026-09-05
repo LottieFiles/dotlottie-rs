@@ -7,7 +7,7 @@ use web_sys::{
 
 thread_local! {
     /// Reused no-op rejection handler for [`play`]; built once so the per-frame
-    /// calls in `track` do not allocate a closure each time.
+    /// calls do not allocate a closure each time.
     static IGNORE_REJECTION: Closure<dyn FnMut(JsValue)> = Closure::new(|_| {});
 }
 
@@ -26,24 +26,34 @@ fn play(element: &HtmlVideoElement) {
     });
 }
 
-const DRIFT_TOLERANCE: f32 = 0.10;
-const JUMP_THRESHOLD: f32 = 0.34;
-const MAX_PLAYBACK_STEP: f32 = 0.20;
 const KICK_INTERVAL: u32 = 30;
+/// Chrome's supported `playbackRate` range.
+const MIN_RATE: f64 = 0.0625;
+const MAX_RATE: f64 = 16.0;
 
+/// A hidden `<video>` behind ThorVG's media loader.
+///
+/// ThorVG lets the clip free-run and only seeks it when it drifts more than a
+/// second from the animation clock, so the element's own clock carries
+/// playback. It plays only while ThorVG wants the layer playing *and* the
+/// dotLottie player is not paused, at the player's speed; it cannot play
+/// backwards, so reverse playback holds the frame between ThorVG's seeks.
 pub struct WebVideoPlayer {
     element: HtmlVideoElement,
     url: String,
     canvas: Option<(HtmlCanvasElement, CanvasRenderingContext2d)>,
     pixels: Vec<u8>,
-    target: f32,
-    step: f32,
-    since_kick: u32,
+    /// ThorVG's `play`/`pause`/`stop` for the layer.
+    wanted: bool,
+    /// The dotLottie player is paused or stopped.
     halted: bool,
+    /// Signed speed; negative means the animation runs backwards.
+    rate: f32,
+    since_kick: u32,
 }
 
 impl WebVideoPlayer {
-    pub fn open(data: &[u8]) -> Option<Self> {
+    pub fn open(data: &[u8], halted: bool, rate: f32) -> Option<Self> {
         let array = Array::new();
         array.push(&js_sys::Uint8Array::from(data));
 
@@ -69,15 +79,15 @@ impl WebVideoPlayer {
         element.set_attribute("playsinline", "").ok();
         element.set_preload("auto");
 
-        if let Some(body) = web_sys::window()
-            .and_then(|w| w.document())
-            .and_then(|d| d.body())
-        {
+        if let Some(body) = document.and_then(|d| d.body()) {
             element
                 .style()
                 .set_css_text("position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0");
             let _ = body.append_child(&element);
         }
+        // `preload` is only a hint; a muted play() makes the browser fetch and
+        // decode. `apply` pauses it again once frames are available if nothing
+        // wants it playing.
         let _ = element.load();
         play(&element);
 
@@ -86,10 +96,10 @@ impl WebVideoPlayer {
             url,
             canvas: None,
             pixels: Vec::new(),
-            target: 0.0,
-            step: 0.0,
+            wanted: false,
+            halted,
+            rate,
             since_kick: 0,
-            halted: false,
         })
     }
 
@@ -106,29 +116,21 @@ impl WebVideoPlayer {
         self.canvas.as_ref().map(|(_, ctx)| ctx.clone())
     }
 
-    fn track(&mut self) {
-        if self.element.seeking() {
+    /// Bring the element's play state and rate in line with what is wanted.
+    fn apply(&mut self) {
+        if self.element.ready_state() < 2 {
             return;
         }
-
-        let drift = self.target - self.element.current_time() as f32;
-        let playing_forward = self.step > 0.0 && self.step <= MAX_PLAYBACK_STEP;
-
-        if drift.abs() > JUMP_THRESHOLD || !playing_forward {
-            if !self.element.paused() {
-                let _ = self.element.pause();
+        if self.wanted && !self.halted && self.rate > 0.0 {
+            let rate = (self.rate as f64).clamp(MIN_RATE, MAX_RATE);
+            if (self.element.playback_rate() - rate).abs() > f64::EPSILON {
+                self.element.set_playback_rate(rate);
             }
-            self.element.set_current_time(self.target as f64);
-        } else {
             if self.element.paused() {
                 play(&self.element);
             }
-            let rate = if drift.abs() > DRIFT_TOLERANCE {
-                (1.0 + drift * 2.0).clamp(0.5, 1.5)
-            } else {
-                1.0
-            };
-            self.element.set_playback_rate(rate as f64);
+        } else if !self.element.paused() {
+            let _ = self.element.pause();
         }
     }
 
@@ -158,9 +160,7 @@ impl WebVideoPlayer {
 
 impl WebVideoPlayer {
     pub fn seek(&mut self, seconds: f32) {
-        self.step = seconds - self.target;
-        self.target = seconds;
-        self.halted = false;
+        self.element.set_current_time(seconds as f64);
     }
 
     pub fn info(&self) -> Option<(u32, u32, f32)> {
@@ -186,7 +186,7 @@ impl WebVideoPlayer {
             return None;
         }
 
-        self.track();
+        self.apply();
 
         let expected = (width as usize) * (height as usize) * 4;
         self.capture(width, height, expected);
@@ -198,11 +198,21 @@ impl WebVideoPlayer {
         }
     }
 
+    /// ThorVG wants the layer playing or not.
+    pub fn set_layer_playing(&mut self, playing: bool) {
+        self.wanted = playing;
+        self.apply();
+    }
+
+    /// The dotLottie player resumed or paused.
     pub fn set_playing(&mut self, playing: bool) {
         self.halted = !playing;
-        if self.halted && !self.element.paused() {
-            let _ = self.element.pause();
-        }
+        self.apply();
+    }
+
+    pub fn set_rate(&mut self, rate: f32) {
+        self.rate = rate;
+        self.apply();
     }
 
     pub fn set_volume(&mut self, volume: f32) {

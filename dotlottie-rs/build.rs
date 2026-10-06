@@ -372,7 +372,7 @@ mod thorvg {
             .write(true)
             .open(out_dir.join("config.h"))?;
 
-        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.1\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.2\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;

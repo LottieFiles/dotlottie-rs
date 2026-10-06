@@ -269,6 +269,19 @@ unsafe extern "C" fn atanhf(x: f32) -> f32 {
     x.atanh()
 }
 
+#[no_mangle]
+unsafe extern "C" fn remainderf(x: f32, y: f32) -> f32 {
+    if x.is_nan() || y.is_nan() || x.is_infinite() || y == 0.0 {
+        return f32::NAN;
+    }
+    if y.is_infinite() {
+        return x;
+    }
+    let (x, y) = (x as f64, y as f64);
+    let n = (x / y).round_ties_even();
+    (x - n * y) as f32
+}
+
 // ── setjmp / longjmp stubs ───────────────────────────────────────────────
 // JerryScript's parser uses setjmp/longjmp for error recovery.  True
 // non-local jumps are impossible in WASM's structured control flow, so

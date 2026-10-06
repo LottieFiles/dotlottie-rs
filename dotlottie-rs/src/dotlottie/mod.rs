@@ -142,7 +142,7 @@ impl AssetStore {
         }
         // v2 containers spec images, fonts, and audio; v1 specs images only.
         let prefixes: &[&str] = if self.version == 2 {
-            &["i/", "f/", "u/", "v/"]
+            &["i/", "f/", "u/"]
         } else {
             &["images/"]
         };

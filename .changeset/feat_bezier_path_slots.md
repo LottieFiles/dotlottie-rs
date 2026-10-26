@@ -12,3 +12,7 @@ Adds an experimental `BezierPath` slot type for overriding the geometry of path
   (`"bezier_path"`).
 - Experimental `"type": "BezierPath"` theme rule with `vertices`, `inTangents`,
   `outTangents` and `closed`, pending a dotLottie theming spec proposal.
+
+Themes now skip rules with an unknown `type` instead of rejecting the whole theme, so
+future rule types don't break theming on players that don't know them. Malformed rules
+of a known type still reject the theme.

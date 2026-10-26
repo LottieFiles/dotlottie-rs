@@ -29,7 +29,9 @@ impl FromStr for Theme {
             .get("rules")
             .and_then(|r| array_of(r, theme_rule_from_json))
             .ok_or(Error::InvalidTheme)?;
-        Ok(Theme { rules })
+        Ok(Theme {
+            rules: rules.into_iter().flatten().collect(),
+        })
     }
 }
 
@@ -319,8 +321,9 @@ impl ThemeRule {
     }
 }
 
-fn theme_rule_from_json(v: &Value) -> Option<ThemeRule> {
-    Some(match v.str_field("type")? {
+/// `None` for a malformed rule, `Some(None)` for an unknown rule type (skipped).
+fn theme_rule_from_json(v: &Value) -> Option<Option<ThemeRule>> {
+    Some(Some(match v.str_field("type")? {
         "Color" => ThemeRule::Color(color_rule_from_json(v)?),
         "Scalar" => ThemeRule::Scalar(scalar_rule_from_json(v)?),
         "Gradient" => ThemeRule::Gradient(gradient_rule_from_json(v)?),
@@ -329,8 +332,8 @@ fn theme_rule_from_json(v: &Value) -> Option<ThemeRule> {
         "Vector" => ThemeRule::Vector(vector_rule_from_json(v)?),
         "Position" => ThemeRule::Position(position_rule_from_json(v)?),
         "BezierPath" => ThemeRule::BezierPath(bezier_path_rule_from_json(v)?),
-        _ => return None,
-    })
+        _ => return Some(None),
+    }))
 }
 
 fn string_list(v: &Value) -> Option<Vec<String>> {
@@ -934,7 +937,10 @@ mod tests {
 
     fn slot_from_rule(json: &str) -> ImageSlot {
         let v = Value::parse(json).unwrap();
-        let ThemeRule::Image(rule) = theme_rule_from_json(&v).expect("valid image rule") else {
+        let ThemeRule::Image(rule) = theme_rule_from_json(&v)
+            .flatten()
+            .expect("valid image rule")
+        else {
             panic!("expected image rule");
         };
         ImageSlot::from(&rule)
@@ -1023,8 +1029,18 @@ mod tests {
     }
 
     #[test]
-    fn unknown_rule_type_rejects_whole_theme() {
-        assert!(r#"{"rules":[{"type":"Nope","id":"x"}]}"#.parse::<Theme>().is_err());
+    fn unknown_rule_type_is_skipped() {
+        let theme: Theme =
+            r#"{"rules":[{"type":"Nope","id":"x"},{"type":"Color","id":"c","value":[1,0,0]}]}"#
+                .parse()
+                .expect("unknown rule types must not reject the theme");
+        assert_eq!(theme.rules.len(), 1);
+        assert_eq!(theme.rules[0].id(), "c");
+    }
+
+    #[test]
+    fn rule_without_type_rejects_whole_theme() {
+        assert!(r#"{"rules":[{"id":"x","value":[1,0,0]}]}"#.parse::<Theme>().is_err());
     }
 
     #[test]

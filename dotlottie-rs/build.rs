@@ -372,7 +372,7 @@ mod thorvg {
             .write(true)
             .open(out_dir.join("config.h"))?;
 
-        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.2\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.3\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;
@@ -472,16 +472,17 @@ mod thorvg {
         let tvg_simd_enabled = cfg!(feature = "tvg-simd");
         let mut simd_flags: Vec<&str> = Vec::new();
         if tvg_sw_enabled && tvg_simd_enabled && !is_wasm_unknown {
-            if target_triple.contains("x86_64")
-                || target_triple.contains("i686")
-                || target_triple.contains("i586")
+            // AVX only on MSVC: elsewhere thorvg's runtime check (__builtin_cpu_supports)
+            // needs compiler-rt's __cpu_model, which rustc doesn't link
+            if is_windows_msvc
+                && (target_triple.contains("x86_64") || target_triple.contains("i686"))
             {
-                writeln!(thorvg_config_h, "#define THORVG_AVX_VECTOR_SUPPORT")?;
-                simd_flags.push("-mavx");
+                writeln!(thorvg_config_h, "#define THORVG_AVX_SUPPORT")?;
+                simd_flags.push("/arch:AVX2");
             } else if target_triple.contains("aarch64") {
-                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
+                writeln!(thorvg_config_h, "#define THORVG_NEON_SUPPORT")?;
             } else if target_triple.contains("armv7") {
-                writeln!(thorvg_config_h, "#define THORVG_NEON_VECTOR_SUPPORT")?;
+                writeln!(thorvg_config_h, "#define THORVG_NEON_SUPPORT")?;
                 simd_flags.push("-mfpu=neon");
             }
         }
@@ -563,11 +564,6 @@ namespace tvg
             .cpp(true)
             .include(&out_dir)
             .includes(&src)
-            .files(
-                src.iter()
-                    .flat_map(|dir| collect_files(dir))
-                    .collect::<Vec<_>>(),
-            )
             .warnings(false);
 
         // On Windows MSVC, prevent <windows.h> min/max macros from colliding
@@ -674,10 +670,6 @@ namespace tvg
             }
         }
 
-        for flag in &simd_flags {
-            cc_build.flag(flag);
-        }
-
         if cfg!(feature = "tvg-threads")
             && !is_wasm
             && env::var("CARGO_CFG_UNIX").is_ok()
@@ -697,7 +689,22 @@ namespace tvg
             cc_build.flag(format!("-include{}", alloc_header.display()));
         }
 
-        cc_build.compile("thorvg");
+        // SIMD flags apply only to the SIMD kernels; thorvg picks them at runtime
+        let mut files: Vec<String> = src.iter().flat_map(|dir| collect_files(dir)).collect();
+        if !simd_flags.is_empty() {
+            let (simd_files, rest): (Vec<_>, Vec<_>) = files
+                .into_iter()
+                .partition(|f| f.ends_with("tvgSwRasterSimd.cpp"));
+            files = rest;
+
+            let mut simd_build = cc_build.clone();
+            for flag in &simd_flags {
+                simd_build.flag(flag);
+            }
+            cc_build.objects(simd_build.files(simd_files).compile_intermediates());
+        }
+
+        cc_build.files(files).compile("thorvg");
 
         println!("cargo:root={}", out_dir.display());
 

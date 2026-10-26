@@ -65,6 +65,7 @@ tinyrlibc = { version = "0.5.1", default-features = false, features = [
     "atoi",
     "isdigit",
     "isspace",
+    "qsort",
     "strcat",
     "strchr",
     "strcmp",

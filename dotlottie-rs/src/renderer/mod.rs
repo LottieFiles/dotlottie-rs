@@ -18,9 +18,10 @@ pub use backend::{
 #[cfg(feature = "audio")]
 pub use backend::{AudioEvent, AudioResolver, AudioSource};
 pub use slots::{
-    slots_from_json_string, Bezier, BezierValue, ColorSlot, ColorValue, GradientSlot, GradientStop,
-    ImageSlot, LottieKeyframe, LottieProperty, PositionSlot, ScalarSlot, ScalarValue, SlotType,
-    TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot, VectorSlot,
+    slots_from_json_string, Bezier, BezierPath, BezierPathSlot, BezierValue, ColorSlot, ColorValue,
+    GradientSlot, GradientStop, ImageSlot, LottieKeyframe, LottieProperty, PositionSlot,
+    ScalarSlot, ScalarValue, SlotType, TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot,
+    VectorSlot,
 };
 #[cfg(feature = "tvg")]
 pub use thorvg::{TvgAnimation, TvgError, TvgRenderer, TvgShape};
@@ -136,6 +137,9 @@ pub trait LottieRenderer {
     fn set_vector_slot(&mut self, slot_id: &str, slot: VectorSlot) -> Result<(), Error>;
 
     fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), Error>;
+
+    /// Experimental, pending a dotLottie theming spec proposal.
+    fn set_bezier_path_slot(&mut self, slot_id: &str, slot: BezierPathSlot) -> Result<(), Error>;
 
     fn clear_slots(&mut self) -> Result<(), Error>;
 
@@ -709,6 +713,16 @@ impl<R: Renderer> LottieRenderer for LottieRendererImpl<R> {
     fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), Error> {
         self.slot_values
             .insert(slot_id.to_string(), SlotType::Position(slot));
+        self.slots_dirty = true;
+        Ok(())
+    }
+
+    fn set_bezier_path_slot(&mut self, slot_id: &str, slot: BezierPathSlot) -> Result<(), Error> {
+        if !slot.is_valid() {
+            return Err(Error::InvalidSlotValue);
+        }
+        self.slot_values
+            .insert(slot_id.to_string(), SlotType::BezierPath(slot));
         self.slots_dirty = true;
         Ok(())
     }

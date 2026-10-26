@@ -1441,7 +1441,6 @@ impl Player {
         self.apply_slot_types(slots)
     }
 
-    #[cfg(feature = "theming")]
     fn apply_slot_types(
         &mut self,
         slots: std::collections::BTreeMap<String, crate::renderer::SlotType>,
@@ -1460,6 +1459,7 @@ impl Player {
                 SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot)?,
                 SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot)?,
                 SlotType::Position(slot) => self.renderer.set_position_slot(&slot_id, slot)?,
+                SlotType::BezierPath(slot) => self.renderer.set_bezier_path_slot(&slot_id, slot)?,
             };
         }
 
@@ -1558,6 +1558,16 @@ impl Player {
         Ok(())
     }
 
+    /// Experimental, pending a dotLottie theming spec proposal.
+    pub fn set_bezier_path_slot(
+        &mut self,
+        slot_id: &str,
+        slot: crate::renderer::BezierPathSlot,
+    ) -> Result<()> {
+        self.renderer.set_bezier_path_slot(slot_id, slot)?;
+        Ok(())
+    }
+
     pub fn clear_slots(&mut self) -> Result<()> {
         self.renderer.clear_slots()?;
         Ok(())
@@ -1585,29 +1595,7 @@ impl Player {
         }
 
         match slots_from_json_string(slots_json) {
-            Ok(slots) => {
-                for (slot_id, slot_type) in slots {
-                    use crate::renderer::SlotType;
-
-                    match slot_type {
-                        SlotType::Color(slot) => self.renderer.set_color_slot(&slot_id, slot)?,
-                        SlotType::Gradient(slot) => {
-                            self.renderer.set_gradient_slot(&slot_id, slot)?
-                        }
-                        SlotType::Image(slot) => {
-                            let slot = self.normalize_image_slot(&slot_id, slot);
-                            self.renderer.set_image_slot(&slot_id, slot)?
-                        }
-                        SlotType::Text(slot) => self.renderer.set_text_slot(&slot_id, slot)?,
-                        SlotType::Scalar(slot) => self.renderer.set_scalar_slot(&slot_id, slot)?,
-                        SlotType::Vector(slot) => self.renderer.set_vector_slot(&slot_id, slot)?,
-                        SlotType::Position(slot) => {
-                            self.renderer.set_position_slot(&slot_id, slot)?
-                        }
-                    };
-                }
-                Ok(())
-            }
+            Ok(slots) => self.apply_slot_types(slots),
             Err(_) => Err(Error::InvalidParameter),
         }
     }

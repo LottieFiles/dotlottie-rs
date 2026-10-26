@@ -89,14 +89,14 @@ fn main() {
             if is_animated {
                 let text_slot = TextSlot::with_keyframes(vec![
                     TextKeyframe {
-                        frame: 0,
+                        frame: 0.0,
                         text_document: TextDocument::new("Hello")
                             .with_font("Arial")
                             .with_size(200.0)
                             .with_fill_color(vec![1.0, 0.0, 0.0, 1.0]), // Red
                     },
                     TextKeyframe {
-                        frame: 30,
+                        frame: 30.0,
                         text_document: TextDocument::new("World")
                             .with_font("Arial")
                             .with_size(200.0)

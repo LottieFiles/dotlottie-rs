@@ -56,8 +56,7 @@ impl IntoResult for tvg::Tvg_Result {
             tvg::Tvg_Result_TVG_RESULT_FAILED_ALLOCATION => Err(TvgError::FailedAllocation),
             tvg::Tvg_Result_TVG_RESULT_MEMORY_CORRUPTION => Err(TvgError::MemoryCorruption),
             tvg::Tvg_Result_TVG_RESULT_NOT_SUPPORTED => Err(TvgError::NotSupported),
-            tvg::Tvg_Result_TVG_RESULT_UNKNOWN => Err(TvgError::Unknown),
-            _ => unreachable!(),
+            _ => Err(TvgError::Unknown),
         }
     }
 }

@@ -452,7 +452,7 @@ mod tests {
             .load_animation_data(&CString::new(data).unwrap())
             .unwrap();
 
-        let keyframe = |frame: u32, scale: f32| LottieKeyframe {
+        let keyframe = |frame: f32, scale: f32| LottieKeyframe {
             frame,
             start_value: BezierPath::polygon(
                 vec![
@@ -472,7 +472,7 @@ mod tests {
         player
             .set_bezier_path_slot(
                 "shape_path",
-                LottieProperty::animated(vec![keyframe(0, 0.4), keyframe(60, 1.8)]),
+                LottieProperty::animated(vec![keyframe(0.0, 0.4), keyframe(60.0, 1.8)]),
             )
             .unwrap();
 

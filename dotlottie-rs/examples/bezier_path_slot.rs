@@ -96,7 +96,7 @@ fn bezier(x: f32, y: f32) -> Option<Bezier> {
     })
 }
 
-fn morph_keyframe(frame: u32, path: BezierPath) -> LottieKeyframe<BezierPath> {
+fn morph_keyframe(frame: f32, path: BezierPath) -> LottieKeyframe<BezierPath> {
     LottieKeyframe {
         frame,
         start_value: path,
@@ -113,11 +113,11 @@ fn morph_keyframe(frame: u32, path: BezierPath) -> LottieKeyframe<BezierPath> {
 /// triangle so the loop is seamless.
 fn morph_cycle() -> BezierPathSlot {
     LottieProperty::animated(vec![
-        morph_keyframe(0, triangle()),
-        morph_keyframe(15, square()),
-        morph_keyframe(30, star(85.0, 38.0)),
-        morph_keyframe(45, circle(70.0)),
-        morph_keyframe(60, triangle()),
+        morph_keyframe(0.0, triangle()),
+        morph_keyframe(15.0, square()),
+        morph_keyframe(30.0, star(85.0, 38.0)),
+        morph_keyframe(45.0, circle(70.0)),
+        morph_keyframe(60.0, triangle()),
     ])
 }
 

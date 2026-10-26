@@ -1,3 +1,39 @@
+## 0.1.60 (2026-10-26)
+
+### Features
+
+#### single src field for image rules (#585)
+
+#### expose set_image_slot binding (#590)
+
+#### state machine tweening redirection (#592)
+
+#### external assets resolver (#602)
+
+#### render a placeholder for images that fail to resolve (#604)
+
+#### experimental video support (#609)
+
+#### bump thorvg to v1.1.3 (#616)
+
+#### bezier path slots (#608)
+
+#### feat: bezier path slots
+
+Adds experimental bezier path slots (`set_bezier_path_slot`, `"BezierPath"` theme rule). Themes now skip unknown rule types instead of failing.
+
+### Fixes
+
+#### initialize audio manager when loading JSON animations (#582)
+
+#### 🐛 reset_theme clear slots instead of reseting the slots (#586)
+
+#### normalize image slots before handing them to ThorVG (#591)
+
+#### accept fractional keyframe frames in themes and slots (#610)
+
+#### sync audio playback with seek, segments, speed and direction (#611)
+
 ## 0.1.59 (2026-08-22)
 
 ### Features

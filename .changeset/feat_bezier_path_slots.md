@@ -4,15 +4,4 @@ default: minor
 
 # feat: bezier path slots
 
-Adds an experimental `BezierPath` slot type for overriding the geometry of path
-(`ty: "sh"`) properties tagged with a slot id, backed by ThorVG's path slot support.
-
-- `Player::set_bezier_path_slot` and `BezierPath` / `BezierPathSlot`, static or keyframed.
-- `set_slots_str` and slots discovered from the animation recognise path values
-  (`"bezier_path"`).
-- Experimental `"type": "BezierPath"` theme rule with `vertices`, `inTangents`,
-  `outTangents` and `closed`, pending a dotLottie theming spec proposal.
-
-Themes now skip rules with an unknown `type` instead of rejecting the whole theme, so
-future rule types don't break theming on players that don't know them. Malformed rules
-of a known type still reject the theme.
+Adds experimental bezier path slots (`set_bezier_path_slot`, `"BezierPath"` theme rule). Themes now skip unknown rule types instead of failing.

@@ -360,7 +360,7 @@ impl Player {
         let store = self.dotlottie_manager.as_ref().map(|dm| dm.assets());
         let user = self.asset_resolver.clone();
         Box::new(move |src: &str| {
-            if !src.to_lowercase().ends_with("mp3") {
+            if !crate::audio::is_supported_src(src) {
                 return None;
             }
             #[cfg(feature = "dotlottie")]
@@ -2097,6 +2097,33 @@ mod audio_render_tests {
             player.audio_active_count() > 0,
             "audio resolver should mark layers active during playback"
         );
+    }
+
+    /// One layer per format; only the formats this build enables resolve.
+    #[test]
+    fn resolves_enabled_audio_formats() {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; 64 * 64];
+        player
+            .set_sw_target(&mut buffer, 64, 64, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = include_bytes!("../assets/animations/dotlottie/v2/audio_formats.lottie");
+        assert!(player.load_dotlottie_data(data).is_ok());
+        player.play().unwrap();
+        for _ in 0..5 {
+            let _ = player.tick(1000.0 / 60.0);
+        }
+
+        let enabled = [
+            true,
+            cfg!(feature = "audio-wav"),
+            cfg!(feature = "audio-flac"),
+            cfg!(feature = "audio-ogg"),
+            cfg!(feature = "audio-m4a"),
+        ];
+        let expected = enabled.iter().filter(|&&on| on).count();
+        assert_eq!(player.audio_active_count(), expected);
     }
 
     fn loaded_audio_player(buffer: &mut [u32]) -> Player {

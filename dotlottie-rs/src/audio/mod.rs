@@ -239,8 +239,105 @@ impl AudioManager {
     }
 }
 
+/// Whether `src` names an audio format this build plays: MP3 always, the rest
+/// behind their `audio-*` features.
+pub(crate) fn is_supported_src(src: &str) -> bool {
+    let Some((_, ext)) = src.rsplit_once('.') else {
+        return false;
+    };
+    match ext.to_ascii_lowercase().as_str() {
+        "mp3" => true,
+        #[cfg(feature = "audio-wav")]
+        "wav" => true,
+        #[cfg(feature = "audio-flac")]
+        "flac" => true,
+        #[cfg(feature = "audio-ogg")]
+        "ogg" => true,
+        #[cfg(feature = "audio-m4a")]
+        "m4a" => true,
+        _ => false,
+    }
+}
+
+/// MIME type of encoded audio bytes, sniffed from the container header.
+#[cfg(any(test, target_arch = "wasm32"))]
+fn mime_type(data: &[u8]) -> &'static str {
+    match data {
+        #[cfg(feature = "audio-wav")]
+        [b'R', b'I', b'F', b'F', _, _, _, _, b'W', b'A', b'V', b'E', ..] => "audio/wav",
+        #[cfg(feature = "audio-flac")]
+        [b'f', b'L', b'a', b'C', ..] => "audio/flac",
+        #[cfg(feature = "audio-ogg")]
+        [b'O', b'g', b'g', b'S', ..] => "audio/ogg",
+        #[cfg(feature = "audio-m4a")]
+        [_, _, _, _, b'f', b't', b'y', b'p', ..] => "audio/mp4",
+        _ => "audio/mpeg",
+    }
+}
+
 /// Normalize a resolver `src` for use as a lookup key: drop leading slashes the
 /// renderer prefixes onto packaged paths (e.g. `//u/clip.mp3` → `u/clip.mp3`).
 fn normalize_src(src: &str) -> String {
     src.trim_start_matches('/').to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_supported_src, mime_type};
+
+    const TONES: [(&str, &[u8], &str, bool); 5] = [
+        (
+            "mp3",
+            include_bytes!("../../assets/audio/tone.mp3"),
+            "audio/mpeg",
+            true,
+        ),
+        (
+            "wav",
+            include_bytes!("../../assets/audio/tone.wav"),
+            "audio/wav",
+            cfg!(feature = "audio-wav"),
+        ),
+        (
+            "flac",
+            include_bytes!("../../assets/audio/tone.flac"),
+            "audio/flac",
+            cfg!(feature = "audio-flac"),
+        ),
+        (
+            "ogg",
+            include_bytes!("../../assets/audio/tone.ogg"),
+            "audio/ogg",
+            cfg!(feature = "audio-ogg"),
+        ),
+        (
+            "m4a",
+            include_bytes!("../../assets/audio/tone.m4a"),
+            "audio/mp4",
+            cfg!(feature = "audio-m4a"),
+        ),
+    ];
+
+    #[test]
+    fn supports_only_enabled_formats() {
+        for (ext, _, _, enabled) in TONES {
+            assert_eq!(is_supported_src(&format!("u/tone.{ext}")), enabled, "{ext}");
+            assert_eq!(
+                is_supported_src(&format!("u/TONE.{}", ext.to_uppercase())),
+                enabled,
+                "{ext}"
+            );
+        }
+        assert!(!is_supported_src("u/tone"));
+        assert!(!is_supported_src("u/tone.aac"));
+    }
+
+    #[test]
+    fn sniffs_enabled_containers_and_defaults_to_mpeg() {
+        for (ext, bytes, mime, enabled) in TONES {
+            let expected = if enabled { mime } else { "audio/mpeg" };
+            assert_eq!(mime_type(bytes), expected, "{ext}");
+        }
+        assert_eq!(mime_type(b"RIFF"), "audio/mpeg");
+    }
 }

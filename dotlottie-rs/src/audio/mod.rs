@@ -239,8 +239,30 @@ impl AudioManager {
     }
 }
 
+/// MIME type of encoded audio bytes, sniffed from the container header.
+#[cfg(any(test, target_arch = "wasm32"))]
+fn mime_type(data: &[u8]) -> &'static str {
+    if data.len() >= 12 && &data[..4] == b"RIFF" && &data[8..12] == b"WAVE" {
+        "audio/wav"
+    } else {
+        "audio/mpeg"
+    }
+}
+
 /// Normalize a resolver `src` for use as a lookup key: drop leading slashes the
 /// renderer prefixes onto packaged paths (e.g. `//u/clip.mp3` → `u/clip.mp3`).
 fn normalize_src(src: &str) -> String {
     src.trim_start_matches('/').to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::mime_type;
+
+    #[test]
+    fn sniffs_wav_and_defaults_to_mpeg() {
+        assert_eq!(mime_type(b"RIFF\x24\x00\x00\x00WAVEfmt "), "audio/wav");
+        assert_eq!(mime_type(b"ID3\x03\x00\x00\x00\x00\x00\x00"), "audio/mpeg");
+        assert_eq!(mime_type(b"RIFF"), "audio/mpeg");
+    }
 }

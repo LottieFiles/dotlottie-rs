@@ -13,7 +13,8 @@ struct AudioEntry {
 }
 
 /// Web audio backend powered by the browser's native `HtmlAudioElement`. MP3
-/// bytes play via a `Blob` object URL, so no decoder ships in the wasm binary.
+/// and WAV bytes play via a `Blob` object URL, so no decoder ships in the wasm
+/// binary.
 pub struct WebAudioPlayer {
     elements: FxHashMap<String, AudioEntry>,
     /// Global multiplier in [0.0, 1.0], applied on top of per-layer volume.
@@ -45,7 +46,7 @@ impl WebAudioPlayer {
         array.push(&uint8_array);
 
         let props = BlobPropertyBag::new();
-        props.set_type("audio/mpeg");
+        props.set_type(super::mime_type(&data));
 
         let blob = match Blob::new_with_u8_array_sequence_and_options(&array, &props) {
             Ok(b) => b,

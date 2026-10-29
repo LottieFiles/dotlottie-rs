@@ -360,7 +360,8 @@ impl Player {
         let store = self.dotlottie_manager.as_ref().map(|dm| dm.assets());
         let user = self.asset_resolver.clone();
         Box::new(move |src: &str| {
-            if !src.to_lowercase().ends_with("mp3") {
+            let lower = src.to_lowercase();
+            if !(lower.ends_with("mp3") || lower.ends_with("wav")) {
                 return None;
             }
             #[cfg(feature = "dotlottie")]
@@ -2097,6 +2098,23 @@ mod audio_render_tests {
             player.audio_active_count() > 0,
             "audio resolver should mark layers active during playback"
         );
+    }
+
+    #[test]
+    fn resolves_packaged_wav_audio() {
+        let mut player = Player::new();
+        let mut buffer = vec![0u32; 64 * 64];
+        player
+            .set_sw_target(&mut buffer, 64, 64, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = include_bytes!("../assets/animations/dotlottie/v2/wav_audio.lottie");
+        assert!(player.load_dotlottie_data(data).is_ok());
+        player.play().unwrap();
+        for _ in 0..5 {
+            let _ = player.tick(1000.0 / 60.0);
+        }
+        assert_eq!(player.audio_active_count(), 1, "the .wav layer resolves");
     }
 
     fn loaded_audio_player(buffer: &mut [u32]) -> Player {

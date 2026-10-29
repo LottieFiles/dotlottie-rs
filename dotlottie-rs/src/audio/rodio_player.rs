@@ -118,3 +118,24 @@ impl RodioPlayer {
         self.global_volume
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rodio::Decoder;
+    use std::io::Cursor;
+
+    #[test]
+    fn decodes_wav() {
+        let samples = [0u8; 160];
+        let mut wav = b"RIFF".to_vec();
+        wav.extend_from_slice(&(36 + samples.len() as u32).to_le_bytes());
+        wav.extend_from_slice(b"WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00");
+        wav.extend_from_slice(&8000u32.to_le_bytes());
+        wav.extend_from_slice(&16000u32.to_le_bytes());
+        wav.extend_from_slice(b"\x02\x00\x10\x00data");
+        wav.extend_from_slice(&(samples.len() as u32).to_le_bytes());
+        wav.extend_from_slice(&samples);
+
+        assert!(Decoder::new(Cursor::new(wav)).is_ok());
+    }
+}

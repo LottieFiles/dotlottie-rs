@@ -54,7 +54,7 @@ ndk-context = { version = "0.1", optional = true }
 # rodio is only compiled for non-wasm targets; on wasm32 audio is handled via
 # the browser's native HtmlAudioElement (see src/audio/web_audio_player.rs).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-rodio = { version = "0.17", optional = true, default-features = false, features = ["mp3"] }
+rodio = { version = "0.17", optional = true, default-features = false, features = ["mp3", "wav"] }
 
 [target.wasm32-unknown-unknown.dependencies]
 wasm-bindgen = "0.2.100"

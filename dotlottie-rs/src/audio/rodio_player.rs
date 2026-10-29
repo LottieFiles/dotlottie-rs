@@ -1,4 +1,4 @@
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
+use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 use rustc_hash::FxHashMap;
 use std::io::Cursor;
 use std::sync::Arc;
@@ -8,7 +8,7 @@ use std::time::Duration;
 /// output stream opens lazily on first playback.
 pub struct RodioPlayer {
     /// Kept alive so the audio output chain stays open; `None` until first use.
-    stream: Option<(OutputStream, OutputStreamHandle)>,
+    stream: Option<OutputStream>,
     sinks: FxHashMap<String, ActiveSink>,
     /// Global multiplier in [0.0, 1.0], applied on top of per-layer volume.
     global_volume: f32,
@@ -38,31 +38,35 @@ impl RodioPlayer {
         }
     }
 
-    /// Open the output stream on demand, returning a handle or `None` if no
+    /// Connect a sink to the output stream, opening it on demand; `None` if no
     /// audio device is available.
-    fn handle(&mut self) -> Option<OutputStreamHandle> {
+    fn new_sink(&mut self) -> Option<Sink> {
         if self.stream.is_none() {
-            self.stream = OutputStream::try_default().ok();
+            self.stream = OutputStreamBuilder::open_default_stream()
+                .ok()
+                .map(|mut stream| {
+                    stream.log_on_drop(false);
+                    stream
+                });
         }
-        self.stream.as_ref().map(|(_, handle)| handle.clone())
+        self.stream
+            .as_ref()
+            .map(|stream| Sink::connect_new(stream.mixer()))
     }
 
     pub fn play(&mut self, key: &str, data: Arc<[u8]>, offset_secs: f32, layer_volume: f32) {
         self.sinks.remove(key);
 
-        let Some(handle) = self.handle() else {
+        let Some(source) = decode(data) else {
             return;
         };
-        let Ok(source) = Decoder::new(Cursor::new(data)) else {
-            return;
-        };
-        let Ok(sink) = Sink::try_new(&handle) else {
+        let Some(sink) = self.new_sink() else {
             return;
         };
 
         sink.set_volume(layer_volume * self.global_volume);
         sink.set_speed(self.rate);
-        // rodio 0.17 has no seek; skip_duration approximates a mid-clip start.
+        // skip_duration approximates a mid-clip start.
         sink.append(source.skip_duration(Duration::from_secs_f32(offset_secs.max(0.0))));
 
         self.sinks
@@ -119,23 +123,52 @@ impl RodioPlayer {
     }
 }
 
+/// Decode `data` in any enabled format. The byte length lets symphonia read MP4
+/// files whose index follows the media data.
+fn decode(data: Arc<[u8]>) -> Option<Decoder<Cursor<Arc<[u8]>>>> {
+    let len = data.len() as u64;
+    Decoder::builder()
+        .with_data(Cursor::new(data))
+        .with_byte_len(len)
+        .with_seekable(true)
+        .build()
+        .ok()
+}
+
 #[cfg(test)]
 mod tests {
-    use rodio::Decoder;
-    use std::io::Cursor;
+    use super::decode;
+
+    fn decodes(bytes: &'static [u8]) -> bool {
+        decode(bytes.into()).is_some_and(|source| source.count() > 0)
+    }
 
     #[test]
-    fn decodes_wav() {
-        let samples = [0u8; 160];
-        let mut wav = b"RIFF".to_vec();
-        wav.extend_from_slice(&(36 + samples.len() as u32).to_le_bytes());
-        wav.extend_from_slice(b"WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00");
-        wav.extend_from_slice(&8000u32.to_le_bytes());
-        wav.extend_from_slice(&16000u32.to_le_bytes());
-        wav.extend_from_slice(b"\x02\x00\x10\x00data");
-        wav.extend_from_slice(&(samples.len() as u32).to_le_bytes());
-        wav.extend_from_slice(&samples);
+    fn decodes_mp3() {
+        assert!(decodes(include_bytes!("../../assets/audio/tone.mp3")));
+    }
 
-        assert!(Decoder::new(Cursor::new(wav)).is_ok());
+    #[cfg(feature = "audio-wav")]
+    #[test]
+    fn decodes_wav() {
+        assert!(decodes(include_bytes!("../../assets/audio/tone.wav")));
+    }
+
+    #[cfg(feature = "audio-flac")]
+    #[test]
+    fn decodes_flac() {
+        assert!(decodes(include_bytes!("../../assets/audio/tone.flac")));
+    }
+
+    #[cfg(feature = "audio-ogg")]
+    #[test]
+    fn decodes_ogg() {
+        assert!(decodes(include_bytes!("../../assets/audio/tone.ogg")));
+    }
+
+    #[cfg(feature = "audio-m4a")]
+    #[test]
+    fn decodes_m4a() {
+        assert!(decodes(include_bytes!("../../assets/audio/tone.m4a")));
     }
 }

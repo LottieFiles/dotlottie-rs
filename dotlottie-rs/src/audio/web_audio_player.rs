@@ -39,6 +39,7 @@ impl WebAudioPlayer {
 
     pub fn play(&mut self, key: &str, data: Arc<[u8]>, offset_secs: f32, layer_volume: f32) {
         self.stop(key);
+        let layer_volume = clamp_volume(layer_volume);
 
         let uint8_array = js_sys::Uint8Array::from(data.as_ref());
         let array = Array::new();
@@ -113,6 +114,7 @@ impl WebAudioPlayer {
     /// Update one clip's per-layer volume without restarting it.
     pub fn set_volume(&mut self, key: &str, layer_volume: f32) {
         if let Some(entry) = self.elements.get_mut(key) {
+            let layer_volume = clamp_volume(layer_volume);
             entry.layer_volume = layer_volume;
             entry
                 .element
@@ -141,6 +143,12 @@ impl WebAudioPlayer {
     pub fn global_volume(&self) -> f32 {
         self.global_volume
     }
+}
+
+/// Layer levels can be above 100% or negative, but `HTMLMediaElement.volume`
+/// throws IndexSizeError outside [0, 1].
+fn clamp_volume(volume: f32) -> f32 {
+    volume.clamp(0.0, 1.0)
 }
 
 /// Media elements keep playing after the Rust handle is dropped; pause them

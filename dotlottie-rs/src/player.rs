@@ -1558,7 +1558,6 @@ impl Player {
         Ok(())
     }
 
-    /// Experimental, pending a dotLottie theming spec proposal.
     pub fn set_bezier_path_slot(
         &mut self,
         slot_id: &str,

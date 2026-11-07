@@ -339,7 +339,7 @@ mod tests {
         );
     }
 
-    // ── BezierPath rule (experimental) ────────────────────────────
+    // ── BezierPath rule ────────────────────────────
 
     const BEZIER_PATH_THEME: &str = r#"{
         "rules": [

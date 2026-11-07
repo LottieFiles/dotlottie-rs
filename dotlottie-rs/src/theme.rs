@@ -237,8 +237,6 @@ pub struct PositionKeyframe {
 }
 
 /// Bezier path theme rule - overrides the shape of a path (`ty: "sh"`) property.
-///
-/// Experimental, pending a dotLottie theming spec proposal.
 #[derive(Debug, Clone)]
 pub struct BezierPathRule {
     pub id: String,
@@ -267,7 +265,6 @@ pub enum ThemeRule {
     Text(TextRule),
     Vector(VectorRule),
     Position(PositionRule),
-    /// Experimental, pending a dotLottie theming spec proposal.
     BezierPath(BezierPathRule),
 }
 

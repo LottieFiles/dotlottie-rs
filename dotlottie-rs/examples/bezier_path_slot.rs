@@ -1,5 +1,5 @@
 #![allow(clippy::print_stdout)]
-//! Bezier path slot example (experimental).
+//! Bezier path slot example.
 //!
 //! Demonstrates `set_bezier_path_slot`, which replaces the geometry of a path
 //! (`ty: "sh"`) property tagged with a slot id. bezier_path.json exposes a

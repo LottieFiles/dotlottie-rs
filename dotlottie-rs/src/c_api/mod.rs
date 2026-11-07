@@ -5,8 +5,9 @@ use std::slice;
 
 use crate::player::Error as PlayerError;
 use crate::renderer::{
-    ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot, PositionSlot, ScalarSlot,
-    ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice, WgpuInstance, WgpuTarget,
+    BezierPath, BezierPathSlot, ColorSlot, ColorValue, GlContext, GlDisplay, GlSurface, ImageSlot,
+    PositionSlot, ScalarSlot, ScalarValue, TextDocument, TextSlot, VectorSlot, WgpuDevice,
+    WgpuInstance, WgpuTarget,
 };
 use crate::{Layout, Mode, Player, Rgba, Segment, Status};
 
@@ -1189,6 +1190,60 @@ pub unsafe extern "C" fn dotlottie_set_image_slot_src(
                 dotlottie_player.set_image_slot(id_str, slot)
             }
             _ => Err(PlayerError::InvalidParameter),
+        }
+    })
+}
+
+unsafe fn points_from_raw(data: *const f32, count: usize) -> Option<Vec<[f32; 2]>> {
+    let len = count.checked_mul(2)?;
+    Some(
+        slice::from_raw_parts(data, len)
+            .chunks_exact(2)
+            .map(|p| [p[0], p[1]])
+            .collect(),
+    )
+}
+
+/// Set a bezier path slot. `vertices`, `in_tangents` and
+/// `out_tangents` each hold `count` interleaved `x, y` pairs. Tangents are
+/// relative to their vertex; pass NULL for zero tangents.
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_set_bezier_path_slot(
+    ptr: *mut Player,
+    slot_id: *const c_char,
+    vertices: *const f32,
+    in_tangents: *const f32,
+    out_tangents: *const f32,
+    count: usize,
+    closed: bool,
+) -> DotLottieResult {
+    exec_dotlottie_player_op!(ptr, |dotlottie_player| {
+        if slot_id.is_null() || vertices.is_null() || count == 0 {
+            return DotLottieResult::InvalidParameter;
+        }
+        let tangents = |data: *const f32| {
+            if data.is_null() {
+                Some(vec![[0.0, 0.0]; count])
+            } else {
+                points_from_raw(data, count)
+            }
+        };
+        let path = match (
+            points_from_raw(vertices, count),
+            tangents(in_tangents),
+            tangents(out_tangents),
+        ) {
+            (Some(vertices), Some(in_tangents), Some(out_tangents)) => BezierPath {
+                in_tangents,
+                out_tangents,
+                vertices,
+                closed,
+            },
+            _ => return DotLottieResult::InvalidParameter,
+        };
+        match CStr::from_ptr(slot_id).to_str() {
+            Ok(id_str) => dotlottie_player.set_bezier_path_slot(id_str, BezierPathSlot::new(path)),
+            Err(_) => Err(PlayerError::InvalidParameter),
         }
     })
 }
@@ -2787,6 +2842,96 @@ mod asset_resolver_tests {
             assert_eq!(
                 dotlottie_set_asset_resolver(player, None, None, std::ptr::null_mut()),
                 DotLottieResult::Success
+            );
+            assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "tvg")]
+mod bezier_path_slot_tests {
+    use super::*;
+    use std::ffi::CString;
+    use std::ptr::null;
+
+    const BEZIER_PATH_JSON: &str = include_str!("../../assets/animations/lottie/bezier_path.json");
+
+    #[test]
+    fn c_set_bezier_path_slot() {
+        unsafe {
+            let player = dotlottie_new_player(0);
+            let mut buffer = vec![0u32; 64 * 64];
+            let _ =
+                dotlottie_set_sw_target(player, buffer.as_mut_ptr(), 64, 64, ColorSpace::ABGR8888);
+            let data = CString::new(BEZIER_PATH_JSON).unwrap();
+            assert_eq!(
+                dotlottie_load_animation_data(player, data.as_ptr()),
+                DotLottieResult::Success
+            );
+            let id = CString::new("shape_path").unwrap();
+            let verts = [-80.0f32, -80.0, 80.0, -80.0, 80.0, 80.0];
+            let tangents = [0.0f32, 0.0, 10.0, 10.0, 0.0, 0.0];
+
+            assert_eq!(
+                dotlottie_set_bezier_path_slot(
+                    player,
+                    id.as_ptr(),
+                    verts.as_ptr(),
+                    null(),
+                    null(),
+                    3,
+                    true
+                ),
+                DotLottieResult::Success
+            );
+            let json = (*player).get_slot_str("shape_path");
+            assert!(
+                json.contains("[-80,-80]") && json.contains("\"c\":true"),
+                "{json}"
+            );
+
+            assert_eq!(
+                dotlottie_set_bezier_path_slot(
+                    player,
+                    id.as_ptr(),
+                    verts.as_ptr(),
+                    tangents.as_ptr(),
+                    tangents.as_ptr(),
+                    3,
+                    false
+                ),
+                DotLottieResult::Success
+            );
+            let json = (*player).get_slot_str("shape_path");
+            assert!(
+                json.contains("[10,10]") && json.contains("\"c\":false"),
+                "{json}"
+            );
+
+            assert_eq!(
+                dotlottie_set_bezier_path_slot(
+                    player,
+                    id.as_ptr(),
+                    null(),
+                    null(),
+                    null(),
+                    3,
+                    true
+                ),
+                DotLottieResult::InvalidParameter
+            );
+            assert_eq!(
+                dotlottie_set_bezier_path_slot(
+                    player,
+                    id.as_ptr(),
+                    verts.as_ptr(),
+                    null(),
+                    null(),
+                    0,
+                    true
+                ),
+                DotLottieResult::InvalidParameter
             );
             assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
         }

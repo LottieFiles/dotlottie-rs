@@ -229,7 +229,6 @@ pub enum SlotType {
     Scalar(ScalarSlot),
     Vector(VectorSlot),
     Position(PositionSlot),
-    /// Experimental, pending a dotLottie theming spec proposal.
     BezierPath(BezierPathSlot),
 }
 
@@ -1002,7 +1001,7 @@ mod tests {
         assert!(property_from_json::<ScalarValue>(&v).is_none());
     }
 
-    // ── Group I: bezier path slots (experimental) ─────────────────
+    // ── Group I: bezier path slots ─────────────────
 
     const STATIC_PATH: &str = r#"{"a":0,"k":{"i":[[0,0],[1,1],[2,2]],"o":[[0,0],[-1,-1],[-2,-2]],"v":[[-50,-50],[50,-50],[0,50]],"c":true}}"#;
 

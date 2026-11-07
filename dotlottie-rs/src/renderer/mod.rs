@@ -138,7 +138,6 @@ pub trait LottieRenderer {
 
     fn set_position_slot(&mut self, slot_id: &str, slot: PositionSlot) -> Result<(), Error>;
 
-    /// Experimental, pending a dotLottie theming spec proposal.
     fn set_bezier_path_slot(&mut self, slot_id: &str, slot: BezierPathSlot) -> Result<(), Error>;
 
     fn clear_slots(&mut self) -> Result<(), Error>;

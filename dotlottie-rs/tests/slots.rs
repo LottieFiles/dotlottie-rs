@@ -305,7 +305,7 @@ mod tests {
         );
     }
 
-    // ── Bezier path slots (experimental) ──────────────────────────
+    // ── Bezier path slots ──────────────────────────
 
     fn load_bezier_path() -> Player {
         let mut player = Player::new();

@@ -683,6 +683,42 @@ impl DotLottiePlayerWasm {
             .is_ok()
     }
 
+    /// Set a bezier path slot. Arrays are flat `[x0, y0, x1, y1, ...]`;
+    /// tangents are relative to their vertex and default to zero when omitted.
+    pub fn set_bezier_path_slot(
+        &mut self,
+        id: &str,
+        vertices: &[f32],
+        closed: bool,
+        in_tangents: Option<Vec<f32>>,
+        out_tangents: Option<Vec<f32>>,
+    ) -> bool {
+        fn pairs(data: &[f32]) -> Option<Vec<[f32; 2]>> {
+            (data.len() % 2 == 0).then(|| data.chunks_exact(2).map(|p| [p[0], p[1]]).collect())
+        }
+        let count = vertices.len() / 2;
+        let tangents = |data: Option<Vec<f32>>| match data {
+            Some(d) => pairs(&d),
+            None => Some(vec![[0.0, 0.0]; count]),
+        };
+        let (Some(vertices), Some(in_tangents), Some(out_tangents)) = (
+            pairs(vertices),
+            tangents(in_tangents),
+            tangents(out_tangents),
+        ) else {
+            return false;
+        };
+        let path = crate::BezierPath {
+            in_tangents,
+            out_tangents,
+            vertices,
+            closed,
+        };
+        self.player
+            .set_bezier_path_slot(id, crate::BezierPathSlot::new(path))
+            .is_ok()
+    }
+
     pub fn clear_slots(&mut self) -> bool {
         self.player.clear_slots().is_ok()
     }

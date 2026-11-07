@@ -28,6 +28,11 @@ jobs:
             cmd: cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --all-targets -- -D clippy::print_stdout
             native: true
             rustflags: "-Dwarnings"
+          - name: Package
+            cmd: >-
+              cargo package --manifest-path=./dotlottie-rs/Cargo.toml --features="c_api" &&
+              cargo package --manifest-path=./dotlottie-rs/Cargo.toml --list | grep -qx deps/thorvg/src/bindings/capi/thorvg_capi.h
+            native: true
     env:
       CC: clang
       CXX: clang++

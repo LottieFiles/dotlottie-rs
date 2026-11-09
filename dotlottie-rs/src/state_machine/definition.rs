@@ -1,4 +1,4 @@
-use crate::json::{array_of, opt, Value};
+use crate::json::{array_of_supported, opt, Value};
 use crate::string::{DotString, DotStringInterner};
 
 use super::{inputs::Input, interactions::Interaction, states::State, GLOBAL_INPUT_PREFIX};
@@ -82,13 +82,13 @@ pub fn state_machine_parse(json: &str) -> Result<StateMachine, super::Error> {
 
 fn state_machine_from_value(root: &Value) -> Option<StateMachine> {
     let initial = dot_string(root.get("initial")?)?;
-    let states = array_of(root.get("states")?, super::states::state_from_json)?;
+    let states = array_of_supported(root.get("states")?, super::states::state_from_json)?;
     let interactions = opt(root.get("interactions"), |v| {
-        array_of(v, super::interactions::interaction_from_json)
+        array_of_supported(v, super::interactions::interaction_from_json)
     })?;
     // Drop @-prefixed user declarations. The @ namespace is reserved for built-ins
     let inputs = opt(root.get("inputs"), |v| {
-        array_of(v, super::inputs::input_from_json)
+        array_of_supported(v, super::inputs::input_from_json)
     })?
     .map(|mut v| {
         v.retain(|input| {
@@ -227,15 +227,68 @@ mod tests {
     fn rejects_bad_definitions() {
         assert!(state_machine_parse("not json").is_err());
         assert!(state_machine_parse(r#"{"states":[]}"#).is_err()); // missing initial
-        assert!(
-            state_machine_parse(r#"{"initial":"a","states":[{"type":"Nope","name":"x"}]}"#)
-                .is_err()
-        );
-        // Tweened requires easing with exactly 4 numbers
-        assert!(state_machine_parse(
-            r#"{"initial":"a","states":[{"type":"GlobalState","name":"a","transitions":[
-                {"type":"Tweened","toState":"a","duration":1,"easing":[0,0,1]}]}]}"#
+        assert!(state_machine_parse(r#"{"initial":"a","states":{}}"#).is_err());
+        assert!(state_machine_parse(r#"{"initial":"a","states":[],"inputs":5}"#).is_err());
+    }
+
+    #[test]
+    fn skips_unsupported_entries() {
+        let sm = state_machine_parse(
+            r#"{
+            "initial": "a",
+            "states": [
+                {"type": "Nope", "name": "x"},
+                {"type": "PlaybackState", "name": "a", "animation": "", "mode": "Spiral",
+                 "transitions": [
+                    {"type": "Spring", "toState": "b", "stiffness": 3},
+                    {"type": "Tweened", "toState": "b", "duration": 1, "easing": [0, 0, 1]},
+                    {"type": "Transition", "toState": "b",
+                     "guards": [{"type": "Numeric", "inputName": "n", "conditionType": "Near", "compareTo": 1}]},
+                    {"type": "Transition", "toState": "b",
+                     "guards": [{"type": "Boolean", "inputName": "flag", "conditionType": "Equal", "compareTo": true},
+                                {"type": "Pressure", "inputName": "p", "min": 0.5}]},
+                    {"type": "Transition", "toState": "b",
+                     "guards": [{"type": "Event", "inputName": "go"}]}
+                 ],
+                 "entryActions": [{"type": "Vibrate", "pattern": [1, 2]},
+                                  {"type": "Fire", "inputName": "go"}]},
+                {"type": "GlobalState", "name": "b", "transitions": []}
+            ],
+            "interactions": [
+                {"type": "Shake", "actions": []},
+                {"type": "Click", "actions": [{"type": "Teleport", "inputName": "n"}]}
+            ],
+            "inputs": [
+                {"type": "Color", "name": "c", "value": "white"},
+                {"type": "Numeric", "name": "n", "value": 0},
+                {"type": "Boolean", "name": "flag", "value": false},
+                {"type": "Event", "name": "go"}
+            ]
+        }"#,
         )
-        .is_err());
+        .expect("unsupported entries are skipped, not fatal");
+
+        assert_eq!(sm.states.len(), 2);
+        let State::PlaybackState {
+            mode,
+            transitions,
+            entry_actions,
+            ..
+        } = &sm.states[0]
+        else {
+            panic!("expected playback state");
+        };
+        assert!(mode.is_none());
+        assert_eq!(transitions.len(), 1);
+        assert!(transitions[0].contains_event_guard());
+        assert!(matches!(
+            entry_actions.as_deref(),
+            Some([Action::Fire { .. }])
+        ));
+
+        let interactions = sm.interactions.as_ref().unwrap();
+        assert_eq!(interactions.len(), 1);
+        assert!(interactions[0].actions().is_empty());
+        assert_eq!(sm.inputs.as_ref().unwrap().len(), 3);
     }
 }

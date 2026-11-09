@@ -87,6 +87,22 @@ impl Default for PointerData {
     }
 }
 
+struct TransitionMatch {
+    to_state: DotString,
+    tween: Tween,
+    event_guarded: bool,
+}
+
+impl TransitionMatch {
+    fn new(transition: &Transition) -> Self {
+        Self {
+            to_state: transition.to_state.clone(),
+            tween: transition.tween,
+            event_guarded: transition.contains_event_guard(),
+        }
+    }
+}
+
 pub struct StateMachineEngine<'a> {
     // For restoring the player config after state machine is stopped
     cached_mode: Mode,
@@ -526,6 +542,7 @@ impl<'a> StateMachineEngine<'a> {
 
     pub fn stop(&mut self) {
         self.status = StateMachineEngineStatus::Stopped;
+        self.curr_event = None;
 
         self.observe_on_stop();
 
@@ -704,6 +721,7 @@ impl<'a> StateMachineEngine<'a> {
             if !source_already_exited {
                 self.observe_on_state_exit(self.current_state_name());
             }
+            self.curr_event = None;
 
             // Since the blended transition will take time
             // We have to save the target state and do the final transition when tweening has completed
@@ -801,40 +819,30 @@ impl<'a> StateMachineEngine<'a> {
         &self,
         state_to_evaluate: &State,
         event: Option<&DotString>,
-    ) -> Option<(DotString, Tween)> {
-        let mut guardless_transition: Option<&Transition> = None;
+    ) -> Option<TransitionMatch> {
+        let transitions = state_to_evaluate.transitions();
+        let event_guarded = transitions.iter().filter(|t| t.contains_event_guard());
+        let input_guarded = transitions
+            .iter()
+            .filter(|t| !t.guards().is_empty() && !t.contains_event_guard());
+        let guardless = transitions.iter().filter(|t| t.guards().is_empty());
 
-        for transition in state_to_evaluate.transitions() {
-            let guards = transition.guards();
-
-            if guards.is_empty() {
-                guardless_transition = Some(transition);
-                continue;
-            }
-
-            // Event-guarded transitions need an event; the rest need none.
-            if transition.contains_event_guard() != event.is_some() {
-                continue;
-            }
-
-            // Guards are AND-ed; transitions are in priority order.
-            if guards.iter().all(|guard| guard.is_satisfied(self, event)) {
-                return Some((transition.to_state.clone(), transition.tween));
-            }
-        }
-
-        // Enforces the rule that a guardless transition is considered last
-        let guardless = guardless_transition?;
-        Some((guardless.to_state.clone(), guardless.tween))
+        // Pending events are served before input routing; guardless comes last.
+        event_guarded
+            .chain(input_guarded)
+            .chain(guardless)
+            .find(|t| t.guards().iter().all(|g| g.is_satisfied(self, event)))
+            .map(TransitionMatch::new)
     }
 
     fn evaluate_global_state(&mut self) -> bool {
         if let Some(state_to_evaluate) = &self.global_state {
-            if let Some((target_state, causing_transition)) =
-                self.evaluate_transitions(state_to_evaluate, self.curr_event.as_ref())
+            if let Some(TransitionMatch {
+                to_state,
+                tween,
+                event_guarded,
+            }) = self.evaluate_transitions(state_to_evaluate, self.curr_event.as_ref())
             {
-                self.curr_event = None;
-
                 // Prevent re-entering the current state again. While tweening, the state
                 // we are settling into is the tween's target, not the source we are leaving.
                 let settled_state = match (&self.status, &self.tween_transition_target_state) {
@@ -842,11 +850,14 @@ impl<'a> StateMachineEngine<'a> {
                     _ => self.current_state.as_ref().map(State::name),
                 };
 
-                if settled_state == Some(&target_state) {
+                if settled_state == Some(&to_state) {
+                    if event_guarded {
+                        self.curr_event = None;
+                    }
                     return false;
                 }
 
-                let success = self.set_current_state(&target_state, Some(causing_transition), true);
+                let success = self.set_current_state(&to_state, Some(tween), true);
 
                 match success {
                     Ok(()) => {
@@ -931,13 +942,12 @@ impl<'a> StateMachineEngine<'a> {
 
             if !ignore_child {
                 if let Some(current_state_to_evaluate) = &self.current_state {
-                    if let Some((target_state, causing_transition)) = self
+                    if let Some(TransitionMatch {
+                        to_state, tween, ..
+                    }) = self
                         .evaluate_transitions(current_state_to_evaluate, self.curr_event.as_ref())
                     {
-                        self.curr_event = None;
-
-                        let success =
-                            self.set_current_state(&target_state, Some(causing_transition), false);
+                        let success = self.set_current_state(&to_state, Some(tween), false);
 
                         match success {
                             Ok(()) => {
@@ -974,12 +984,7 @@ impl<'a> StateMachineEngine<'a> {
             }
         }
 
-        // While tweening the pipeline only sees the source state, so an unconsumed event
-        // stays pending for the run that follows the tween.
-        if self.status != StateMachineEngineStatus::Tweening {
-            self.curr_event = None;
-        }
-
+        // An unconsumed event stays pending until the current state exits.
         Ok(())
     }
 

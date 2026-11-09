@@ -294,4 +294,133 @@ mod tests {
         let curr_state_name = sm.get_current_state_name();
         assert_eq!(curr_state_name, "d");
     }
+
+    const PENDING_EVENT_SM: &str = r#"{
+        "initial": "waiting",
+        "states": [
+            {"type": "PlaybackState", "name": "waiting", "animation": "", "transitions": [
+                {"type": "Transition", "toState": "aborted", "guards": [
+                    {"type": "Boolean", "inputName": "abort", "conditionType": "Equal", "compareTo": true}]},
+                {"type": "Transition", "toState": "done", "guards": [
+                    {"type": "Event", "inputName": "loaded"},
+                    {"type": "Boolean", "inputName": "boundary", "conditionType": "Equal", "compareTo": true}]},
+                {"type": "Transition", "toState": "failed", "guards": [
+                    {"type": "Event", "inputName": "error"},
+                    {"type": "Boolean", "inputName": "boundary", "conditionType": "Equal", "compareTo": true}]}
+            ]},
+            {"type": "PlaybackState", "name": "aborted", "animation": "", "transitions": [
+                {"type": "Transition", "toState": "done", "guards": [
+                    {"type": "Event", "inputName": "loaded"}]}
+            ]},
+            {"type": "PlaybackState", "name": "done", "animation": "", "transitions": []},
+            {"type": "PlaybackState", "name": "failed", "animation": "", "transitions": []}
+        ],
+        "interactions": [],
+        "inputs": [
+            {"type": "Boolean", "name": "boundary", "value": false},
+            {"type": "Boolean", "name": "abort", "value": false},
+            {"type": "Event", "name": "loaded"},
+            {"type": "Event", "name": "error"}
+        ]
+    }"#;
+
+    fn start_pending_event_sm(player: &mut Player) -> dotlottie_rs::StateMachineEngine<'_> {
+        let mut sm = player
+            .state_machine_load_data(PENDING_EVENT_SM)
+            .expect("state machine to load successfully");
+        assert_eq!(sm.start(&OpenUrlPolicy::default()), Ok(()));
+        assert_eq!(sm.get_current_state_name(), "waiting");
+        sm
+    }
+
+    #[test]
+    pub fn event_stays_pending_until_consumed() {
+        let mut player = Player::new();
+        let mut sm = start_pending_event_sm(&mut player);
+
+        sm.fire("loaded", true).expect("event to fire successfully");
+        assert_eq!(sm.get_current_state_name(), "waiting");
+
+        sm.set_boolean_input("boundary", true, true, false)
+            .expect("input to set successfully");
+        assert_eq!(sm.get_current_state_name(), "done");
+    }
+
+    #[test]
+    pub fn newer_event_replaces_pending_event() {
+        let mut player = Player::new();
+        let mut sm = start_pending_event_sm(&mut player);
+
+        sm.fire("loaded", true).expect("event to fire successfully");
+        sm.fire("error", true).expect("event to fire successfully");
+        assert_eq!(sm.get_current_state_name(), "waiting");
+
+        sm.set_boolean_input("boundary", true, true, false)
+            .expect("input to set successfully");
+        assert_eq!(sm.get_current_state_name(), "failed");
+    }
+
+    #[test]
+    pub fn pending_event_is_dropped_when_state_exits() {
+        let mut player = Player::new();
+        let mut sm = start_pending_event_sm(&mut player);
+
+        sm.fire("loaded", true).expect("event to fire successfully");
+        sm.set_boolean_input("abort", true, true, false)
+            .expect("input to set successfully");
+        assert_eq!(sm.get_current_state_name(), "aborted");
+
+        sm.set_boolean_input("boundary", true, true, false)
+            .expect("input to set successfully");
+        assert_eq!(sm.get_current_state_name(), "aborted");
+
+        sm.fire("loaded", true).expect("event to fire successfully");
+        assert_eq!(sm.get_current_state_name(), "done");
+    }
+
+    #[test]
+    pub fn pending_event_is_served_before_input_routing() {
+        let sm_json = r#"{
+            "initial": "a",
+            "states": [
+                {"type": "PlaybackState", "name": "a", "animation": "", "transitions": [
+                    {"type": "Transition", "toState": "by_input", "guards": [
+                        {"type": "Boolean", "inputName": "flag", "conditionType": "Equal", "compareTo": true}]},
+                    {"type": "Transition", "toState": "by_event", "guards": [
+                        {"type": "Event", "inputName": "go"},
+                        {"type": "Boolean", "inputName": "flag", "conditionType": "Equal", "compareTo": true}]}
+                ]},
+                {"type": "PlaybackState", "name": "by_input", "animation": "", "transitions": []},
+                {"type": "PlaybackState", "name": "by_event", "animation": "", "transitions": []}
+            ],
+            "inputs": [
+                {"type": "Boolean", "name": "flag", "value": false},
+                {"type": "Event", "name": "go"}
+            ]
+        }"#;
+        let mut player = Player::new();
+        let mut sm = player
+            .state_machine_load_data(sm_json)
+            .expect("state machine to load successfully");
+        assert_eq!(sm.start(&OpenUrlPolicy::default()), Ok(()));
+
+        sm.fire("go", true).expect("event to fire successfully");
+        sm.set_boolean_input("flag", true, true, false)
+            .expect("input to set successfully");
+        assert_eq!(sm.get_current_state_name(), "by_event");
+    }
+
+    #[test]
+    pub fn pending_event_is_dropped_on_stop() {
+        let mut player = Player::new();
+        let mut sm = start_pending_event_sm(&mut player);
+
+        sm.fire("loaded", true).expect("event to fire successfully");
+        sm.stop();
+        assert_eq!(sm.start(&OpenUrlPolicy::default()), Ok(()));
+
+        sm.set_boolean_input("boundary", true, true, false)
+            .expect("input to set successfully");
+        assert_eq!(sm.get_current_state_name(), "waiting");
+    }
 }

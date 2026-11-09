@@ -179,6 +179,14 @@ pub fn array_of<'a, T>(v: &Value<'a>, parse: impl Fn(&Value<'a>) -> Option<T>) -
     v.as_array()?.iter().map(parse).collect()
 }
 
+/// Like `array_of`, but entries that fail to parse are dropped.
+pub fn array_of_supported<'a, T>(
+    v: &Value<'a>,
+    parse: impl Fn(&Value<'a>) -> Option<T>,
+) -> Option<Vec<T>> {
+    Some(v.as_array()?.iter().filter_map(parse).collect())
+}
+
 pub fn f32_vec(v: &Value) -> Option<Vec<f32>> {
     array_of(v, Value::as_f32)
 }

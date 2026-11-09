@@ -1,4 +1,4 @@
-use crate::json::{array_of, opt, Value};
+use crate::json::{array_of_supported, opt, Value};
 use crate::state_machine::definition::dot_string;
 use crate::string::{DotString, DotStringInterner};
 
@@ -42,7 +42,7 @@ pub enum Interaction {
 
 pub(crate) fn interaction_from_json(v: &Value) -> Option<Interaction> {
     let actions = || -> Option<Vec<Action>> {
-        array_of(
+        array_of_supported(
             v.get("actions")?,
             crate::state_machine::actions::action_from_json,
         )

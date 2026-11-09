@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use crate::json::{array_of, opt, Value};
+use crate::json::{array_of_supported, opt, Value};
 use crate::player::Mode;
 use crate::state_machine::definition::dot_string;
 use crate::string::{DotString, DotStringInterner};
@@ -37,14 +37,14 @@ pub enum State {
 
 pub(crate) fn state_from_json(v: &Value) -> Option<State> {
     let transitions = |v: &Value| -> Option<Vec<Transition>> {
-        array_of(
+        array_of_supported(
             v.get("transitions")?,
             crate::state_machine::transitions::transition_from_json,
         )
     };
     let actions = |field: Option<&Value>| -> Option<Option<Vec<Action>>> {
         opt(field, |a| {
-            array_of(a, crate::state_machine::actions::action_from_json)
+            array_of_supported(a, crate::state_machine::actions::action_from_json)
         })
     };
     Some(match v.str_field("type")? {
@@ -56,7 +56,7 @@ pub(crate) fn state_from_json(v: &Value) -> Option<State> {
             loop_count: opt(v.get("loopCount"), Value::as_u32)?,
             r#final: opt(v.get("final"), Value::as_bool)?,
             autoplay: opt(v.get("autoplay"), Value::as_bool)?,
-            mode: opt(v.get("mode"), |m| Mode::from_json_str(m.as_str()?))?,
+            mode: v.str_field("mode").and_then(Mode::from_json_str),
             speed: opt(v.get("speed"), Value::as_f32)?,
             segment: v.opt_str_field("segment")?,
             background_color: opt(v.get("backgroundColor"), Value::as_u32)?,

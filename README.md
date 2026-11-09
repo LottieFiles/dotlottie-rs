@@ -1,6 +1,7 @@
 # dotLottie Rust
 
 ![CI](https://img.shields.io/github/v/release/LottieFiles/dotlottie-rs)
+[![crates.io](https://img.shields.io/crates/v/dotlottie-rs)](https://crates.io/crates/dotlottie-rs)
 ![GitHub contributors](https://img.shields.io/github/contributors/LottieFiles/dotlottie-rs)
 ![GitHub](https://img.shields.io/github/license/LottieFiles/dotlottie-rs)
 
@@ -67,40 +68,29 @@ dotlottie-rs is the runtime core used by all official dotLottie framework player
 
 ## Installation
 
-> [!NOTE]
-> The crate is not currently published to crates.io — the version there is a stale alpha. Use the git dependency below.
-
-Add `dotlottie-rs` to your project as a git dependency:
-
-```toml
-[dependencies]
-dotlottie-rs = { git = "https://github.com/LottieFiles/dotlottie-rs" }
+```sh
+cargo add dotlottie-rs
 ```
 
-To pin to a specific release, use a tag:
+Requires Rust 1.85+. ThorVG is bundled with the crate and compiled from source by the build script, so you need a C++ toolchain (clang, plus libclang for bindgen).
+
+The default features include the ThorVG software renderer with PNG, JPEG, WebP, TTF, expressions and threading. To pick your own set:
 
 ```toml
 [dependencies]
-dotlottie-rs = { git = "https://github.com/LottieFiles/dotlottie-rs", tag = "v0.1.58" }
-```
-
-Requires Rust 1.85+. The ThorVG renderer is vendored as a git submodule and compiled from source by the build script — Cargo fetches it automatically, but you will need a C++ toolchain (clang, plus libclang for bindgen) available. Enable the renderer and any optional capabilities via features, for example:
-
-```toml
-[dependencies]
-dotlottie-rs = { git = "https://github.com/LottieFiles/dotlottie-rs", features = [
-    "tvg",       # ThorVG renderer
-    "tvg-cpu",   # software rendering backend
-    "tvg-png",   # PNG image support
-    "tvg-jpg",   # JPEG image support
-    "tvg-ttf",   # TrueType font support
+dotlottie-rs = { version = "0.1", default-features = false, features = [
+    "dotlottie",      # .lottie container support
+    "state-machines", # interactivity engine
+    "theming",        # theme and slot overrides
+    "tvg-cpu",        # software rendering backend
+    "tvg-png",        # PNG image support
 ] }
 ```
 
 ## Crates
 
-- [dotlottie-rs](./dotlottie-rs): The core library for dotLottie native players, including the C API (feature: `c_api`) and wasm-bindgen bindings (feature: `wasm-bindgen-api`)
-- [examples/c_api](./dotlottie-rs/examples/c_api/demo-player.c): Example usage of the native C API
+- [dotlottie-rs](https://github.com/LottieFiles/dotlottie-rs/tree/main/dotlottie-rs): The core library for dotLottie native players, including the C API (feature: `c_api`) and wasm-bindgen bindings (feature: `wasm-bindgen-api`)
+- [examples/c_api](https://github.com/LottieFiles/dotlottie-rs/blob/main/dotlottie-rs/examples/c_api/demo-player.c): Example usage of the native C API
 
 ## Development
 
@@ -171,7 +161,7 @@ make windows-x86_64
 ```
 
 An example of using the native interface can be found at
-[dotlottie-rs/examples/c_api/demo-player.c](./dotlottie-rs/examples/c_api/demo-player.c).
+[dotlottie-rs/examples/c_api/demo-player.c](https://github.com/LottieFiles/dotlottie-rs/blob/main/dotlottie-rs/examples/c_api/demo-player.c).
 
 ### Other useful targets
 
@@ -202,6 +192,8 @@ and used to simply the creation of changeset files.
 The release PR should be checked for correctness and then merged. Once that is done, the `Release`
 Github Actions workflow will be started automatically to do the work of actually creating the new
 release and building & uploading the related release artifacts.
+After the GitHub release is created, the crate is published to [crates.io](https://crates.io/crates/dotlottie-rs)
+via Trusted Publishing.
 
 ### Relevant Tools
 

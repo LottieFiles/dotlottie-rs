@@ -717,8 +717,14 @@ namespace tvg
 
         // cbindgen — only for native builds with c_api feature
         if cfg!(feature = "c_api") && !is_wasm_unknown {
-            create_dir_all(PathBuf::from(&crate_dir).join("build")).unwrap();
-            let header_path = PathBuf::from(&crate_dir).join("build/dotlottie_player.h");
+            // Packaged crates (crates.io) must not write outside OUT_DIR.
+            let header_dir = if PathBuf::from(&crate_dir).join("Cargo.toml.orig").exists() {
+                out_dir.clone()
+            } else {
+                PathBuf::from(&crate_dir).join("build")
+            };
+            create_dir_all(&header_dir).unwrap();
+            let header_path = header_dir.join("dotlottie_player.h");
             let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
             let config = cbindgen::Config::from_file(config_path).unwrap();
 
@@ -735,6 +741,7 @@ namespace tvg
 }
 
 fn main() -> std::io::Result<()> {
+    println!("cargo:rerun-if-changed=build.rs");
     if cfg!(feature = "tvg") {
         thorvg::build()?;
     }

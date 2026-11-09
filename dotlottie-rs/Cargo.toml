@@ -9,13 +9,26 @@ repository = "https://github.com/LottieFiles/dotlottie-rs"
 homepage = "https://docs.lottiefiles.com/en/runtimes"
 keywords = ["lottie", "dotlottie", "animation", "graphics", "rendering"]
 categories = ["graphics", "multimedia", "rendering"]
+readme = "../README.md"
 links = "thorvg"
+include = [
+    "/Cargo.toml",
+    "/build.rs",
+    "/cbindgen.toml",
+    "/src/**",
+    "/deps/thorvg/LICENSE",
+    "/deps/thorvg/inc/**",
+    "/deps/thorvg/src/**",
+]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
 
 [lib]
 crate-type = ["rlib"]
 
 [features]
-default = ["dotlottie", "state-machines", "theming"]
+default = ["dotlottie", "state-machines", "theming", "tvg-cpu", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf", "tvg-lottie-expressions", "tvg-threads"]
 dev = ["tvg", "tvg-cpu", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf", "tvg-otf", "c_api"]
 c_api = ["dep:bitflags"]
 tvg = []

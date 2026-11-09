@@ -213,3 +213,41 @@ jobs:
       - run: knope release --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crate:
+    needs: [release]
+    runs-on: ubuntu-latest
+    environment: crates-io
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CC: clang
+      CXX: clang++
+      AR: llvm-ar
+      RANLIB: llvm-ranlib
+      BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/include"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Install LLVM tools
+        run: sudo apt-get update && sudo apt-get install -y llvm
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+
+      - name: Check ThorVG is packaged
+        run: |
+          cargo package --manifest-path=./dotlottie-rs/Cargo.toml --list \
+            | grep -qx deps/thorvg/src/bindings/capi/thorvg_capi.h
+
+      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+        id: auth
+
+      - run: cargo publish --manifest-path=./dotlottie-rs/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

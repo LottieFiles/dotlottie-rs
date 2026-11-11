@@ -722,6 +722,11 @@ namespace tvg
             let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
             let config = cbindgen::Config::from_file(config_path).unwrap();
 
+            // The ThorVG build above emits rerun-if-changed for its own sources only, so
+            // without these a C API change never regenerates the header.
+            println!("cargo:rerun-if-changed=src/c_api");
+            println!("cargo:rerun-if-changed=cbindgen.toml");
+
             cbindgen::Builder::new()
                 .with_crate(crate_dir)
                 .with_config(config)

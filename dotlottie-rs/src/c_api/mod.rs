@@ -2394,6 +2394,165 @@ pub unsafe extern "C" fn dotlottie_state_machine_get_current_state(
     }
 }
 
+/// Force the state machine into `state_name`, skipping transitions and guards.
+///
+/// With `immediate` set, the new state's pipeline runs right away; otherwise it
+/// runs on the next tick or input change.
+///
+/// # Returns
+/// - `DotLottieResult::Success` on success
+/// - `DotLottieResult::Error` if the state does not exist
+/// - `DotLottieResult::FeatureNotEnabled` if built without the `state-machines` feature
+/// - `DotLottieResult::InvalidParameter` if a pointer is invalid
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_override_current_state(
+    sm: *mut DotLottieStateMachine,
+    state_name: *const c_char,
+    immediate: bool,
+) -> DotLottieResult {
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if state_name.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            match CStr::from_ptr(state_name).to_str() {
+                Ok(name) => state_machine.override_current_state(name, immediate),
+                Err(_) => Err(PlayerError::InvalidParameter),
+            }
+        })
+    }
+}
+
+/// Reset an input to the initial value from the state machine definition.
+///
+/// Does nothing while the state machine is stopped or when the input does not exist.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_reset_input(
+    sm: *mut DotLottieStateMachine,
+    key: *const c_char,
+) -> DotLottieResult {
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if key.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            match CStr::from_ptr(key).to_str() {
+                Ok(key_str) => {
+                    state_machine.reset_input(key_str, true, false);
+                    DotLottieResult::Success
+                }
+                Err(_) => DotLottieResult::InvalidParameter,
+            }
+        })
+    }
+}
+
+/// Get the number of inputs the state machine has, including the built-in ones.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_get_inputs_count(
+    sm: *mut DotLottieStateMachine,
+    count: *mut u32,
+) -> DotLottieResult {
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        exec_state_machine_op!(sm, |state_machine| {
+            if count.is_null() {
+                return DotLottieResult::InvalidParameter;
+            }
+            *count = (state_machine.get_inputs().len() / 2) as u32;
+            DotLottieResult::Success
+        })
+    }
+}
+
+/// `get_inputs()` is a flat `[name, type, name, type, ...]` list; copy one entry out.
+#[cfg(feature = "state-machines")]
+unsafe fn state_machine_input_field(
+    sm: *mut DotLottieStateMachine,
+    index: u32,
+    field: usize,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    exec_state_machine_op!(sm, |state_machine| {
+        let inputs = state_machine.get_inputs();
+        let Some(value) = inputs.get(index as usize * 2 + field) else {
+            return DotLottieResult::InvalidParameter;
+        };
+
+        if !size_out.is_null() {
+            *size_out = value.len() + 1;
+        }
+
+        if !buffer.is_null() {
+            std::ptr::copy_nonoverlapping(value.as_ptr() as *const c_char, buffer, value.len());
+            *buffer.add(value.len()) = 0;
+        }
+
+        DotLottieResult::Success
+    })
+}
+
+/// Get the name of the input at `index`.
+///
+/// Call `dotlottie_state_machine_get_inputs_count` first to know how many exist.
+/// Pass `buffer = NULL` to query the required size via `size_out`.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_get_input_name(
+    sm: *mut DotLottieStateMachine,
+    index: u32,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        state_machine_input_field(sm, index, 0, buffer, size_out)
+    }
+}
+
+/// Get the type of the input at `index`: "Numeric", "Boolean", "String" or "Event".
+///
+/// Pass `buffer = NULL` to query the required size via `size_out`.
+#[cfg_attr(not(feature = "state-machines"), allow(unused_variables))]
+#[no_mangle]
+pub unsafe extern "C" fn dotlottie_state_machine_get_input_type(
+    sm: *mut DotLottieStateMachine,
+    index: u32,
+    buffer: *mut c_char,
+    size_out: *mut usize,
+) -> DotLottieResult {
+    #[cfg(not(feature = "state-machines"))]
+    {
+        return DotLottieResult::FeatureNotEnabled;
+    }
+    #[cfg(feature = "state-machines")]
+    {
+        state_machine_input_field(sm, index, 1, buffer, size_out)
+    }
+}
+
 /// Get state machine status.
 ///
 /// # Parameters
@@ -2933,6 +3092,159 @@ mod bezier_path_slot_tests {
                 ),
                 DotLottieResult::InvalidParameter
             );
+            assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg(all(feature = "tvg", feature = "state-machines"))]
+mod state_machine_parity_tests {
+    use super::*;
+    use std::collections::HashMap;
+    use std::ffi::CString;
+    use std::ptr::null_mut;
+
+    const ANIMATION_JSON: &str = include_str!("../../assets/animations/lottie/bezier_path.json");
+    const STATE_MACHINE_JSON: &str = r#"{
+        "initial": "first",
+        "states": [
+            {"name": "first", "type": "PlaybackState", "animation": "", "transitions": []},
+            {"name": "second", "type": "PlaybackState", "animation": "", "transitions": []}
+        ],
+        "inputs": [
+            {"type": "Numeric", "name": "rating", "value": 3.0},
+            {"type": "Boolean", "name": "on", "value": false},
+            {"type": "String", "name": "label", "value": "hello"},
+            {"type": "Event", "name": "tap"}
+        ],
+        "interactions": []
+    }"#;
+
+    unsafe fn read(call: impl Fn(*mut c_char, *mut usize) -> DotLottieResult) -> String {
+        let mut size = 0usize;
+        assert_eq!(call(null_mut(), &mut size), DotLottieResult::Success);
+        let mut buffer = vec![0 as c_char; size];
+        assert_eq!(
+            call(buffer.as_mut_ptr(), null_mut()),
+            DotLottieResult::Success
+        );
+        CStr::from_ptr(buffer.as_ptr()).to_str().unwrap().to_owned()
+    }
+
+    unsafe fn started_state_machine() -> (*mut Player, *mut DotLottieStateMachine) {
+        let player = dotlottie_new_player(0);
+        // The player keeps this pointer as its render target, so it must outlive the test.
+        let buffer = Box::leak(vec![0u32; 64 * 64].into_boxed_slice());
+        let _ = dotlottie_set_sw_target(player, buffer.as_mut_ptr(), 64, 64, ColorSpace::ABGR8888);
+        let data = CString::new(ANIMATION_JSON).unwrap();
+        assert_eq!(
+            dotlottie_load_animation_data(player, data.as_ptr()),
+            DotLottieResult::Success
+        );
+        let definition = CString::new(STATE_MACHINE_JSON).unwrap();
+        let sm = dotlottie_state_machine_load_data(player, definition.as_ptr());
+        assert!(!sm.is_null());
+        assert_eq!(
+            dotlottie_state_machine_start(sm, std::ptr::null(), false),
+            DotLottieResult::Success
+        );
+        (player, sm)
+    }
+
+    #[test]
+    fn c_state_machine_override_current_state() {
+        unsafe {
+            let (player, sm) = started_state_machine();
+            let current = || read(|b, s| dotlottie_state_machine_get_current_state(sm, b, s));
+            assert_eq!(current(), "first");
+
+            let second = CString::new("second").unwrap();
+            assert_eq!(
+                dotlottie_state_machine_override_current_state(sm, second.as_ptr(), true),
+                DotLottieResult::Success
+            );
+            assert_eq!(current(), "second");
+
+            let missing = CString::new("missing").unwrap();
+            assert_ne!(
+                dotlottie_state_machine_override_current_state(sm, missing.as_ptr(), true),
+                DotLottieResult::Success
+            );
+            assert_eq!(
+                dotlottie_state_machine_override_current_state(sm, std::ptr::null(), true),
+                DotLottieResult::InvalidParameter
+            );
+
+            dotlottie_state_machine_release(sm);
+            assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
+        }
+    }
+
+    #[test]
+    fn c_state_machine_reset_input() {
+        unsafe {
+            let (player, sm) = started_state_machine();
+            let key = CString::new("rating").unwrap();
+            let rating = || {
+                let mut value = 0.0f32;
+                assert_eq!(
+                    dotlottie_state_machine_get_numeric_input(sm, key.as_ptr(), &mut value),
+                    DotLottieResult::Success
+                );
+                value
+            };
+
+            assert_eq!(
+                dotlottie_state_machine_set_numeric_input(sm, key.as_ptr(), 5.0),
+                DotLottieResult::Success
+            );
+            assert_eq!(rating(), 5.0);
+
+            assert_eq!(
+                dotlottie_state_machine_reset_input(sm, key.as_ptr()),
+                DotLottieResult::Success
+            );
+            assert_eq!(rating(), 3.0);
+
+            dotlottie_state_machine_release(sm);
+            assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
+        }
+    }
+
+    #[test]
+    fn c_state_machine_lists_inputs() {
+        unsafe {
+            let (player, sm) = started_state_machine();
+
+            let mut count = 0u32;
+            assert_eq!(
+                dotlottie_state_machine_get_inputs_count(sm, &mut count),
+                DotLottieResult::Success
+            );
+
+            let inputs: HashMap<String, String> = (0..count)
+                .map(|i| {
+                    (
+                        read(|b, s| dotlottie_state_machine_get_input_name(sm, i, b, s)),
+                        read(|b, s| dotlottie_state_machine_get_input_type(sm, i, b, s)),
+                    )
+                })
+                .collect();
+
+            assert_eq!(inputs.len(), count as usize);
+            assert_eq!(inputs["rating"], "Numeric");
+            assert_eq!(inputs["on"], "Boolean");
+            assert_eq!(inputs["label"], "String");
+            assert_eq!(inputs["tap"], "Event");
+
+            let mut size = 0usize;
+            assert_eq!(
+                dotlottie_state_machine_get_input_name(sm, count, null_mut(), &mut size),
+                DotLottieResult::InvalidParameter
+            );
+
+            dotlottie_state_machine_release(sm);
             assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
         }
     }

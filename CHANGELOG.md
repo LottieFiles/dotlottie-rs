@@ -1,3 +1,39 @@
+## 0.1.61 (2026-11-09)
+
+### Features
+
+#### wav, flac, ogg and m4a audio (#618)
+
+#### typed bezier path slot setters for C and WASM (#621)
+
+#### feat: typed bezier path slot setters for C and WASM
+
+Adds `dotlottie_set_bezier_path_slot` to the C API and `set_bezier_path_slot` to the WASM bindings. Bezier path slots and the `"BezierPath"` theme rule are no longer marked experimental.
+
+#### feat: wav, flac, ogg and m4a audio
+
+Adds opt-in `audio-wav`, `audio-flac`, `audio-ogg` and `audio-m4a` features alongside the default MP3. Each enables the matching rodio decoder on native targets and the format's blob MIME type on the web. rodio is bumped to 0.21, which decodes `.m4a` files that rodio 0.17 panicked on.
+
+### Fixes
+
+#### audio volume uses the left channel (#619)
+
+#### clamp web audio volume to [0, 1] (#620)
+
+#### state machines skip unknown entries and keep events pending (#623)
+
+#### fix: audio volume uses the left channel
+
+Static audio levels such as `[100, 0]` played silent because ThorVG read the right channel. ThorVG now reads the left one, like lottie-web.
+
+#### fix: state machines skip unknown entries and keep events pending
+
+Unknown state, transition, guard, action, interaction and input entries are now skipped instead of failing the whole file. A fired event stays pending until a transition is taken or the state exits, so a transition that waits for a later input change can still see it.
+
+#### fix: web audio levels outside 0–100% no longer break the player
+
+An audio layer above 100% or below 0 made `HTMLMediaElement.volume` throw, which left the player unusable. The web backend now clamps the level to [0, 1].
+
 ## 0.1.60 (2026-10-26)
 
 ### Features

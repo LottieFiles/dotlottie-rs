@@ -2323,4 +2323,74 @@ mod audio_render_tests {
         );
         assert!(player.audio_started_count() > 0);
     }
+
+    // Frames whose first activation leaves the clip anchor a hair past 0.
+    const OFF_GRID_FRAMES: [f32; 5] = [0.4, 1.2, 3.012, 5.471, 24.12];
+
+    /// A player whose full-span audio layers first activate at `frame`.
+    fn full_span_audio_player(buffer: &mut [u32], frame: f32) -> Player {
+        let mut player = Player::new();
+        player
+            .set_sw_target(buffer, 64, 64, ColorSpace::ABGR8888)
+            .unwrap();
+        let data = include_bytes!("../assets/animations/dotlottie/v2/audio_formats.lottie");
+        assert!(player.load_dotlottie_data(data).is_ok());
+        player.set_loop(true);
+        player.set_frame(frame).unwrap();
+        player.play().unwrap();
+        player.render().unwrap();
+        assert!(player.audio_started_count() > 0, "clips play at {frame}");
+        player
+    }
+
+    fn assert_all_clips_playing(player: &Player, what: &str) {
+        assert!(player.audio_active_count() > 0, "{what}");
+        assert_eq!(
+            player.audio_started_count(),
+            player.audio_active_count(),
+            "{what}"
+        );
+    }
+
+    /// A layer spanning the whole animation is never re-announced, so the loop
+    /// wrap alone must replay it, whatever frame it first activated on.
+    #[test]
+    fn full_span_audio_replays_on_loop() {
+        for frame in OFF_GRID_FRAMES {
+            let mut buffer = vec![0u32; 64 * 64];
+            let mut player = full_span_audio_player(&mut buffer, frame);
+
+            for _ in 0..200 {
+                let _ = player.tick(1000.0 / 60.0);
+                if player.current_loop_count() > 0 {
+                    break;
+                }
+            }
+            assert!(player.current_loop_count() > 0, "looped");
+            assert_all_clips_playing(&player, &format!("replays on loop (from {frame})"));
+        }
+    }
+
+    #[test]
+    fn full_span_audio_replays_after_seek_to_start() {
+        for frame in OFF_GRID_FRAMES {
+            let mut buffer = vec![0u32; 64 * 64];
+            let mut player = full_span_audio_player(&mut buffer, frame);
+
+            player.set_frame(0.0).unwrap();
+            assert_all_clips_playing(&player, &format!("replays after seek (from {frame})"));
+        }
+    }
+
+    #[test]
+    fn full_span_audio_replays_after_stop_then_play() {
+        for frame in OFF_GRID_FRAMES {
+            let mut buffer = vec![0u32; 64 * 64];
+            let mut player = full_span_audio_player(&mut buffer, frame);
+
+            player.stop().unwrap();
+            player.play().unwrap();
+            assert_all_clips_playing(&player, &format!("replays after stop (from {frame})"));
+        }
+    }
 }

@@ -28,6 +28,10 @@ struct ActiveLayer {
     started: bool,
 }
 
+/// The playhead and the renderer's clip offset are rounded separately, so a
+/// clip anchored at t=0 can land a few ulps later. Treat that as on time.
+const START_SLACK: f32 = 1e-3;
+
 /// Resolves an external audio `src` (normalized packaged path or URL) to bytes.
 pub type AudioSourceLookup = Box<dyn Fn(&str) -> Option<Arc<[u8]>>>;
 
@@ -139,8 +143,9 @@ impl AudioManager {
         }
         self.player.resume_all();
         for (key, layer) in self.active.iter_mut() {
-            if !layer.started && self.playhead >= layer.clip_start {
-                layer.offset = self.playhead - layer.clip_start;
+            let offset = self.playhead - layer.clip_start;
+            if !layer.started && offset >= -START_SLACK {
+                layer.offset = offset.max(0.0);
                 self.player
                     .play(key, layer.data.clone(), layer.offset, layer.volume);
                 layer.started = true;
@@ -155,7 +160,7 @@ impl AudioManager {
         for (key, layer) in self.active.iter_mut() {
             let offset = self.playhead - layer.clip_start;
             layer.offset = offset.max(0.0);
-            if audible && offset >= 0.0 {
+            if audible && offset >= -START_SLACK {
                 self.player
                     .play(key, layer.data.clone(), layer.offset, layer.volume);
                 layer.started = true;

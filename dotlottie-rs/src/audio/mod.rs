@@ -280,6 +280,27 @@ fn mime_type(data: &[u8]) -> &'static str {
     }
 }
 
+/// What an audio element is set to for one clip.
+#[cfg(any(test, target_arch = "wasm32"))]
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Loudness {
+    volume: f64,
+    muted: bool,
+}
+
+/// `HTMLMediaElement.volume` throws outside [0, 1] and on NaN, so each factor
+/// is clamped and NaN counts as 0. iOS Safari ignores `volume` writes, so a
+/// global volume of 0 also mutes.
+#[cfg(any(test, target_arch = "wasm32"))]
+fn loudness(layer_volume: f32, global_volume: f32) -> Loudness {
+    let unit = |v: f32| if v > 0.0 { v.min(1.0) } else { 0.0 };
+    let global = unit(global_volume);
+    Loudness {
+        volume: (unit(layer_volume) * global) as f64,
+        muted: global == 0.0,
+    }
+}
+
 /// Normalize a resolver `src` for use as a lookup key: drop leading slashes the
 /// renderer prefixes onto packaged paths (e.g. `//u/clip.mp3` → `u/clip.mp3`).
 fn normalize_src(src: &str) -> String {
@@ -288,7 +309,7 @@ fn normalize_src(src: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_supported_src, mime_type};
+    use super::{is_supported_src, loudness, mime_type, Loudness};
 
     const TONES: [(&str, &[u8], &str, bool); 5] = [
         (
@@ -344,5 +365,29 @@ mod tests {
             assert_eq!(mime_type(bytes), expected, "{ext}");
         }
         assert_eq!(mime_type(b"RIFF"), "audio/mpeg");
+    }
+
+    #[test]
+    fn loudness_stays_in_range_and_mutes_at_zero_global_volume() {
+        let cases = [
+            // (layer, global, volume, muted)
+            (1.0, 1.0, 1.0, false),
+            (0.5, 0.5, 0.25, false),
+            (1.0, 0.0, 0.0, true),
+            (0.0, 1.0, 0.0, false),
+            (2.0, 0.5, 0.5, false),
+            (-1.0, 1.0, 0.0, false),
+            (1.0, -1.0, 0.0, true),
+            (f32::NAN, 1.0, 0.0, false),
+            (1.0, f32::NAN, 0.0, true),
+            (1.0, 2.0, 1.0, false),
+        ];
+        for (layer, global, volume, muted) in cases {
+            assert_eq!(
+                loudness(layer, global),
+                Loudness { volume, muted },
+                "{layer} * {global}"
+            );
+        }
     }
 }

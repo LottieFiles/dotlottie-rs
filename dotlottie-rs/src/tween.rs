@@ -9,8 +9,8 @@ pub enum TweenStatus {
 }
 
 pub(crate) struct TweenState {
-    /// Frame the tween started from. ThorVG owns the rendered pose; this only exists so
-    /// the player can report an interpolated `current_frame` while tweening.
+    /// Frame the tween started from. ThorVG renders the tweened pose itself. The player
+    /// reads this field only to report an interpolated `current_frame` while tweening.
     pub from: f32,
     pub to: f32,
     elapsed: f32,
@@ -42,9 +42,8 @@ impl TweenState {
         })
     }
 
-    /// Advance the tween by `dt` milliseconds and compute eased progress.
-    /// Returns `(status, progress)` where progress is in [0.0, 1.0]
-    /// (or beyond if the easing curve overshoots).
+    /// Advances the tween by `dt` milliseconds and returns `(status, progress)`.
+    /// Progress is in [0.0, 1.0], or outside that range when the easing curve overshoots.
     pub fn update(&mut self, dt: f32) -> (TweenStatus, f32) {
         self.elapsed += dt;
         let t = self.elapsed / self.duration;
@@ -104,9 +103,9 @@ mod bezier {
         u
     }
 
-    /// Given a linear progress t in [0,1], uses a cubic Bézier easing function to compute
-    /// an eased progress value. Output can exceed [0,1] when y-values are outside that range
-    /// (e.g., overshoot/bounce easing curves).
+    /// Maps linear progress `t` in [0, 1] to eased progress on a cubic Bézier curve.
+    /// The result falls outside [0, 1] when `y1` or `y2` is outside that range, as in
+    /// overshoot or bounce curves.
     ///
     /// The cubic Bézier is defined by:
     ///   P0 = (0, 0)
@@ -121,7 +120,7 @@ mod bezier {
             return 1.0;
         }
 
-        // First try Newton–Raphson iteration.
+        // Try Newton-Raphson first.
         let mut u = t;
         for _ in 0..8 {
             let x = sample_curve_x(u, x1, x2);
@@ -136,7 +135,7 @@ mod bezier {
             }
         }
 
-        // Fallback to binary subdivision if necessary.
+        // Fall back to binary subdivision if Newton-Raphson stepped outside [0, 1].
         if !(0.0..=1.0).contains(&u) {
             u = binary_subdivide(t, x1, x2);
         }

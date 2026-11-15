@@ -604,26 +604,6 @@ namespace tvg
 
             cc_build.include(&wgpu_include_path);
 
-            // Force-include a generated header that redirects ThorVG's
-            // wgpuSurfaceConfigure calls through our shim
-            // (_tvg_wgpu_surface_configure_fixup in src/c_api/apple.rs). ThorVG
-            // hardcodes WGPUPresentMode_Immediate, but iOS Metal surfaces only
-            // support Fifo and wgpu-native hard-errors on an unsupported present
-            // mode; the shim rewrites it to Fifo on iOS before forwarding.
-            if target_triple.contains("apple") || target_triple.contains("ios") {
-                let fixup_header = out_dir.join("tvg_wgpu_surface_fixup.h");
-                fs::write(
-                    &fixup_header,
-                    "#pragma once\n\
-                     #if defined(__APPLE__) && !defined(__EMSCRIPTEN__)\n\
-                     #  define wgpuSurfaceConfigure _tvg_wgpu_surface_configure_fixup\n\
-                     #endif\n",
-                )?;
-                cc_build
-                    .flag("-include")
-                    .flag(fixup_header.to_str().unwrap());
-            }
-
             let abs_lib_path = wgpu_lib_path
                 .canonicalize()
                 .expect("Failed to canonicalize wgpu lib path");
@@ -647,20 +627,6 @@ namespace tvg
             } else if target_triple.contains("linux") && !target_triple.contains("android") {
                 println!("cargo:rustc-link-lib=vulkan");
             }
-
-            bindgen::Builder::default()
-                .header(wgpu_include_path.join("webgpu/wgpu.h").to_str().unwrap())
-                .allowlist_type("WGPU.*")
-                .allowlist_function("wgpu.*")
-                .allowlist_var("WGPU_.*")
-                .ctypes_prefix("std::os::raw")
-                .layout_tests(false)
-                .use_core()
-                .generate()
-                .expect("Failed to generate wgpu bindings")
-                .write_to_file(
-                    PathBuf::from(env::var("OUT_DIR").unwrap()).join("wgpu_bindings.rs"),
-                )?;
         }
 
         if cfg!(feature = "tvg-gl") {

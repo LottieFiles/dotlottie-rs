@@ -3,29 +3,110 @@ use std::sync::Arc;
 
 use crate::renderer::{AudioEvent, AudioSource};
 
-#[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
-mod rodio_player;
-#[cfg(all(feature = "audio", not(target_arch = "wasm32")))]
-pub use rodio_player::RodioPlayer;
+#[cfg(not(target_arch = "wasm32"))]
+mod native;
+#[cfg(not(target_arch = "wasm32"))]
+use native::Clip as PlatformClip;
 
-#[cfg(all(feature = "audio", target_arch = "wasm32"))]
-mod web_audio_player;
-#[cfg(all(feature = "audio", target_arch = "wasm32"))]
-use web_audio_player::WebAudioPlayer;
+#[cfg(any(test, target_arch = "wasm32"))]
+mod web;
+#[cfg(target_arch = "wasm32")]
+use web::Clip as PlatformClip;
 
-/// An audio layer within its playback range; retained while paused so it can be
-/// replayed on resume.
-struct ActiveLayer {
+/// One playing clip on a platform. Dropping it stops playback.
+pub trait AudioClip: Sized {
+    /// What clips play through, such as the audio device. Created once per
+    /// manager.
+    type Output: Default;
+
+    /// `None` if the platform can't play `data`, such as when no audio device
+    /// is available.
+    fn start(output: &mut Self::Output, data: &Arc<[u8]>, cue: Cue) -> Option<Self>;
+    fn pause(&self);
+    fn resume(&self);
+    fn set_gain(&self, gain: Gain);
+    fn set_rate(&self, rate: f32);
+}
+
+/// A clip's two volume factors. They stay separate because web mutes when the
+/// global factor is 0.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Gain {
+    pub layer: f32,
+    pub global: f32,
+}
+
+/// Where and how a clip starts.
+#[derive(Debug, Clone, Copy)]
+pub struct Cue {
+    /// Seek position into the clip in seconds.
+    pub offset: f32,
+    pub gain: Gain,
+    pub rate: f32,
+}
+
+/// Settings shared by every clip.
+#[derive(Debug, Clone, Copy)]
+struct Mix {
+    /// Global volume in [0.0, 1.0].
+    volume: f32,
+    rate: f32,
+}
+
+enum Playback<C> {
+    Pending,
+    /// Handed to the platform. `None` when the platform couldn't play it, so a
+    /// missing audio device doesn't retry every frame.
+    Started(Option<C>),
+}
+
+/// An audio layer inside its playback range. It stays in the map while paused
+/// so resume can replay it.
+struct Layer<C> {
     data: Arc<[u8]>,
     /// Seek position into the clip in seconds.
     offset: f32,
-    /// Animation-time second at which the clip's in-point occurs; anchors
-    /// offset recomputation when the playhead jumps.
+    /// Animation time, in seconds, of the clip's in-point. `sync` recomputes
+    /// `offset` from it when the playhead jumps.
     clip_start: f32,
     /// Per-layer volume in [0.0, 1.0].
     volume: f32,
-    /// Whether the clip has been handed to the player for this run.
-    started: bool,
+    playback: Playback<C>,
+}
+
+impl<C: AudioClip> Layer<C> {
+    fn start(&mut self, output: &mut C::Output, mix: Mix) {
+        // Drop the old clip so it stops before the new one plays.
+        self.playback = Playback::Pending;
+        let cue = Cue {
+            offset: self.offset,
+            gain: self.gain(mix),
+            rate: mix.rate,
+        };
+        self.playback = Playback::Started(C::start(output, &self.data, cue));
+    }
+
+    fn stop(&mut self) {
+        self.playback = Playback::Pending;
+    }
+
+    fn is_started(&self) -> bool {
+        matches!(self.playback, Playback::Started(_))
+    }
+
+    fn clip(&self) -> Option<&C> {
+        match &self.playback {
+            Playback::Started(clip) => clip.as_ref(),
+            Playback::Pending => None,
+        }
+    }
+
+    fn gain(&self, mix: Mix) -> Gain {
+        Gain {
+            layer: self.volume,
+            global: mix.volume,
+        }
+    }
 }
 
 /// The playhead and the renderer's clip offset are rounded separately, so a
@@ -36,43 +117,41 @@ const START_SLACK: f32 = 1e-3;
 pub type AudioSourceLookup = Box<dyn Fn(&str) -> Option<Arc<[u8]>>>;
 
 /// Frame-synchronised audio playback driven by the renderer's audio resolver.
-/// Uses rodio on native targets and `HtmlAudioElement` on wasm.
-pub struct AudioManager {
+/// Plays through rodio on native targets and `HtmlAudioElement` on wasm.
+pub struct AudioManager<C: AudioClip = PlatformClip> {
     /// Resolves external audio srcs; embedded audio bytes arrive in the event.
     lookup: AudioSourceLookup,
-    active: FxHashMap<String, ActiveLayer>,
+    layers: FxHashMap<String, Layer<C>>,
+    // Declared after `layers` so clips drop before their output.
+    output: C::Output,
+    mix: Mix,
     playing: bool,
     /// Playhead position in animation-time seconds.
     playhead: f32,
-    rate: f32,
-    /// False while the playhead runs backward; audio is suspended then.
+    /// False while the playhead runs backward, which suspends audio.
     forward: bool,
-    #[cfg(not(target_arch = "wasm32"))]
-    player: RodioPlayer,
-    #[cfg(target_arch = "wasm32")]
-    player: WebAudioPlayer,
 }
 
-impl AudioManager {
-    /// The audio device opens lazily on first playback.
+impl<C: AudioClip> AudioManager<C> {
+    /// The audio device opens on first playback.
     pub fn new(lookup: AudioSourceLookup) -> Self {
         AudioManager {
             lookup,
-            active: FxHashMap::default(),
+            layers: FxHashMap::default(),
+            output: C::Output::default(),
+            mix: Mix {
+                volume: 1.0,
+                rate: 1.0,
+            },
             playing: false,
             playhead: 0.0,
-            rate: 1.0,
             forward: true,
-            #[cfg(not(target_arch = "wasm32"))]
-            player: RodioPlayer::new(),
-            #[cfg(target_arch = "wasm32")]
-            player: WebAudioPlayer::new(),
         }
     }
 
-    /// Update the playhead position (animation-time seconds). Must be called
-    /// before the update that fires resolver events, so activations anchor
-    /// correctly.
+    /// Update the playhead position (animation-time seconds). Call it before
+    /// the update that fires resolver events, so new activations anchor to
+    /// this position.
     pub fn set_playhead(&mut self, secs: f32) {
         self.playhead = secs;
     }
@@ -86,8 +165,7 @@ impl AudioManager {
         };
 
         if !event.active {
-            self.active.remove(&key);
-            self.player.stop(&key);
+            self.layers.remove(&key);
             return;
         }
 
@@ -95,11 +173,13 @@ impl AudioManager {
         let clip_start = self.playhead - event.offset;
 
         // Volume keyframes re-fire the resolver; update without restarting.
-        if let Some(layer) = self.active.get_mut(&key) {
+        if let Some(layer) = self.layers.get_mut(&key) {
             layer.volume = volume;
             layer.offset = event.offset;
             layer.clip_start = clip_start;
-            self.player.set_volume(&key, volume);
+            if let Some(clip) = layer.clip() {
+                clip.set_gain(layer.gain(self.mix));
+            }
             return;
         }
 
@@ -111,22 +191,20 @@ impl AudioManager {
             AudioSource::Embedded { bytes, .. } => Arc::from(bytes),
         };
 
-        let mut layer = ActiveLayer {
+        let mut layer = Layer {
             data,
             offset: event.offset,
             clip_start,
             volume,
-            started: false,
+            playback: Playback::Pending,
         };
-        if self.playing && self.forward {
-            self.player
-                .play(&key, layer.data.clone(), layer.offset, layer.volume);
-            layer.started = true;
+        if self.audible() {
+            layer.start(&mut self.output, self.mix);
         }
-        self.active.insert(key, layer);
+        self.layers.insert(key, layer);
     }
 
-    /// Reflect the player's playback state, resuming/pausing sinks and starting
+    /// Match the player's playback state. Pauses or resumes clips, and starts
     /// any layers that became active while paused.
     pub fn set_playing(&mut self, playing: bool) {
         if self.playing == playing {
@@ -135,52 +213,48 @@ impl AudioManager {
         self.playing = playing;
 
         if !playing {
-            self.player.pause_all();
+            self.clips().for_each(C::pause);
             return;
         }
         if !self.forward {
             return;
         }
-        self.player.resume_all();
-        for (key, layer) in self.active.iter_mut() {
+        self.clips().for_each(C::resume);
+        for layer in self.layers.values_mut() {
             let offset = self.playhead - layer.clip_start;
-            if !layer.started && offset >= -START_SLACK {
+            if !layer.is_started() && offset >= -START_SLACK {
                 layer.offset = offset.max(0.0);
-                self.player
-                    .play(key, layer.data.clone(), layer.offset, layer.volume);
-                layer.started = true;
+                layer.start(&mut self.output, self.mix);
             }
         }
     }
 
-    /// Re-derive each clip's position from the playhead after a jump (seek,
-    /// segment start, loop wrap).
+    /// Recompute each clip's position from the playhead after a seek, a
+    /// segment start or a loop wrap.
     pub fn sync(&mut self) {
-        let audible = self.playing && self.forward;
-        for (key, layer) in self.active.iter_mut() {
+        let audible = self.audible();
+        for layer in self.layers.values_mut() {
             let offset = self.playhead - layer.clip_start;
             layer.offset = offset.max(0.0);
             if audible && offset >= -START_SLACK {
-                self.player
-                    .play(key, layer.data.clone(), layer.offset, layer.volume);
-                layer.started = true;
+                layer.start(&mut self.output, self.mix);
             } else {
-                self.player.stop(key);
-                layer.started = false;
+                layer.stop();
             }
         }
     }
 
     /// Set the playback rate multiplier, applied to live and future clips.
     pub fn set_rate(&mut self, rate: f32) {
-        if rate <= 0.0 {
+        if rate.is_nan() || rate <= 0.0 {
             return;
         }
-        self.rate = rate;
-        self.player.set_rate(rate);
+        self.mix.rate = rate;
+        self.clips().for_each(|clip| clip.set_rate(rate));
     }
 
-    /// Suspend audio while the playhead runs backward; resync on forward.
+    /// Suspend audio while the playhead runs backward, and resync when it runs
+    /// forward again.
     pub fn set_direction(&mut self, forward: bool) {
         if self.forward == forward {
             return;
@@ -193,49 +267,63 @@ impl AudioManager {
         }
     }
 
-    /// Stop all sinks. The active set is kept so `set_playing(true)` can replay it.
+    /// Stop all clips but keep the layers, so `set_playing(true)` can replay
+    /// them.
     pub fn stop(&mut self) {
         self.playing = false;
         self.stop_all();
     }
 
-    /// Stop every sink and mark its layer as needing a fresh start.
     fn stop_all(&mut self) {
-        self.player.stop_all();
-        for layer in self.active.values_mut() {
-            layer.started = false;
+        self.layers.values_mut().for_each(Layer::stop);
+    }
+
+    /// Set the global volume multiplier (clamped to [0.0, 1.0], NaN counts as
+    /// 0).
+    pub fn set_volume(&mut self, volume: f32) {
+        self.mix.volume = if volume > 0.0 { volume.min(1.0) } else { 0.0 };
+        for layer in self.layers.values() {
+            if let Some(clip) = layer.clip() {
+                clip.set_gain(layer.gain(self.mix));
+            }
         }
     }
 
-    /// Set the global volume multiplier (clamped to [0.0, 1.0]).
-    pub fn set_volume(&mut self, volume: f32) {
-        self.player.set_global_volume(volume.clamp(0.0, 1.0));
+    pub fn volume(&self) -> f32 {
+        self.mix.volume
     }
 
-    pub fn volume(&self) -> f32 {
-        self.player.global_volume()
+    fn audible(&self) -> bool {
+        self.playing && self.forward
+    }
+
+    fn clips(&self) -> impl Iterator<Item = &C> {
+        self.layers.values().filter_map(Layer::clip)
     }
 
     /// Number of audio layers currently within their playback range.
     #[cfg(test)]
     pub(crate) fn active_layer_count(&self) -> usize {
-        self.active.len()
+        self.layers.len()
     }
 
     #[cfg(test)]
     pub(crate) fn layer_offsets(&self) -> Vec<f32> {
-        self.active.values().map(|layer| layer.offset).collect()
+        self.layers.values().map(|layer| layer.offset).collect()
     }
 
-    /// Number of active layers whose clip has been handed to the player.
+    /// Number of active layers whose clip has been handed to the platform.
     #[cfg(test)]
     pub(crate) fn started_layer_count(&self) -> usize {
-        self.active.values().filter(|layer| layer.started).count()
+        self.layers
+            .values()
+            .filter(|layer| layer.is_started())
+            .count()
     }
 
     #[cfg(test)]
     pub(crate) fn rate(&self) -> f32 {
-        self.rate
+        self.mix.rate
     }
 
     #[cfg(test)]
@@ -264,52 +352,19 @@ pub(crate) fn is_supported_src(src: &str) -> bool {
     }
 }
 
-/// MIME type of encoded audio bytes, sniffed from the container header.
-#[cfg(any(test, target_arch = "wasm32"))]
-fn mime_type(data: &[u8]) -> &'static str {
-    match data {
-        #[cfg(feature = "audio-wav")]
-        [b'R', b'I', b'F', b'F', _, _, _, _, b'W', b'A', b'V', b'E', ..] => "audio/wav",
-        #[cfg(feature = "audio-flac")]
-        [b'f', b'L', b'a', b'C', ..] => "audio/flac",
-        #[cfg(feature = "audio-ogg")]
-        [b'O', b'g', b'g', b'S', ..] => "audio/ogg",
-        #[cfg(feature = "audio-m4a")]
-        [_, _, _, _, b'f', b't', b'y', b'p', ..] => "audio/mp4",
-        _ => "audio/mpeg",
-    }
-}
-
-/// What an audio element is set to for one clip.
-#[cfg(any(test, target_arch = "wasm32"))]
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Loudness {
-    volume: f64,
-    muted: bool,
-}
-
-/// `HTMLMediaElement.volume` throws outside [0, 1] and on NaN, so each factor
-/// is clamped and NaN counts as 0. iOS Safari ignores `volume` writes, so a
-/// global volume of 0 also mutes.
-#[cfg(any(test, target_arch = "wasm32"))]
-fn loudness(layer_volume: f32, global_volume: f32) -> Loudness {
-    let unit = |v: f32| if v > 0.0 { v.min(1.0) } else { 0.0 };
-    let global = unit(global_volume);
-    Loudness {
-        volume: (unit(layer_volume) * global) as f64,
-        muted: global == 0.0,
-    }
-}
-
-/// Normalize a resolver `src` for use as a lookup key: drop leading slashes the
-/// renderer prefixes onto packaged paths (e.g. `//u/clip.mp3` → `u/clip.mp3`).
+/// Normalize a resolver `src` into a lookup key by dropping the leading slashes
+/// the renderer adds to packaged paths, so `//u/clip.mp3` becomes `u/clip.mp3`.
 fn normalize_src(src: &str) -> String {
     src.trim_start_matches('/').to_string()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{is_supported_src, loudness, mime_type, Loudness};
+    use super::{is_supported_src, web::mime_type, AudioClip, AudioManager, Cue, Gain};
+    use crate::renderer::{AudioEvent, AudioSource};
+    use std::cell::RefCell;
+    use std::rc::Rc;
+    use std::sync::Arc;
 
     const TONES: [(&str, &[u8], &str, bool); 5] = [
         (
@@ -367,27 +422,110 @@ mod tests {
         assert_eq!(mime_type(b"RIFF"), "audio/mpeg");
     }
 
-    #[test]
-    fn loudness_stays_in_range_and_mutes_at_zero_global_volume() {
-        let cases = [
-            // (layer, global, volume, muted)
-            (1.0, 1.0, 1.0, false),
-            (0.5, 0.5, 0.25, false),
-            (1.0, 0.0, 0.0, true),
-            (0.0, 1.0, 0.0, false),
-            (2.0, 0.5, 0.5, false),
-            (-1.0, 1.0, 0.0, false),
-            (1.0, -1.0, 0.0, true),
-            (f32::NAN, 1.0, 0.0, false),
-            (1.0, f32::NAN, 0.0, true),
-            (1.0, 2.0, 1.0, false),
-        ];
-        for (layer, global, volume, muted) in cases {
-            assert_eq!(
-                loudness(layer, global),
-                Loudness { volume, muted },
-                "{layer} * {global}"
-            );
+    #[derive(Debug, PartialEq)]
+    enum Call {
+        Start(Gain),
+        Gain(Gain),
+        Drop,
+    }
+
+    #[derive(Default)]
+    struct FakeOutput {
+        calls: Rc<RefCell<Vec<Call>>>,
+        no_device: bool,
+    }
+
+    struct FakeClip(Rc<RefCell<Vec<Call>>>);
+
+    impl AudioClip for FakeClip {
+        type Output = FakeOutput;
+
+        fn start(output: &mut FakeOutput, _: &Arc<[u8]>, cue: Cue) -> Option<Self> {
+            if output.no_device {
+                return None;
+            }
+            output.calls.borrow_mut().push(Call::Start(cue.gain));
+            Some(FakeClip(output.calls.clone()))
         }
+        fn pause(&self) {}
+        fn resume(&self) {}
+        fn set_gain(&self, gain: Gain) {
+            self.0.borrow_mut().push(Call::Gain(gain));
+        }
+        fn set_rate(&self, _: f32) {}
+    }
+
+    impl Drop for FakeClip {
+        fn drop(&mut self) {
+            self.0.borrow_mut().push(Call::Drop);
+        }
+    }
+
+    const BYTES: &[u8] = b"clip";
+
+    fn playing_manager() -> AudioManager<FakeClip> {
+        let mut am = AudioManager::<FakeClip>::new(Box::new(|_| None));
+        am.set_playing(true);
+        am.on_audio(AudioEvent {
+            source: AudioSource::Embedded {
+                bytes: BYTES,
+                mime: None,
+            },
+            offset: 0.0,
+            volume: 50.0,
+            active: true,
+        });
+        am
+    }
+
+    fn calls(am: &AudioManager<FakeClip>) -> std::cell::Ref<'_, Vec<Call>> {
+        am.output.calls.borrow()
+    }
+
+    #[test]
+    fn restart_drops_the_old_clip_before_starting_the_new_one() {
+        let mut am = playing_manager();
+        am.sync();
+        let gain = Gain {
+            layer: 0.5,
+            global: 1.0,
+        };
+        assert_eq!(
+            *calls(&am),
+            [Call::Start(gain), Call::Drop, Call::Start(gain)]
+        );
+    }
+
+    #[test]
+    fn global_volume_reaches_live_clips_and_new_ones() {
+        let mut am = playing_manager();
+        am.set_volume(0.0);
+        am.sync();
+        let muted = Gain {
+            layer: 0.5,
+            global: 0.0,
+        };
+        assert_eq!(
+            calls(&am)[1..],
+            [Call::Gain(muted), Call::Drop, Call::Start(muted)]
+        );
+    }
+
+    #[test]
+    fn a_clip_without_a_device_still_counts_as_started() {
+        let mut am = AudioManager::<FakeClip>::new(Box::new(|_| None));
+        am.output.no_device = true;
+        am.set_playing(true);
+        am.on_audio(AudioEvent {
+            source: AudioSource::Embedded {
+                bytes: BYTES,
+                mime: None,
+            },
+            offset: 0.0,
+            volume: 100.0,
+            active: true,
+        });
+        assert_eq!(am.started_layer_count(), 1);
+        assert!(calls(&am).is_empty());
     }
 }

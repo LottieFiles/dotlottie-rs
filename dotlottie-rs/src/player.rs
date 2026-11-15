@@ -2324,7 +2324,7 @@ mod audio_render_tests {
         assert!(player.audio_started_count() > 0);
     }
 
-    // Frames whose first activation leaves the clip anchor a hair past 0.
+    // Start frames that leave the clip anchor a few ulps past 0.
     const OFF_GRID_FRAMES: [f32; 5] = [0.4, 1.2, 3.012, 5.471, 24.12];
 
     /// A player whose full-span audio layers first activate at `frame`.

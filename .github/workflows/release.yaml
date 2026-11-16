@@ -22,25 +22,25 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@nightly
 
-      - name: Setup Apple
+      - name: Set up Apple
         run: make apple-setup
 
       - name: Build Apple
         run: make apple
 
-      - name: Create Apple Archive
+      - name: Create Apple archive
         run: |
           cd release/apple
           tar -czf dotlottie-player.darwin.tar.gz *
 
-      - name: Upload Apple Artifacts
+      - name: Upload Apple artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.darwin.tar.gz
           path: release/apple/dotlottie-player.darwin.tar.gz
           if-no-files-found: error
 
-      - name: Cleanup keychain
+      - name: Clean up keychain
         if: always()
         run: |
           security delete-keychain build.keychain || true
@@ -61,7 +61,7 @@ jobs:
           ndk-version: r28b
           local-cache: true
 
-      - name: Setup Android
+      - name: Set up Android
         run: make android-setup
 
       - name: Build Android
@@ -69,12 +69,12 @@ jobs:
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
 
-      - name: Create Android Archive
+      - name: Create Android archive
         run: |
           cd release/android
           tar -czf dotlottie-player.android.tar.gz *
 
-      - name: Upload Android Artifacts
+      - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.android.tar.gz
@@ -92,18 +92,18 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Setup WASM
+      - name: Set up WASM
         run: make wasm-setup
 
       - name: Build WASM
         run: make wasm
 
-      - name: Create WASM Archive
+      - name: Create WASM archive
         run: |
           cd release/wasm
           tar -czf dotlottie-player.wasm.tar.gz *
 
-      - name: Upload WASM Artifacts
+      - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
@@ -126,18 +126,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
-      - name: Setup Linux
+      - name: Set up Linux
         run: make linux-setup
 
       - name: Build Linux
         run: make linux
 
-      - name: Create Linux Archive
+      - name: Create Linux archive
         run: |
           cd release/linux
           tar -czf dotlottie-player.linux.tar.gz *
 
-      - name: Upload Linux Artifacts
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.linux.tar.gz
@@ -174,23 +174,22 @@ jobs:
             --installPath "$vsPath" `
             --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
             --quiet --norestart --wait
-          # Verify ARM64 tools installed
           $arm64cl = Get-ChildItem "$vsPath\VC\Tools\MSVC\*\bin\Hostx64\arm64\cl.exe" -ErrorAction SilentlyContinue
           if ($arm64cl) { Write-Host "ARM64 cl.exe found: $($arm64cl.FullName)" }
           else { Write-Warning "ARM64 cl.exe not found after install" }
 
-      - name: Setup Windows
+      - name: Set up Windows
         run: make windows-setup
 
       - name: Build Windows
         run: make windows
 
-      - name: Create Windows Archive
+      - name: Create Windows archive
         run: |
           cd release/windows
           tar -czf dotlottie-player.windows.tar.gz *
 
-      - name: Upload Windows Artifacts
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.windows.tar.gz

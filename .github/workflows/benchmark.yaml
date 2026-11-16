@@ -40,10 +40,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential clang llvm-dev libclang-dev
 
-      - name: Setup Rust
+      - name: Set up Rust
         uses: ningenMe/setup-rustup@v1.1.0
 
-      - name: Setup Conan
+      - name: Set up Conan
         uses: turtlebrowser/get-conan@main
 
       - name: Cache cargo (base)
@@ -70,7 +70,7 @@ jobs:
           mkdir -p /tmp/criterion-base
           cp -r dotlottie-rs/target/criterion /tmp/criterion-base/
 
-      - name: Checkout PR branch
+      - name: Check out PR branch
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.pr_ref }}
@@ -108,5 +108,5 @@ jobs:
         env:
           COMMENT_BODY: ${{ steps.report.outputs.comment }}
         run: |
-          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Benchmark results" >> $GITHUB_STEP_SUMMARY
           echo "$COMMENT_BODY" >> $GITHUB_STEP_SUMMARY

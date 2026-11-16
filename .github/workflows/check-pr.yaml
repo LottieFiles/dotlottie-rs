@@ -46,7 +46,7 @@ jobs:
         if: matrix.native
         run: sudo apt-get update && sudo apt-get install -y llvm
 
-      - name: Setup Rust
+      - name: Set up Rust
         uses: ningenMe/setup-rustup@v1.1.0
 
       - name: Cache cargo

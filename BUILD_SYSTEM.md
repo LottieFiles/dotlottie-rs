@@ -1,253 +1,215 @@
-## Build System
+## Build system
 
-The build system uses GNU `make` to build all artifacts for `android`, `apple`, `wasm`, `linux`, `windows`, and `native` platforms.
-The system is modular with a main orchestrator `Makefile` and platform-specific makefiles in the `make/` directory.
-This documentation provides implementation details to help understand and extend the build system.
+GNU `make` builds all artifacts for the `android`, `apple`, `wasm`, `linux`, `windows`, and `native` targets.
+The top-level `Makefile` defines the native, test, and setup targets and includes one makefile per platform from `make/`.
+This document describes how those makefiles work so you can change or extend them.
 
-The build process works as follows:
+A platform build runs these steps:
 
-1. **Platform Setup**: Initialize and configure build tools for each target platform (NDK for Android, Xcode for Apple, wasm-bindgen-cli for WASM)
-2. **C API Header Generation via cbindgen**: Generate the C header from the `c_api` feature in `dotlottie-rs`
-3. **Rust Library Build**: Build the `dotlottie-rs` library for each target architecture using platform-specific toolchains
-4. **Platform-Specific Packaging**: Create platform-appropriate release artifacts (AAR for Android, XCFramework for Apple, JS/WASM modules for Web)
-5. **Release Assembly**: Package all artifacts into the `release/` directory with version information
+1. Check the platform toolchain: the Android NDK, Xcode, MSVC, or clang plus wasm-bindgen-cli for WASM.
+2. Generate the C header with cbindgen from the `c_api` feature. WASM builds run wasm-bindgen-cli instead.
+3. Build the `dotlottie-rs` library once per target architecture.
+4. Package the platform artifacts: `jniLibs/` for Android, an XCFramework for Apple, JS and WASM modules for the web.
+5. Write everything to `release/`, along with a version file.
 
-### Platform-Specific Makefiles
+### Platform makefiles
 
-The build system is organized into modular makefiles, each handling a specific platform:
+- `Makefile` holds the native, test, clippy, setup, and help targets and includes the files below.
+- `make/android.mk` builds Android for ARM64, x86_64, x86, and ARMv7.
+- `make/apple.mk` builds macOS, iOS, tvOS, visionOS, watchOS, and Mac Catalyst.
+- `make/wasm.mk` builds WebAssembly with cargo and wasm-bindgen-cli.
+- `make/linux.mk` builds Linux x86_64 and ARM64.
+- `make/windows.mk` builds Windows x86_64 and ARM64 with the MSVC toolchain.
 
-- **Main Makefile**: Orchestrates all builds and provides help/setup targets
-- **make/android.mk**: Handles Android builds across multiple architectures (ARM64, x86_64, x86, ARMv7)
-- **make/apple.mk**: Manages Apple platform builds (macOS, iOS, tvOS, visionOS, watchOS, macCatalyst)
-- **make/wasm.mk**: Controls WebAssembly builds using cargo and wasm-bindgen-cli
-- **make/linux.mk**: Handles Linux x86_64 and ARM64 builds
-- **make/windows.mk**: Handles Windows x86_64 and ARM64 builds (MSVC toolchain)
+Each platform makefile checks its toolchain, sets up cross-compilation, produces the C header (or wasm-bindgen output), and packages the release.
 
-Each platform makefile is responsible for:
+#### Android (`make/android.mk`)
 
-- Platform-specific environment setup and validation
-- C API header generation (cbindgen) or wasm-bindgen output for the target platform
-- Cross-compilation configuration
-- Release artifact packaging
+`android-check-ndk` finds the NDK through `ANDROID_NDK_HOME` and fails if it is older than r28.
+Each architecture build compiles `libdotlottie_player.so` with the NDK clang for `API_LEVEL`, copies `libc++_shared.so` next to it, and strips both.
+`android-package` then adds the cbindgen header and a `version.txt` that holds the crate version and commit hash.
 
-#### Android Build System (`make/android.mk`)
+The output in `release/android/` looks like this:
 
-The Android build system supports four architectures: ARM64, x86_64, x86, and ARMv7. Key features include:
+```
+include/dotlottie_player.h
+jniLibs/{arm64-v8a,armeabi-v7a,x86,x86_64}/libdotlottie_player.so
+version.txt
+```
 
-- **NDK Integration**: Automatically detects and validates Android NDK installation
-- **C API**: Uses cbindgen-generated header for Android NDK integration
-- **Multi-Architecture Support**: Builds for all Android architectures in parallel
-- **Packaging**: Creates Android-ready package structure with JNI libraries and shared dependencies
-- **Version Management**: Includes build version and commit hash in release artifacts
+Targets:
 
-Key targets:
+- `android` builds all four architectures and packages the release.
+- `android-{arch}` builds one architecture, for example `android-aarch64`.
+- `android-setup` installs the Rust targets.
+- `android-clean` removes Android build artifacts.
 
-- `android`: Builds all Android architectures and packages the release
-- `android-{arch}`: Builds specific architecture (e.g., `android-aarch64`)
-- `android-setup`: Installs required Rust targets
-- `android-clean`: Cleans Android-specific build artifacts
+#### Apple (`make/apple.mk`)
 
-#### Apple Build System (`make/apple.mk`)
+The Apple build covers macOS, iOS, tvOS, visionOS, watchOS, and Mac Catalyst.
+It builds a framework per platform and SDK, merges architectures with `lipo`, and combines the frameworks into one XCFramework.
+The cbindgen header is the bridge for Swift and Objective-C.
+Mac Catalyst, tvOS, visionOS, and watchOS build with `cargo +nightly` and `-Z build-std`.
 
-The Apple build system handles multiple Apple platforms with comprehensive framework generation:
+Targets:
 
-- **Platform Support**: macOS, iOS, tvOS, visionOS, watchOS, and macCatalyst
-- **C API**: cbindgen-generated header for Swift/Objective-C bridging
-- **Framework Creation**: Builds individual frameworks and combines them into XCFramework
-- **Universal Binaries**: Creates universal binaries using `lipo` for multi-architecture support
-- **Code Signing**: Optional code signing support for distribution
+- `apple` builds every Apple platform and the XCFramework.
+- `apple-{platform}` builds one platform, for example `apple-ios`.
+- `apple-{platform}-{arch}` builds one architecture, for example `apple-macos-arm64`.
+- `apple-setup` installs the Rust targets and toolchain components.
 
-Key targets:
+#### WASM (`make/wasm.mk`)
 
-- `apple`: Builds all Apple platforms and creates XCFramework
-- `apple-{platform}`: Builds specific platform (e.g., `apple-ios`)
-- `apple-{platform}-{arch}`: Builds specific architecture (e.g., `apple-macos-arm64`)
-- `apple-setup`: Installs required Rust targets and toolchain components
+The WASM build targets `wasm32-unknown-unknown`.
+It compiles with `cargo rustc`, generates bindings with wasm-bindgen-cli, and runs `wasm-opt -O3` if `wasm-opt` is on `PATH`.
 
-#### WASM Build System (`make/wasm.mk`)
+- The `wasm-bindgen-api` feature produces JS and TypeScript bindings for the software, WebGL, and WebGPU renderers.
+- wasm-bindgen-cli writes the TypeScript definitions with `--typescript`.
+- The output is the `.wasm` binary plus a wasm-bindgen glue file. There is no Emscripten runtime.
+- Stable Rust is enough, with no nightly and no EMSDK. ThorVG's C++ needs a clang that can target wasm. The build prefers Homebrew LLVM's clang if it is installed.
 
-The WASM build system creates WebAssembly modules for web deployment targeting `wasm32-unknown-unknown`, building with `cargo rustc` and generating bindings with wasm-bindgen-cli (plus an optional `wasm-opt -O3` pass if available):
+Targets:
 
-- **wasm-bindgen**: Uses the `wasm-bindgen-api` feature for idiomatic JS/TS bindings with software, WebGL, or WebGPU renderers
-- **TypeScript Support**: Generates TypeScript definition files automatically via wasm-bindgen-cli (`--typescript`)
-- **Lean output**: No Emscripten runtime overhead — only the wasm binary and a small wasm-bindgen glue file
-- **Standard toolchain**: Builds with stable Rust, no nightly or EMSDK required; a clang toolchain is needed to compile ThorVG's C++ to wasm (Homebrew LLVM's clang is preferred if installed)
+- `wasm` builds the software renderer into `release/wasm/`.
+- `wasm-webgl` builds the WebGL2 renderer into `release/wasm-webgl/`.
+- `wasm-webgpu` builds the WebGPU renderer into `release/wasm-webgpu/`.
+- `wasm-all` builds all three.
+- `wasm-setup` installs the `wasm32-unknown-unknown` target and the wasm-bindgen-cli version that matches Cargo.lock.
+- `wasm-clean` removes WASM build artifacts.
 
-Key targets:
+#### Native
 
-- `wasm`: Builds software-renderer WASM module → `release/wasm/`
-- `wasm-webgl`: Builds WebGL2 WASM module → `release/wasm-webgl/`
-- `wasm-webgpu`: Builds WebGPU WASM module → `release/wasm-webgpu/`
-- `wasm-all`: Builds all three variants
-- `wasm-setup`: Installs the `wasm32-unknown-unknown` Rust target and wasm-bindgen-cli (version-pinned to Cargo.lock)
-- `wasm-clean`: Cleans WASM-specific build artifacts
+The native targets build `dotlottie-rs` with the `c_api` feature as a dynamic library for the host platform, along with the cbindgen header.
+Use them for local development and testing.
 
-#### Native Build System
+Targets:
 
-For local development and testing, the native build system creates C libraries:
+- `native` builds with the software renderer.
+- `native-opengl` builds with the OpenGL renderer.
+- `native-webgpu` builds with the WebGPU renderer.
+- `native-clean` removes native build artifacts.
 
-- **C Library**: Builds `dotlottie-rs` with the `c_api` feature as a dynamic library
-- **C Headers**: Generated by cbindgen from the `c_api` feature
-- **Platform Detection**: Automatically builds for the current platform
+#### Windows (`make/windows.mk`)
 
-Key targets:
+The Windows build links against MSVC for x86_64 and ARM64.
+The `cc` crate finds `cl.exe` on its own.
+Each target produces a static library (`.lib`), a dynamic library (`.dll`), an import library (`.dll.lib`), and the cbindgen header.
 
-- `native`: Builds native library for current platform
-- `native-opengl`: Builds native library with OpenGL renderer
-- `native-webgpu`: Builds native library with WebGPU renderer
-- `native-clean`: Cleans native build artifacts
+Targets:
 
-#### Windows Build System (`make/windows.mk`)
-
-The Windows build system creates MSVC-linked libraries for x86_64 and ARM64:
-
-- **MSVC Toolchain**: Uses Visual Studio Build Tools; the `cc` crate auto-detects `cl.exe`
-- **C API**: cbindgen-generated header for C/C++ integration
-- **Output**: Static library (`.lib`), dynamic library (`.dll`), and import library (`.dll.lib`)
-
-Key targets:
-
-- `windows`: Builds all Windows architectures
-- `windows-x86_64`: Builds for x86_64-pc-windows-msvc
-- `windows-arm64`: Builds for aarch64-pc-windows-msvc
-- `windows-setup`: Installs required Rust targets
-- `windows-clean`: Cleans Windows-specific build artifacts
+- `windows` builds both architectures.
+- `windows-x86_64` builds `x86_64-pc-windows-msvc`.
+- `windows-arm64` builds `aarch64-pc-windows-msvc`.
+- `windows-setup` installs the Rust targets.
+- `windows-clean` removes Windows build artifacts.
 
 Prerequisites:
 
-- Visual Studio 2019+ or Build Tools with "Desktop development with C++" workload
-- GNU Make (via MSYS2, Git Bash, or `choco install make`)
-- For ARM64 cross-compilation: ARM64 build tools installed via VS Installer
+- Visual Studio 2019 or later, or the Build Tools, with the "Desktop development with C++" workload
+- GNU Make, from MSYS2, Git Bash, or `choco install make`
+- The ARM64 build tools from the VS Installer, to cross-compile for ARM64
 
-### Build Features and Configuration
+### Features and configuration
 
-The build system includes several configurable features:
+#### Feature flags
 
-#### Feature Flags
+The Android, Apple, Linux, and Windows builds read a `FEATURES` variable that replaces their default extra features.
+On Apple, the tvOS, visionOS, and watchOS targets ignore it and always use `APPLE_BASE_FEATURES`.
+The WASM and native builds use fixed feature lists.
 
-The Android, Linux, and Windows builds accept a `FEATURES` variable to override their extra feature set; the Apple, WASM, and native builds use fixed feature lists in their makefiles. Notable features:
+The features you are most likely to change:
 
-- `c_api`: C API header generation via cbindgen (for Android, iOS, and native builds)
-- `wasm-bindgen-api`: wasm-bindgen bindings for direct JS/TS integration (WebGL/WebGPU WASM builds)
-- `webgl`: WebGL renderer backend (used with `wasm-bindgen-api`)
-- `webgpu`: WebGPU renderer backend (used with `wasm-bindgen-api`)
-- `tvg-webp`: WebP image format support
-- `tvg-png`: PNG image format support
-- `tvg-jpg`: JPEG image format support
-- `tvg-ttf`: TrueType font support
-- `tvg-otf`: OpenType font support
-- `tvg-threads`: Multi-threaded rendering
-- `tvg-lottie-expressions`: Lottie expression evaluation support
+- `c_api`: C API and cbindgen header (Android, Apple, Linux, Windows, native)
+- `wasm-bindgen-api`: wasm-bindgen bindings for JS and TS (all WASM builds)
+- `webgl`: WebGL renderer, used with `wasm-bindgen-api`
+- `webgpu`: WebGPU renderer, used with `wasm-bindgen-api`
+- `tvg-webp`, `tvg-png`, `tvg-jpg`: WebP, PNG, and JPEG images
+- `tvg-ttf`, `tvg-otf`: TrueType and OpenType fonts
+- `tvg-threads`: multi-threaded rendering
+- `tvg-lottie-expressions`: Lottie expressions
 
-The crate's default features are `dotlottie`, `state-machines`, and `theming`. Renderer backends (`tvg`, `tvg-cpu`, `tvg-gl`, `tvg-wg`) and the binding layer (`c_api` or `wasm-bindgen-api`) are added explicitly per platform by the makefiles.
+The crate's default features are `dotlottie`, `state-machines`, and `theming`.
+Each makefile adds the renderer backend (`tvg`, `tvg-cpu`, `tvg-gl`, `tvg-wg`) and the binding layer (`c_api` or `wasm-bindgen-api`) itself.
 
-#### Environment Variables
+#### Environment variables
 
-Platform-specific environment variables can be overridden:
+Android reads `ANDROID_NDK_HOME`, the NDK path.
+It defaults to `/opt/homebrew/share/android-ndk` on macOS and `/opt/android-ndk` on Linux.
+`API_LEVEL` sets the Android API level and defaults to `21`.
 
-**Android:**
+Apple reads `XCODE_PATH`, which defaults to the output of `xcode-select -p`.
+`MIN_IOS_VERSION`, `MIN_MACOS_VERSION`, `MIN_TVOS_VERSION`, `MIN_VISIONOS_VERSION`, `MIN_WATCHOS_VERSION`, and `MIN_MACCATALYST_VERSION` set the deployment targets.
 
-- `ANDROID_NDK_HOME`: Path to Android NDK (default: `/opt/homebrew/share/android-ndk` on macOS, `/opt/android-ndk` on Linux)
-- `API_LEVEL`: Android API level (default: `21`)
+WASM needs no variables.
+It uses the `clang` and `clang++` on `PATH`, or Homebrew LLVM if present.
 
-**Apple:**
+#### Version information
 
-- `XCODE_PATH`: Path to Xcode installation
-- `MIN_IOS_VERSION`, `MIN_MACOS_VERSION`, etc.: Minimum OS versions
+Every release writes a version string built from two values:
 
-**WASM:**
+- `CRATE_VERSION`, read from `dotlottie-rs/Cargo.toml`
+- `COMMIT_HASH`, the current git commit
 
-- No additional environment variables required — a clang/clang++ on PATH is used to compile ThorVG (Homebrew LLVM preferred if present)
+### Targets
 
-#### Version Management
+Run `make help` for the full list.
 
-All builds include version information from:
+#### Platform targets
 
-- `CRATE_VERSION`: Extracted from `dotlottie-rs/Cargo.toml`
-- `COMMIT_HASH`: Current git commit hash
+- `make android`: all Android architectures (ARM64, x86_64, x86, ARMv7)
+- `make apple`: all Apple platforms (macOS, iOS, tvOS, visionOS, watchOS, Mac Catalyst)
+- `make wasm`: WASM with the software renderer
+- `make wasm-webgl`: WASM with the WebGL2 renderer
+- `make wasm-webgpu`: WASM with the WebGPU renderer
+- `make wasm-all`: all WASM variants
+- `make native`: native library for the host
+- `make native-opengl`: native library with the OpenGL renderer
+- `make native-webgpu`: native library with the WebGPU renderer
+- `make linux`: Linux x86_64 and ARM64
+- `make windows`: Windows x86_64 and ARM64
 
-This information is embedded in release artifacts for traceability.
+#### Architecture targets
 
-### Available Build Targets
+- Android: `android-aarch64`, `android-x86_64`, `android-x86`, `android-armv7`
+- Apple: `apple-macos-arm64`, `apple-ios-arm64`, `apple-tvos-sim-arm64`, and the rest of `apple-{platform}-{arch}`
+- Linux: `linux-x86_64`, `linux-arm64`
+- Windows: `windows-x86_64`, `windows-arm64`
 
-The build system provides a comprehensive set of targets accessible via `make help`:
+#### Development targets
 
-#### Platform Targets
+- `make test` runs `cargo test` with `--test-threads=1`.
+- `make clippy` runs clippy.
+- `make help` prints the target list.
 
-- `make android`: Build all Android architectures (ARM64, x86_64, x86, ARMv7)
-- `make apple`: Build all Apple platforms (macOS, iOS, tvOS, visionOS, watchOS, macCatalyst)
-- `make wasm`: Build WebAssembly module (software renderer) via wasm-bindgen
-- `make wasm-webgl`: Build WebAssembly module with WebGL2 renderer via wasm-bindgen
-- `make wasm-webgpu`: Build WebAssembly module with WebGPU renderer via wasm-bindgen
-- `make wasm-all`: Build all WASM variants
-- `make native`: Build native library for current platform
-- `make native-opengl`: Build native library with OpenGL renderer
-- `make native-webgpu`: Build native library with WebGPU renderer
-- `make linux`: Build Linux x86_64 and ARM64
-- `make windows`: Build Windows x86_64 and ARM64
+### Dependencies
 
-#### Architecture-Specific Targets
+#### WASM
 
-- **Android**: `android-aarch64`, `android-x86_64`, `android-x86`, `android-armv7`
-- **Apple**: `apple-macos-arm64`, `apple-ios-arm64`, `apple-tvos-sim-arm64`, etc.
-- **Linux**: `linux-x86_64`, `linux-arm64`
-- **Windows**: `windows-x86_64`, `windows-arm64`
+- `make wasm-setup` installs wasm-bindgen-cli at the version of the `wasm-bindgen` crate in Cargo.lock.
+- `make wasm-setup` also adds the `wasm32-unknown-unknown` target through rustup.
+- `wasm-opt` is optional. The build runs it with `-O3` if it is on `PATH`.
 
-#### Development Targets
+#### Android
 
-- `make test`: Run all tests with single-threaded execution
-- `make clippy`: Run Rust linter with strict settings
-- `make help`: Display comprehensive help menu
+- Install the Android NDK yourself, r28 or newer.
+- `make android-setup` installs the Rust targets.
 
-### Platform Setup and Dependencies
+#### Windows
 
-The build system automatically manages platform-specific dependencies:
+- Visual Studio Build Tools with the "Desktop development with C++" workload
+- GNU Make, from MSYS2, Git Bash, or `choco install make`
+- `make windows-setup` installs the Rust targets.
 
-#### WASM Dependencies
+#### Apple
 
-- **wasm-bindgen-cli**: Installed automatically by `make wasm-setup`, version-pinned to the `wasm-bindgen` crate in Cargo.lock
-- **wasm32-unknown-unknown target**: Installed automatically by `make wasm-setup` via rustup
-- **wasm-opt** (optional): Used for an `-O3` optimization pass if found on PATH
+- Xcode
+- `make apple-setup` installs the Rust targets.
+- A nightly toolchain for Mac Catalyst, tvOS, visionOS, and watchOS
 
-#### Android Dependencies
+### Setup and cleanup
 
-- **Android NDK**: Must be installed separately (minimum version r28)
-- **Rust targets**: Automatically installed via `make android-setup`
-
-#### Windows Dependencies
-
-- **Visual Studio Build Tools**: "Desktop development with C++" workload required
-- **GNU Make**: Available via MSYS2, Git Bash, or `choco install make`
-- **Rust targets**: Installed via `make windows-setup`
-
-#### Apple Dependencies
-
-- **Xcode**: Required for all Apple platform builds
-- **Rust targets**: Multiple targets installed via `make apple-setup`
-- **Nightly toolchain**: Required for newer Apple platforms (visionOS, tvOS, watchOS)
-
-### Build Management
-
-#### Setup Commands
-
-- `make setup`: Configures all platforms
-- `make {platform}-setup`: Configures specific platform
-- `make list-platforms`: Shows all supported platforms
-
-#### Incremental Builds
-
-The build system supports efficient incremental builds:
-
-- **Cargo caching**: Rust builds leverage Cargo's incremental compilation
-- **Platform isolation**: Each platform builds independently
-- **Artifact reuse**: Previously built binaries are reused when possible
-
-#### Cleanup Commands
-
-Different cleanup levels are available:
-
-- `make clean`: Removes all build artifacts and Cargo cache
-- `make {platform}-clean`: Cleans specific platform artifacts
-- `make native-clean`: Cleans only native build artifacts
-
-The modular design means you can clean and rebuild individual platforms without affecting others.
+- `make setup` runs every `{platform}-setup` target.
+- `make {platform}-setup` sets up one platform.
+- `make list-platforms` lists the supported platforms.
+- `make clean` runs `native-clean`, runs `cargo clean`, and removes the bindings directory.
+- `make {platform}-clean` removes one platform's artifacts.

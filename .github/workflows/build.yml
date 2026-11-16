@@ -16,37 +16,37 @@ on:
           - "all"
       feature_threads:
         type: boolean
-        description: "Enable Threads (for thorvg)"
+        description: "Multi-threaded ThorVG rendering (tvg-threads)"
         required: false
         default: true
       feature_webp:
         type: boolean
-        description: "Enable WebP Loader"
+        description: "WebP images (tvg-webp)"
         required: false
         default: true
       feature_png:
         type: boolean
-        description: "Enable PNG Loader"
+        description: "PNG images (tvg-png)"
         required: false
         default: true
       feature_jpg:
         type: boolean
-        description: "Enable JPEG Loader"
+        description: "JPEG images (tvg-jpg)"
         required: false
         default: true
       feature_ttf:
         type: boolean
-        description: "Enable TTF Loader"
+        description: "TrueType fonts (tvg-ttf)"
         required: false
         default: true
       feature_expressions:
         type: boolean
-        description: "Enable Lottie Expressions"
+        description: "Lottie expressions (tvg-lottie-expressions)"
         required: false
         default: true
       feature_simd:
         type: boolean
-        description: "Enable SIMD"
+        description: "SIMD in ThorVG (tvg-simd)"
         required: false
         default: false
 
@@ -67,10 +67,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: dtolnay/rust-toolchain@nightly
 
-      - name: Setup Apple
+      - name: Set up Apple
         run: make apple-setup
 
-      - name: Set Features
+      - name: Set features
         run: |
           features=""
 
@@ -102,7 +102,6 @@ jobs:
             features="${features}tvg-simd,"
           fi
 
-          # Remove trailing comma if features exist
           if [ -n "$features" ]; then
             features="${features%,}"
           fi
@@ -115,19 +114,19 @@ jobs:
         env:
           FEATURES: ${{ env.FEATURES }}
 
-      - name: Create Apple Archive
+      - name: Create Apple archive
         run: |
           cd release/apple
           tar -czf dotlottie-player.darwin.tar.gz *
 
-      - name: Upload Apple Artifacts
+      - name: Upload Apple artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.darwin.tar.gz
           path: release/apple/dotlottie-player.darwin.tar.gz
           if-no-files-found: error
 
-      - name: Cleanup keychain
+      - name: Clean up keychain
         if: always()
         run: |
           security delete-keychain build.keychain || true
@@ -148,10 +147,10 @@ jobs:
           ndk-version: r28b
           local-cache: true
 
-      - name: Setup Android
+      - name: Set up Android
         run: make android-setup
 
-      - name: Set Features
+      - name: Set features
         run: |
           features=""
 
@@ -183,7 +182,6 @@ jobs:
             features="${features}tvg-simd,"
           fi
 
-          # Remove trailing comma if features exist
           if [ -n "$features" ]; then
             features="${features%,}"
           fi
@@ -197,12 +195,12 @@ jobs:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           FEATURES: ${{ env.FEATURES }}
 
-      - name: Create Android Archive
+      - name: Create Android archive
         run: |
           cd release/android
           tar -czf dotlottie-player.android.tar.gz *
 
-      - name: Upload Android Artifacts
+      - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.android.tar.gz
@@ -220,18 +218,18 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Setup WASM
+      - name: Set up WASM
         run: make wasm-setup
 
       - name: Build WASM
         run: make wasm
 
-      - name: Create WASM Archive
+      - name: Create WASM archive
         run: |
           cd release/wasm
           tar -czf dotlottie-player.wasm.tar.gz *
 
-      - name: Upload WASM Artifacts
+      - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.wasm.tar.gz
@@ -254,10 +252,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
-      - name: Setup Linux
+      - name: Set up Linux
         run: make linux-setup
 
-      - name: Set Features
+      - name: Set features
         run: |
           features=""
 
@@ -289,7 +287,6 @@ jobs:
             features="${features}tvg-simd,"
           fi
 
-          # Remove trailing comma if features exist
           if [ -n "$features" ]; then
             features="${features%,}"
           fi
@@ -302,12 +299,12 @@ jobs:
         env:
           FEATURES: ${{ env.FEATURES }}
 
-      - name: Create Linux Archive
+      - name: Create Linux archive
         run: |
           cd release/linux
           tar -czf dotlottie-player.linux.tar.gz *
 
-      - name: Upload Linux Artifacts
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.linux.tar.gz
@@ -344,15 +341,14 @@ jobs:
             --installPath "$vsPath" `
             --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
             --quiet --norestart --wait
-          # Verify ARM64 tools installed
           $arm64cl = Get-ChildItem "$vsPath\VC\Tools\MSVC\*\bin\Hostx64\arm64\cl.exe" -ErrorAction SilentlyContinue
           if ($arm64cl) { Write-Host "ARM64 cl.exe found: $($arm64cl.FullName)" }
           else { Write-Warning "ARM64 cl.exe not found after install" }
 
-      - name: Setup Windows
+      - name: Set up Windows
         run: make windows-setup
 
-      - name: Set Features
+      - name: Set features
         run: |
           features=""
 
@@ -384,7 +380,6 @@ jobs:
             features="${features}tvg-simd,"
           fi
 
-          # Remove trailing comma if features exist
           if [ -n "$features" ]; then
             features="${features%,}"
           fi
@@ -397,12 +392,12 @@ jobs:
         env:
           FEATURES: ${{ env.FEATURES }}
 
-      - name: Create Windows Archive
+      - name: Create Windows archive
         run: |
           cd release/windows
           tar -czf dotlottie-player.windows.tar.gz *
 
-      - name: Upload Windows Artifacts
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dotlottie-player.windows.tar.gz

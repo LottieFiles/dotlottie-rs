@@ -1,38 +1,29 @@
-# Detect host platform first
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 
-# Android NDK path
-# By default, set for macOS with Homebrew. For other platforms, override ANDROID_NDK_HOME or set it in your environment.
+# Defaults to the Homebrew NDK on macOS. Set ANDROID_NDK_HOME for any other location.
 ifeq ($(UNAME_S),Darwin)
     ANDROID_NDK_HOME ?= /opt/homebrew/share/android-ndk
 else ifeq ($(UNAME_S),Linux)
-    # Common default for Linux (update as needed for your system)
     ANDROID_NDK_HOME ?= /opt/android-ndk
 else
-    # Unknown platform: require user to set ANDROID_NDK_HOME
+    # No default on other hosts. check_android_platform_support requires ANDROID_NDK_HOME.
     ANDROID_NDK_HOME ?=
 endif
 API_LEVEL ?= 21
 
-# Minimum required NDK version
 MIN_NDK_VERSION = 28
 
-# Default Rust features for Android builds
 ANDROID_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-otf,tvg-lottie-expressions,tvg-threads
 
 ifdef FEATURES
 	ANDROID_FEATURES = $(FEATURES)
 endif
 
-# Release and packaging variables
 RELEASE_DIR ?= release
 ANDROID_RELEASE_DIR ?= $(RELEASE_DIR)/android
 LIBCPP_SHARED_LIB ?= libc++_shared.so
 
-# Detect host tag for NDK
-
-# Function to check platform support - only called when Android targets are invoked
 define check_android_platform_support
 $(if $(ANDROID_NDK_HOME),,$(error "Please set ANDROID_NDK_HOME to your Android NDK installation path."))
 $(if $(filter Darwin Linux,$(UNAME_S)),,$(error "Android builds not supported on $(UNAME_S). Requires macOS or Linux with Android NDK."))
@@ -47,55 +38,42 @@ ifeq ($(UNAME_S),Darwin)
 else ifeq ($(UNAME_S),Linux)
     HOST_TAG = linux-x86_64
 else
-    # For unsupported platforms, set a default - error will be thrown when Android targets are used
+    # Placeholder. check_android_platform_support rejects unsupported hosts.
     HOST_TAG = linux-x86_64
 endif
 
-# Android NDK toolchain paths
 ANDROID_TOOLCHAIN = $(ANDROID_NDK_HOME)/toolchains/llvm/prebuilt/$(HOST_TAG)
 ANDROID_AR = $(ANDROID_TOOLCHAIN)/bin/llvm-ar
 ANDROID_RANLIB = $(ANDROID_TOOLCHAIN)/bin/llvm-ranlib
 ANDROID_STRIP = $(ANDROID_TOOLCHAIN)/bin/llvm-strip
 
-# Android targets
 ANDROID_TARGETS = aarch64-linux-android x86_64-linux-android i686-linux-android armv7-linux-androideabi
 
-# Rust target mapping
 RUST_TARGET_aarch64 = aarch64-linux-android
 RUST_TARGET_x86_64 = x86_64-linux-android
 RUST_TARGET_x86 = i686-linux-android
 RUST_TARGET_armv7 = armv7-linux-androideabi
 
-# Android ABI mapping
 ANDROID_ABI_aarch64 = arm64-v8a
 ANDROID_ABI_x86_64 = x86_64
 ANDROID_ABI_x86 = x86
 ANDROID_ABI_armv7 = armeabi-v7a
 
-# Android libcpp path mapping
 LIBCPP_PATH_aarch64 = aarch64-linux-android
 LIBCPP_PATH_x86_64 = x86_64-linux-android
 LIBCPP_PATH_x86 = i686-linux-android
 LIBCPP_PATH_armv7 = arm-linux-androideabi
 
-# Android compiler mapping
 ANDROID_CXX_aarch64 = $(ANDROID_TOOLCHAIN)/bin/aarch64-linux-android$(API_LEVEL)-clang++
 ANDROID_CXX_x86_64 = $(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang++
 ANDROID_CXX_x86 = $(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang++
 ANDROID_CXX_armv7 = $(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang++
 
-# Get version information
 CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-rs/Cargo.toml | grep -o '[0-9][0-9.]*')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
-# ============================================================================
-# Android Build Targets (C API)
-# ============================================================================
-
-# Android-specific phony targets
 .PHONY: android android-aarch64 android-x86_64 android-x86 android-armv7 android-package android-setup android-clean
 
-# Check if NDK path is valid
 android-check-ndk:
 	@if [ ! -d "$(ANDROID_NDK_HOME)" ]; then \
 		echo "Error: ANDROID_NDK_HOME does not exist: $(ANDROID_NDK_HOME)"; \
@@ -122,31 +100,22 @@ android-check-ndk:
 		exit 1; \
 	fi
 
-# Install Android targets if not already installed
 android-setup:
 	@echo "→ Installing Android Rust targets..."
 	@rustup target add $(ANDROID_TARGETS) >/dev/null
 	@echo "✓ Android targets installed"
 
-# Clean Android bindings and release artifacts
 android-clean:
 	@echo "→ Cleaning Android builds..."
 	@rm -rf $(ANDROID_RELEASE_DIR)
 	@echo "✓ Android builds cleaned"
 
-# ============================================================================
-# Android C API Targets (using dotlottie-rs)
-# ============================================================================
-
-# Android feature set (C API from dotlottie-rs)
 ANDROID_DEFAULT_FEATURES = tvg,tvg-cpu,tvg-gl,c_api,dotlottie,state-machines,theming
 ANDROID_LIB_NAME = libdotlottie_rs.so
 
-# Build for all Android architectures with C API
 android: $(addprefix android-,aarch64 x86_64 x86 armv7) android-package
-	@echo "✓ All Android C API builds complete"
+	@echo "✓ All Android builds complete"
 
-# Build for Android ARM64
 android-aarch64: android-check-ndk
 	$(call check_android_platform_support)
 	@echo "→ Building Android aarch64..."
@@ -176,10 +145,9 @@ android-aarch64: android-check-ndk
 	fi
 	@echo "✓ Android aarch64 build complete"
 
-# Build for Android x86_64 with C API
 android-x86_64: android-check-ndk
 	$(call check_android_platform_support)
-	@echo "→ Building Android x86_64 ..."
+	@echo "→ Building Android x86_64..."
 	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
 	CC="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang" \
 	CXX="$(ANDROID_TOOLCHAIN)/bin/x86_64-linux-android$(API_LEVEL)-clang++" \
@@ -206,10 +174,9 @@ android-x86_64: android-check-ndk
 	fi
 	@echo "✓ Android x86_64 build complete"
 
-# Build for Android x86 with C API
 android-x86: android-check-ndk
 	$(call check_android_platform_support)
-	@echo "→ Building Android x86 ..."
+	@echo "→ Building Android x86..."
 	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
 	CC="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang" \
 	CXX="$(ANDROID_TOOLCHAIN)/bin/i686-linux-android$(API_LEVEL)-clang++" \
@@ -236,10 +203,9 @@ android-x86: android-check-ndk
 	fi
 	@echo "✓ Android x86 build complete"
 
-# Build for Android ARMv7 with C API
 android-armv7: android-check-ndk
 	$(call check_android_platform_support)
-	@echo "→ Building Android ARMv7 ..."
+	@echo "→ Building Android ARMv7..."
 	@ANDROID_NDK_HOME="$(ANDROID_NDK_HOME)" \
 	CC="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang" \
 	CXX="$(ANDROID_TOOLCHAIN)/bin/armv7a-linux-androideabi$(API_LEVEL)-clang++" \
@@ -266,9 +232,8 @@ android-armv7: android-check-ndk
 	fi
 	@echo "✓ Android ARMv7 build complete"
 
-# Package Android C API build with bindings generation
 android-package:
-	@echo "→ Creating Android  release package..."
+	@echo "→ Creating Android release package..."
 	@mkdir -p $(ANDROID_RELEASE_DIR)/include
 	@echo "→ Copying C header from build..."
 	@cp dotlottie-rs/build/dotlottie_player.h $(ANDROID_RELEASE_DIR)/include/
@@ -278,7 +243,7 @@ android-package:
 	@echo ""
 	@echo "Output structure:"
 	@echo "  $(ANDROID_RELEASE_DIR)/"
-	@echo "    ├── include/dotlottie_player.h   (C header - generated during build)"
+	@echo "    ├── include/dotlottie_player.h"
 	@echo "    ├── jniLibs/"
 	@echo "    │   ├── arm64-v8a/libdotlottie_player.so"
 	@echo "    │   ├── armeabi-v7a/libdotlottie_player.so"

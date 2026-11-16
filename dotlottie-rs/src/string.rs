@@ -70,7 +70,6 @@ impl DotString {
 
     /// Copies `s` into a new `DotString`. With `c_api`, returns
     /// `Err(InteriorNul)` if `s` contains a null byte.
-    #[allow(clippy::unnecessary_wraps)]
     pub fn try_new(s: &str) -> Result<Self, InteriorNul> {
         #[cfg(feature = "c_api")]
         {
@@ -102,7 +101,6 @@ impl DotString {
         Self::try_from_string(s).expect("DotString: interior null byte not allowed")
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     pub fn try_from_string(s: String) -> Result<Self, InteriorNul> {
         #[cfg(feature = "c_api")]
         {

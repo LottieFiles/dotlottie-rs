@@ -101,6 +101,12 @@ impl<C: AudioClip> Layer<C> {
         }
     }
 
+    fn refresh_gain(&self, global: Global) {
+        if let Some(clip) = self.clip() {
+            clip.set_gain(self.gain(global));
+        }
+    }
+
     fn gain(&self, global: Global) -> Gain {
         Gain {
             layer: self.volume,
@@ -177,9 +183,7 @@ impl<C: AudioClip> AudioManager<C> {
             layer.volume = volume;
             layer.offset = event.offset;
             layer.clip_start = clip_start;
-            if let Some(clip) = layer.clip() {
-                clip.set_gain(layer.gain(self.global));
-            }
+            layer.refresh_gain(self.global);
             return;
         }
 
@@ -283,9 +287,7 @@ impl<C: AudioClip> AudioManager<C> {
     pub fn set_volume(&mut self, volume: f32) {
         self.global.volume = if volume > 0.0 { volume.min(1.0) } else { 0.0 };
         for layer in self.layers.values() {
-            if let Some(clip) = layer.clip() {
-                clip.set_gain(layer.gain(self.global));
-            }
+            layer.refresh_gain(self.global);
         }
     }
 

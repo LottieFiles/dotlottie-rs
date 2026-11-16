@@ -17,11 +17,11 @@ use web::Clip as PlatformClip;
 pub trait AudioClip: Sized {
     /// What clips play through, such as the audio device. Created once per
     /// manager.
-    type Output: Default;
+    type Device: Default;
 
     /// `None` if the platform can't play `data`, such as when no audio device
     /// is available.
-    fn start(output: &mut Self::Output, data: &Arc<[u8]>, cue: Cue) -> Option<Self>;
+    fn start(device: &mut Self::Device, data: &Arc<[u8]>, cue: Cue) -> Option<Self>;
     fn pause(&self);
     fn resume(&self);
     fn set_gain(&self, gain: Gain);
@@ -47,14 +47,14 @@ pub struct Cue {
 
 /// Settings shared by every clip.
 #[derive(Debug, Clone, Copy)]
-struct Mix {
+struct Global {
     /// Global volume in [0.0, 1.0].
     volume: f32,
     rate: f32,
 }
 
 enum Playback<C> {
-    Pending,
+    Idle,
     /// Handed to the platform. `None` when the platform couldn't play it, so a
     /// missing audio device doesn't retry every frame.
     Started(Option<C>),
@@ -75,19 +75,19 @@ struct Layer<C> {
 }
 
 impl<C: AudioClip> Layer<C> {
-    fn start(&mut self, output: &mut C::Output, mix: Mix) {
+    fn start(&mut self, device: &mut C::Device, global: Global) {
         // Drop the old clip so it stops before the new one plays.
-        self.playback = Playback::Pending;
+        self.playback = Playback::Idle;
         let cue = Cue {
             offset: self.offset,
-            gain: self.gain(mix),
-            rate: mix.rate,
+            gain: self.gain(global),
+            rate: global.rate,
         };
-        self.playback = Playback::Started(C::start(output, &self.data, cue));
+        self.playback = Playback::Started(C::start(device, &self.data, cue));
     }
 
     fn stop(&mut self) {
-        self.playback = Playback::Pending;
+        self.playback = Playback::Idle;
     }
 
     fn is_started(&self) -> bool {
@@ -97,14 +97,14 @@ impl<C: AudioClip> Layer<C> {
     fn clip(&self) -> Option<&C> {
         match &self.playback {
             Playback::Started(clip) => clip.as_ref(),
-            Playback::Pending => None,
+            Playback::Idle => None,
         }
     }
 
-    fn gain(&self, mix: Mix) -> Gain {
+    fn gain(&self, global: Global) -> Gain {
         Gain {
             layer: self.volume,
-            global: mix.volume,
+            global: global.volume,
         }
     }
 }
@@ -122,9 +122,9 @@ pub struct AudioManager<C: AudioClip = PlatformClip> {
     /// Resolves external audio srcs; embedded audio bytes arrive in the event.
     lookup: AudioSourceLookup,
     layers: FxHashMap<String, Layer<C>>,
-    // Declared after `layers` so clips drop before their output.
-    output: C::Output,
-    mix: Mix,
+    // Declared after `layers` so clips drop before their device.
+    device: C::Device,
+    global: Global,
     playing: bool,
     /// Playhead position in animation-time seconds.
     playhead: f32,
@@ -138,8 +138,8 @@ impl<C: AudioClip> AudioManager<C> {
         AudioManager {
             lookup,
             layers: FxHashMap::default(),
-            output: C::Output::default(),
-            mix: Mix {
+            device: C::Device::default(),
+            global: Global {
                 volume: 1.0,
                 rate: 1.0,
             },
@@ -178,7 +178,7 @@ impl<C: AudioClip> AudioManager<C> {
             layer.offset = event.offset;
             layer.clip_start = clip_start;
             if let Some(clip) = layer.clip() {
-                clip.set_gain(layer.gain(self.mix));
+                clip.set_gain(layer.gain(self.global));
             }
             return;
         }
@@ -196,10 +196,10 @@ impl<C: AudioClip> AudioManager<C> {
             offset: event.offset,
             clip_start,
             volume,
-            playback: Playback::Pending,
+            playback: Playback::Idle,
         };
         if self.audible() {
-            layer.start(&mut self.output, self.mix);
+            layer.start(&mut self.device, self.global);
         }
         self.layers.insert(key, layer);
     }
@@ -224,7 +224,7 @@ impl<C: AudioClip> AudioManager<C> {
             let offset = self.playhead - layer.clip_start;
             if !layer.is_started() && offset >= -START_SLACK {
                 layer.offset = offset.max(0.0);
-                layer.start(&mut self.output, self.mix);
+                layer.start(&mut self.device, self.global);
             }
         }
     }
@@ -237,7 +237,7 @@ impl<C: AudioClip> AudioManager<C> {
             let offset = self.playhead - layer.clip_start;
             layer.offset = offset.max(0.0);
             if audible && offset >= -START_SLACK {
-                layer.start(&mut self.output, self.mix);
+                layer.start(&mut self.device, self.global);
             } else {
                 layer.stop();
             }
@@ -249,7 +249,7 @@ impl<C: AudioClip> AudioManager<C> {
         if rate.is_nan() || rate <= 0.0 {
             return;
         }
-        self.mix.rate = rate;
+        self.global.rate = rate;
         self.clips().for_each(|clip| clip.set_rate(rate));
     }
 
@@ -281,16 +281,16 @@ impl<C: AudioClip> AudioManager<C> {
     /// Set the global volume multiplier (clamped to [0.0, 1.0], NaN counts as
     /// 0).
     pub fn set_volume(&mut self, volume: f32) {
-        self.mix.volume = if volume > 0.0 { volume.min(1.0) } else { 0.0 };
+        self.global.volume = if volume > 0.0 { volume.min(1.0) } else { 0.0 };
         for layer in self.layers.values() {
             if let Some(clip) = layer.clip() {
-                clip.set_gain(layer.gain(self.mix));
+                clip.set_gain(layer.gain(self.global));
             }
         }
     }
 
     pub fn volume(&self) -> f32 {
-        self.mix.volume
+        self.global.volume
     }
 
     fn audible(&self) -> bool {
@@ -323,7 +323,7 @@ impl<C: AudioClip> AudioManager<C> {
 
     #[cfg(test)]
     pub(crate) fn rate(&self) -> f32 {
-        self.mix.rate
+        self.global.rate
     }
 
     #[cfg(test)]
@@ -430,7 +430,7 @@ mod tests {
     }
 
     #[derive(Default)]
-    struct FakeOutput {
+    struct FakeDevice {
         calls: Rc<RefCell<Vec<Call>>>,
         no_device: bool,
     }
@@ -438,14 +438,14 @@ mod tests {
     struct FakeClip(Rc<RefCell<Vec<Call>>>);
 
     impl AudioClip for FakeClip {
-        type Output = FakeOutput;
+        type Device = FakeDevice;
 
-        fn start(output: &mut FakeOutput, _: &Arc<[u8]>, cue: Cue) -> Option<Self> {
-            if output.no_device {
+        fn start(device: &mut FakeDevice, _: &Arc<[u8]>, cue: Cue) -> Option<Self> {
+            if device.no_device {
                 return None;
             }
-            output.calls.borrow_mut().push(Call::Start(cue.gain));
-            Some(FakeClip(output.calls.clone()))
+            device.calls.borrow_mut().push(Call::Start(cue.gain));
+            Some(FakeClip(device.calls.clone()))
         }
         fn pause(&self) {}
         fn resume(&self) {}
@@ -479,7 +479,7 @@ mod tests {
     }
 
     fn calls(am: &AudioManager<FakeClip>) -> std::cell::Ref<'_, Vec<Call>> {
-        am.output.calls.borrow()
+        am.device.calls.borrow()
     }
 
     #[test]
@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn a_clip_without_a_device_still_counts_as_started() {
         let mut am = AudioManager::<FakeClip>::new(Box::new(|_| None));
-        am.output.no_device = true;
+        am.device.no_device = true;
         am.set_playing(true);
         am.on_audio(AudioEvent {
             source: AudioSource::Embedded {

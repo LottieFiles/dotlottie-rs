@@ -21,7 +21,7 @@ pub(super) fn mime_type(data: &[u8]) -> &'static str {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct Loudness {
+struct ElementVolume {
     volume: f64,
     muted: bool,
 }
@@ -29,10 +29,10 @@ struct Loudness {
 /// `HTMLMediaElement.volume` throws outside [0, 1] and on NaN, so each factor
 /// is clamped and NaN counts as 0. iOS Safari ignores `volume` writes, so a
 /// global volume of 0 also mutes.
-fn loudness(layer_volume: f32, global_volume: f32) -> Loudness {
+fn element_volume(layer_volume: f32, global_volume: f32) -> ElementVolume {
     let unit = |v: f32| if v > 0.0 { v.min(1.0) } else { 0.0 };
     let global = unit(global_volume);
-    Loudness {
+    ElementVolume {
         volume: (unit(layer_volume) * global) as f64,
         muted: global == 0.0,
     }
@@ -51,7 +51,7 @@ mod element {
     use std::sync::Arc;
     use web_sys::{Blob, BlobPropertyBag, HtmlAudioElement, Url};
 
-    use super::{loudness, mime_type, playback_rate};
+    use super::{element_volume, mime_type, playback_rate, ElementVolume};
     use crate::audio::{AudioClip, Cue, Gain};
 
     pub struct Clip {
@@ -61,7 +61,7 @@ mod element {
     }
 
     impl AudioClip for Clip {
-        type Output = ();
+        type Device = ();
 
         fn start(_: &mut (), data: &Arc<[u8]>, cue: Cue) -> Option<Self> {
             let array = Array::new();
@@ -101,9 +101,9 @@ mod element {
         }
 
         fn set_gain(&self, gain: Gain) {
-            let loudness = loudness(gain.layer, gain.global);
-            self.element.set_volume(loudness.volume);
-            self.element.set_muted(loudness.muted);
+            let ElementVolume { volume, muted } = element_volume(gain.layer, gain.global);
+            self.element.set_volume(volume);
+            self.element.set_muted(muted);
         }
 
         fn set_rate(&self, rate: f32) {
@@ -122,10 +122,10 @@ mod element {
 
 #[cfg(test)]
 mod tests {
-    use super::{loudness, playback_rate, Loudness};
+    use super::{element_volume, playback_rate, ElementVolume};
 
     #[test]
-    fn loudness_stays_in_range_and_mutes_at_zero_global_volume() {
+    fn element_volume_stays_in_range_and_mutes_at_zero_global_volume() {
         let cases = [
             // (layer, global, volume, muted)
             (1.0, 1.0, 1.0, false),
@@ -141,8 +141,8 @@ mod tests {
         ];
         for (layer, global, volume, muted) in cases {
             assert_eq!(
-                loudness(layer, global),
-                Loudness { volume, muted },
+                element_volume(layer, global),
+                ElementVolume { volume, muted },
                 "{layer} * {global}"
             );
         }

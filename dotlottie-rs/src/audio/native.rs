@@ -9,9 +9,9 @@ use super::{AudioClip, Cue, Gain};
 
 /// The audio device. It opens on the first clip and stays open after that.
 #[derive(Default)]
-pub struct Output(Option<OutputStream>);
+pub struct Device(Option<OutputStream>);
 
-impl Output {
+impl Device {
     /// `None` if no audio device is available.
     fn mixer(&mut self) -> Option<&Mixer> {
         if self.0.is_none() {
@@ -29,12 +29,12 @@ impl Output {
 pub struct Clip(Sink);
 
 impl AudioClip for Clip {
-    type Output = Output;
+    type Device = Device;
 
-    fn start(output: &mut Output, data: &Arc<[u8]>, cue: Cue) -> Option<Self> {
+    fn start(device: &mut Device, data: &Arc<[u8]>, cue: Cue) -> Option<Self> {
         let source = decode(data.clone())?;
-        let sink = Sink::connect_new(output.mixer()?);
-        sink.set_volume(volume(cue.gain));
+        let sink = Sink::connect_new(device.mixer()?);
+        sink.set_volume(sink_volume(cue.gain));
         sink.set_speed(cue.rate);
         // skip_duration approximates a mid-clip start.
         sink.append(source.skip_duration(Duration::from_secs_f32(cue.offset.max(0.0))));
@@ -50,7 +50,7 @@ impl AudioClip for Clip {
     }
 
     fn set_gain(&self, gain: Gain) {
-        self.0.set_volume(volume(gain));
+        self.0.set_volume(sink_volume(gain));
     }
 
     fn set_rate(&self, rate: f32) {
@@ -58,7 +58,7 @@ impl AudioClip for Clip {
     }
 }
 
-fn volume(gain: Gain) -> f32 {
+fn sink_volume(gain: Gain) -> f32 {
     gain.layer * gain.global
 }
 

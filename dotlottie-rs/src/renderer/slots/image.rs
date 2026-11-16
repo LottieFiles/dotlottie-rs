@@ -24,14 +24,16 @@ impl ImageSlot {
     }
 
     pub fn from_path(path: String) -> Self {
-        let filename = path.split('/').next_back().unwrap_or(&path).to_string();
-        let dir = path.rsplit_once('/').map(|x| x.0.to_string());
+        let (directory, file) = match path.rsplit_once('/') {
+            Some((dir, file)) => (Some(dir.to_string()), file.to_string()),
+            None => (None, path),
+        };
 
         Self {
             width: None,
             height: None,
-            directory: dir,
-            path: Some(filename),
+            directory,
+            path: Some(file),
             embed: Some(0),
         }
     }

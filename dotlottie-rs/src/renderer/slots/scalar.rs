@@ -1,6 +1,5 @@
-use super::{LottieKeyframe, LottieProperty};
+use super::{LottieKeyframe, LottieProperty, SlotValue};
 use crate::json::{write_f32, Value};
-use crate::renderer::slots::SlotValue;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ScalarValue(pub f32);

@@ -1,6 +1,5 @@
-use super::{LottieKeyframe, LottieProperty};
+use super::{write_f32_slice, LottieKeyframe, LottieProperty, SlotValue};
 use crate::json::Value;
-use crate::renderer::slots::{write_f32_slice, SlotValue};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ColorValue(pub [f32; 3]);

@@ -24,7 +24,6 @@ exclude = [
     "InteractionTypeParseError",
     "Transferable",
     "DeviceCallbackResult",
-    "_tvg_wgpu_surface_configure_fixup"
 ]
 
 [parse]

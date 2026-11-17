@@ -1,7 +1,7 @@
 /*
-* 🚨 To run this example, use:
+ * 🚨 To run this example, use:
  * cargo run --example webgpu --features tvg-wg
-*/
+ */
 #![allow(clippy::print_stdout)]
 
 mod common;

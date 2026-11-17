@@ -1,6 +1,5 @@
-use super::{LottieKeyframe, LottieProperty};
+use super::{property_from_json, write_property, LottieKeyframe, LottieProperty};
 use crate::json::{write_str, ObjWriter, Value};
-use crate::renderer::slots::{property_from_json, write_property};
 use std::fmt::Write as _;
 
 #[derive(Debug, Clone)]
@@ -29,10 +28,7 @@ impl GradientSlot {
     }
 
     pub fn with_keyframes(keyframes: Vec<LottieKeyframe<Vec<GradientStop>>>) -> Self {
-        let num_stops = keyframes
-            .first()
-            .map(|kf| kf.start_value.len())
-            .unwrap_or(0);
+        let num_stops = keyframes.first().map_or(0, |kf| kf.start_value.len());
 
         let lottie_keyframes = keyframes
             .into_iter()
@@ -60,29 +56,14 @@ impl GradientSlot {
     }
 
     fn stops_to_lottie_data(stops: &[GradientStop]) -> Vec<f32> {
-        let mut gradient_data = vec![];
-        let mut transparency_data = vec![];
-        let alpha_present = stops.iter().any(|stop| stop.color.len() == 4);
-
-        for stop in stops {
-            gradient_data.push(stop.offset);
-            gradient_data.push(stop.color[0]);
-            gradient_data.push(stop.color[1]);
-            gradient_data.push(stop.color[2]);
-
-            if alpha_present {
-                let alpha = if stop.color.len() == 4 {
-                    stop.color[3]
-                } else {
-                    1.0
-                };
-                transparency_data.push(stop.offset);
-                transparency_data.push(alpha);
-            }
+        let mut data = Vec::with_capacity(stops.len() * 6);
+        for s in stops {
+            data.extend_from_slice(&[s.offset, s.color[0], s.color[1], s.color[2]]);
         }
-
-        gradient_data.extend(transparency_data);
-        gradient_data
+        for s in stops {
+            data.extend_from_slice(&[s.offset, s.color[3]]);
+        }
+        data
     }
 }
 

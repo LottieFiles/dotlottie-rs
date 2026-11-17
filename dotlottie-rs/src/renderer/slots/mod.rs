@@ -16,11 +16,15 @@ pub use scalar::{ScalarSlot, ScalarValue};
 pub use text::{TextCaps, TextDocument, TextJustify, TextKeyframe, TextSlot};
 pub use vector::VectorSlot;
 
+use crate::json::{
+    array_of, f32_array, f32_vec, opt, write_f32, write_seq, write_str, ObjWriter, Value,
+};
 use bezier_path::is_bezier_path_value;
 pub(crate) use bezier_path::points;
 use gradient::{gradient_slot_from_json, write_gradient_slot};
 use image::{image_slot_from_json, write_image_slot};
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use text::{text_slot_from_json, write_text_slot};
 
 /// Bezier value can be either a single number or a vector for multi-dimensional properties
@@ -91,9 +95,6 @@ impl<T> LottieProperty<T> {
     }
 }
 
-use crate::json::{array_of, f32_vec, opt, write_f32, write_seq, write_str, ObjWriter, Value};
-use std::fmt::Write as _;
-
 pub(crate) trait SlotValue: Sized {
     fn from_json(v: &Value) -> Option<Self>;
     fn write(&self, out: &mut String);
@@ -105,7 +106,7 @@ pub(crate) trait SlotValue: Sized {
 
 impl SlotValue for [f32; 2] {
     fn from_json(v: &Value) -> Option<Self> {
-        crate::json::f32_array(v)
+        f32_array(v)
     }
     fn write(&self, out: &mut String) {
         write_f32_slice(self, out);
@@ -147,7 +148,7 @@ fn write_bezier_value(b: &BezierValue, out: &mut String) {
     }
 }
 
-pub(crate) fn write_bezier(b: &Bezier, out: &mut String) {
+fn write_bezier(b: &Bezier, out: &mut String) {
     let mut o = ObjWriter::new(out);
     write_bezier_value(&b.x, o.field("x"));
     write_bezier_value(&b.y, o.field("y"));
@@ -307,16 +308,17 @@ pub fn parse_slot_from_json(slot_type: &str, json: &str) -> Option<SlotType> {
 
 pub fn slots_from_json_string(json_str: &str) -> Result<BTreeMap<String, SlotType>, super::Error> {
     let root = Value::parse(json_str).map_err(|_| super::Error::InvalidSlotValue)?;
-    let pairs = root.as_object().ok_or(super::Error::InvalidSlotValue)?;
+    slots_from_object(&root).ok_or(super::Error::InvalidSlotValue)
+}
+
+fn slots_from_object(v: &Value) -> Option<BTreeMap<String, SlotType>> {
     let mut result = BTreeMap::new();
-    for (id, value) in pairs {
-        if let Some(p) = value.get("p") {
-            if let Some(slot_type) = parse_slot_type(p) {
-                result.insert(id.to_string(), slot_type);
-            }
+    for (id, value) in v.as_object()? {
+        if let Some(slot) = value.get("p").and_then(parse_slot_type) {
+            result.insert(id.to_string(), slot);
         }
     }
-    Ok(result)
+    Some(result)
 }
 
 pub fn extract_slots_from_animation(animation_json: &str) -> BTreeMap<String, SlotType> {
@@ -324,15 +326,7 @@ pub fn extract_slots_from_animation(animation_json: &str) -> BTreeMap<String, Sl
         return BTreeMap::new();
     };
 
-    if let Some(Value::Object(slots_map)) = json.get("slots") {
-        let mut result = BTreeMap::new();
-        for (id, value) in slots_map {
-            if let Some(p) = value.get("p") {
-                if let Some(slot_type) = parse_slot_type(p) {
-                    result.insert(id.to_string(), slot_type);
-                }
-            }
-        }
+    if let Some(result) = json.get("slots").and_then(slots_from_object) {
         if !result.is_empty() {
             return result;
         }
@@ -343,9 +337,8 @@ pub fn extract_slots_from_animation(animation_json: &str) -> BTreeMap<String, Sl
     result
 }
 
-/// Walk the JSON tree and collect properties that have a "sid" (slot ID) tag.
-/// These are animated properties with an explicit slot identifier, e.g.:
-/// `{"a": 0, "k": [0.71, 0.192, 0.278], "sid": "ball_color"}`
+/// Walk the JSON tree and collect properties tagged with a "sid" (slot ID), e.g.
+/// `{"a": 0, "k": [0.71, 0.192, 0.278], "sid": "ball_color"}`.
 fn collect_sid_slots(value: &Value, result: &mut BTreeMap<String, SlotType>) {
     match value {
         Value::Object(pairs) => {
@@ -393,21 +386,10 @@ fn parse_slot_type(value: &Value) -> Option<SlotType> {
                         return property_from_json::<BezierPath>(value).map(SlotType::BezierPath);
                     }
                     if let Some(start_arr) = start_value.as_array() {
-                        let len = start_arr.len();
-
                         if start_arr.iter().all(Value::is_number) {
-                            if len == 3 || len == 4 {
-                                return property_from_json::<ColorValue>(value)
-                                    .map(SlotType::Color);
-                            } else if len == 2 {
-                                return property_from_json::<[f32; 2]>(value).map(SlotType::Vector);
-                            } else if len == 1 {
-                                return property_from_json::<ScalarValue>(value)
-                                    .map(SlotType::Scalar);
-                            }
-                        } else {
-                            return text_slot_from_json(value).map(SlotType::Text);
+                            return numeric_slot(start_arr.len(), value);
                         }
+                        return text_slot_from_json(value).map(SlotType::Text);
                     } else if start_value.is_number() {
                         return property_from_json::<ScalarValue>(value).map(SlotType::Scalar);
                     } else if start_value.is_object() {
@@ -417,19 +399,8 @@ fn parse_slot_type(value: &Value) -> Option<SlotType> {
                 return None;
             }
 
-            let is_numeric_array = arr.iter().all(Value::is_number);
-
-            if is_numeric_array {
-                let len = arr.len();
-                if len == 3 || len == 4 {
-                    property_from_json::<ColorValue>(value).map(SlotType::Color)
-                } else if len == 2 {
-                    property_from_json::<[f32; 2]>(value).map(SlotType::Vector)
-                } else if len == 1 {
-                    property_from_json::<ScalarValue>(value).map(SlotType::Scalar)
-                } else {
-                    None
-                }
+            if arr.iter().all(Value::is_number) {
+                numeric_slot(arr.len(), value)
             } else if is_bezier_path_value(k) {
                 // Static path values may be wrapped in a single-element array.
                 property_from_json::<BezierPath>(value).map(SlotType::BezierPath)
@@ -452,35 +423,28 @@ fn parse_slot_type(value: &Value) -> Option<SlotType> {
 }
 
 fn parse_animated_slot(k: &Value) -> Option<SlotType> {
-    let k_value = k.get("k")?;
-    let arr = k_value.as_array()?;
-    if arr.is_empty() {
+    let arr = k.get("k")?.as_array()?;
+    if !arr.iter().all(Value::is_number) {
         return None;
     }
+    numeric_slot(arr.len(), k)
+}
 
-    if (arr.len() == 3 || arr.len() == 4) && arr.iter().all(Value::is_number) {
-        property_from_json::<ColorValue>(k).map(SlotType::Color)
-    } else if arr.len() == 2 && arr.iter().all(Value::is_number) {
-        // 2-element arrays can be either Vector or Position
-        // Default to Vector during parsing (theme rules will explicitly create Position when needed)
-        property_from_json::<[f32; 2]>(k).map(SlotType::Vector)
-    } else if arr.len() == 1 && arr[0].is_number() {
-        property_from_json::<ScalarValue>(k).map(SlotType::Scalar)
-    } else {
-        None
+/// Infer a numeric slot from its value length.
+fn numeric_slot(len: usize, value: &Value) -> Option<SlotType> {
+    match len {
+        1 => property_from_json::<ScalarValue>(value).map(SlotType::Scalar),
+        // Themes create Position explicitly when they need it.
+        2 => property_from_json::<[f32; 2]>(value).map(SlotType::Vector),
+        3 | 4 => property_from_json::<ColorValue>(value).map(SlotType::Color),
+        _ => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::text::text_document_from_json;
     use super::*;
-    use crate::json::Value;
-    use crate::renderer::slots::gradient::{gradient_slot_from_json, write_gradient_slot};
-    use crate::renderer::slots::image::{image_slot_from_json, write_image_slot};
-    use crate::renderer::slots::text::{
-        text_document_from_json, text_slot_from_json, write_text_slot,
-    };
-    use std::collections::BTreeMap;
 
     // ── Group A: extract_slots_from_animation ─────────────────────
 
@@ -949,7 +913,6 @@ mod tests {
 
     #[test]
     fn color_slot_serializes_compact_floats() {
-        // serde printed 1.0; the new writer prints integral floats bare.
         let slot = SlotType::Color(ColorSlot::new([1.0, 0.25, 0.0]));
         assert_eq!(slot_to_json_string(&slot), r#"{"a":0,"k":[1,0.25,0]}"#);
     }
@@ -996,7 +959,6 @@ mod tests {
 
     #[test]
     fn property_rejects_wrong_typed_option_field() {
-        // "x" present but not a string — serde errors, so must we.
         let v = Value::parse(r#"{"a":0,"k":[1],"x":5}"#).unwrap();
         assert!(property_from_json::<ScalarValue>(&v).is_none());
     }

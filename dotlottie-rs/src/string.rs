@@ -1,26 +1,25 @@
-//! `DotString` — a cheaply cloneable, immutable string type that is ergonomic
-//! in Rust (`Deref<Target = str>`) and zero-cost at the FFI boundary
-//! (`as_ptr()` returns a stable `*const c_char`) when the `c_api` feature is
-//! enabled.
+//! `DotString` is an immutable string whose `Clone` bumps a refcount. It
+//! derefs to `str`. With the `c_api` feature, `as_ptr()` returns a
+//! null-terminated `*const c_char` without copying.
 //!
 //! # Representation
 //!
-//! - `c_api` on:  `Arc<[u8]>` with invariants (trailing null, no interior
-//!   nulls, valid UTF-8). Read both as `&str` (zero cost) and `&CStr` (zero
-//!   cost) without revalidation.
-//! - `c_api` off: `Arc<str>` — no null-terminator overhead.
+//! - With `c_api`, storage is an `Arc<[u8]>` that ends in a null byte, has no
+//!   interior nulls, and is valid UTF-8. `as_str` and `as_c_str` read it
+//!   without copying or revalidating.
+//! - Without `c_api`, storage is an `Arc<str>` with no null terminator.
 //!
-//! In both cases, `Clone` is a refcount bump (no allocation), and the public
-//! API is identical: Rust users see a `Deref<Target = str>` wrapper.
+//! `Clone` never allocates in either configuration. `c_api` adds `as_c_str`,
+//! `as_ptr` and the `CString`/`CStr` conversions. The rest of the API is the
+//! same in both.
 
 use std::sync::Arc;
 
 #[cfg(feature = "c_api")]
 use std::ffi::{CStr, CString};
 
-/// Error returned when constructing a `DotString` from bytes that contain an
-/// interior null byte (only possible when the `c_api` feature is enabled,
-/// since a trailing null is required).
+/// Returned when the input to a `DotString` constructor contains a null byte.
+/// Only `c_api` builds return it, because they append a null terminator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InteriorNul;
 
@@ -36,10 +35,10 @@ impl std::error::Error for InteriorNul {}
 mod repr {
     use std::sync::Arc;
 
-    /// Storage invariants (upheld at every construction site):
-    ///   1. `bytes.last() == Some(&0)`           — trailing null terminator
-    ///   2. `bytes[..len-1]` contains no `0`     — no interior nulls
-    ///   3. `bytes[..len-1]` is valid UTF-8      — so `as_str` is safe
+    /// Every constructor upholds these invariants:
+    ///   1. `bytes.last() == Some(&0)`, a trailing null terminator.
+    ///   2. `bytes[..len-1]` contains no `0`, so there are no interior nulls.
+    ///   3. `bytes[..len-1]` is valid UTF-8, which `as_str` relies on.
     #[derive(Clone)]
     pub(crate) struct Storage {
         pub bytes: Arc<[u8]>,
@@ -56,22 +55,21 @@ mod repr {
     }
 }
 
-/// Immutable, refcount-shared string. See module docs.
+/// Immutable string with refcounted storage. See the module docs.
 #[derive(Clone)]
 pub struct DotString {
     storage: repr::Storage,
 }
 
 impl DotString {
-    /// Construct from a `&str`. Panics if the string contains an interior
-    /// null byte when the `c_api` feature is enabled.
+    /// Copies `s` into a new `DotString`. With `c_api`, panics if `s`
+    /// contains a null byte.
     pub fn new(s: &str) -> Self {
         Self::try_new(s).expect("DotString: interior null byte not allowed")
     }
 
-    /// Construct from a `&str`, returning `Err(InteriorNul)` if the input
-    /// contains a null byte (c_api builds only).
-    #[allow(clippy::unnecessary_wraps)]
+    /// Copies `s` into a new `DotString`. With `c_api`, returns
+    /// `Err(InteriorNul)` if `s` contains a null byte.
     pub fn try_new(s: &str) -> Result<Self, InteriorNul> {
         #[cfg(feature = "c_api")]
         {
@@ -97,13 +95,12 @@ impl DotString {
         }
     }
 
-    /// Take ownership of a `String`. Zero-copy when `c_api` is off; when on,
-    /// reuses the `String`'s allocation and appends a null terminator.
+    /// Converts a `String` into a `DotString`. With `c_api`, panics if `s`
+    /// contains a null byte.
     pub fn from_string(s: String) -> Self {
         Self::try_from_string(s).expect("DotString: interior null byte not allowed")
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     pub fn try_from_string(s: String) -> Result<Self, InteriorNul> {
         #[cfg(feature = "c_api")]
         {
@@ -128,7 +125,8 @@ impl DotString {
         }
     }
 
-    /// Zero-copy transfer from a `CString` (c_api only).
+    /// Converts a `CString` into a `DotString`. Debug builds assert that the
+    /// bytes are valid UTF-8.
     #[cfg(feature = "c_api")]
     pub fn from_cstring(c: CString) -> Self {
         let bytes = c.into_bytes_with_nul();
@@ -143,22 +141,22 @@ impl DotString {
         }
     }
 
-    /// Shared empty `DotString`. Allocates at most once per process.
+    /// Returns a shared empty `DotString`. The first call allocates, and later
+    /// calls return a clone.
     pub fn empty() -> Self {
         static EMPTY: std::sync::OnceLock<DotString> = std::sync::OnceLock::new();
         EMPTY.get_or_init(|| DotString::new("")).clone()
     }
 
-    /// View as a `&str`. Zero cost in both feature configurations.
+    /// Returns the contents as `&str` without copying or revalidating.
     #[inline]
     pub fn as_str(&self) -> &str {
         #[cfg(feature = "c_api")]
         {
             let len = self.storage.bytes.len();
             debug_assert!(len >= 1 && self.storage.bytes[len - 1] == 0);
-            // SAFETY: invariants 2 and 3 are upheld at every construction
-            // site, so the bytes before the trailing null are valid UTF-8
-            // with no interior nulls.
+            // SAFETY: constructors uphold invariant 3, so the bytes before
+            // the trailing null are valid UTF-8.
             unsafe { std::str::from_utf8_unchecked(&self.storage.bytes[..len - 1]) }
         }
         #[cfg(not(feature = "c_api"))]
@@ -180,18 +178,18 @@ impl DotString {
 
 #[cfg(feature = "c_api")]
 impl DotString {
-    /// View as a `&CStr`. Zero cost — returns a view over the same underlying
-    /// bytes, which include the trailing null by invariant.
+    /// Returns the contents as `&CStr`. The stored bytes already end in a
+    /// null, so this borrows them without copying.
     #[inline]
     pub fn as_c_str(&self) -> &CStr {
-        // SAFETY: invariants 1 (trailing null) and 2 (no interior null) are
-        // upheld at every construction site.
+        // SAFETY: constructors uphold invariants 1 and 2, so the last byte
+        // is the only null.
         unsafe { CStr::from_bytes_with_nul_unchecked(&self.storage.bytes) }
     }
 
-    /// Raw pointer to the null-terminated bytes. Valid for the lifetime of
-    /// this `DotString` (and any `clone()`s thereof, since they share
-    /// storage via `Arc`).
+    /// Returns a pointer to the null-terminated bytes. The pointer stays valid
+    /// while this `DotString` or any clone of it is alive, because clones
+    /// share one `Arc`.
     #[inline]
     pub fn as_ptr(&self) -> *const std::os::raw::c_char {
         self.storage.bytes.as_ptr() as *const _
@@ -227,7 +225,7 @@ impl Default for DotString {
 impl PartialEq for DotString {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        // Fast path: same Arc → same content. O(1) for interned strings.
+        // Clones and interned strings share an Arc, so this skips the byte compare.
         #[cfg(feature = "c_api")]
         if Arc::ptr_eq(&self.storage.bytes, &other.storage.bytes) {
             return true;
@@ -335,8 +333,8 @@ impl From<&CStr> for DotString {
     }
 }
 
-/// Small per-component dedup cache. Repeated interns of the same string
-/// return clones of the same `DotString` — refcount bumps, no allocation.
+/// Deduplicating cache for `DotString`s. Interning the same string again
+/// returns a clone of the stored `DotString` and does not allocate.
 #[derive(Default)]
 pub struct DotStringInterner {
     table: rustc_hash::FxHashMap<Box<str>, DotString>,
@@ -353,8 +351,8 @@ impl DotStringInterner {
         }
     }
 
-    /// Return a `DotString` for `s`, reusing storage if already interned.
-    /// First-time: one allocation. Subsequent: `Arc::clone` (refcount bump).
+    /// Returns a `DotString` for `s`. The first call for a given string
+    /// allocates, and later calls return a clone of the stored one.
     pub fn intern(&mut self, s: &str) -> DotString {
         if let Some(existing) = self.table.get(s) {
             return existing.clone();
@@ -401,7 +399,7 @@ mod tests {
     fn cheap_clone_shares_storage() {
         let a = DotString::new("shared");
         let b = a.clone();
-        // Pointer equality — the Arc is shared.
+        // Clones share the same Arc.
         #[cfg(feature = "c_api")]
         assert!(Arc::ptr_eq(&a.storage.bytes, &b.storage.bytes));
         #[cfg(not(feature = "c_api"))]
@@ -442,7 +440,7 @@ mod tests {
         assert_eq!(a, b);
         assert_ne!(a, c);
 
-        // a and b share storage; c is distinct.
+        // a and b share storage, c does not.
         #[cfg(feature = "c_api")]
         {
             assert!(Arc::ptr_eq(&a.storage.bytes, &b.storage.bytes));
@@ -460,7 +458,7 @@ mod tests {
         let mut interner = DotStringInterner::new();
         let a = interner.intern("same");
         let b = interner.intern("same");
-        // Triggers Arc::ptr_eq fast path in PartialEq.
+        // Hits the Arc::ptr_eq check in PartialEq.
         assert_eq!(a, b);
     }
 

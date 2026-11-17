@@ -1,7 +1,7 @@
+use super::write_f32_slice;
 use crate::json::{
     array_of, f32_array, f32_vec, opt, write_f32, write_seq, write_str, ObjWriter, Value,
 };
-use crate::renderer::slots::write_f32_slice;
 use std::fmt::Write as _;
 
 #[derive(Debug, Clone)]
@@ -190,13 +190,7 @@ pub struct TextSlot {
 
 impl TextSlot {
     pub fn new(text: impl Into<String>) -> Self {
-        Self {
-            keyframes: vec![TextKeyframe {
-                frame: 0.0,
-                text_document: TextDocument::new(text),
-            }],
-            expression: None,
-        }
+        Self::with_document(TextDocument::new(text))
     }
 
     pub fn with_document(document: TextDocument) -> Self {

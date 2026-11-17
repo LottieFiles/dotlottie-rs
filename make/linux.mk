@@ -1,4 +1,3 @@
-# Default Rust features for Linux builds
 LINUX_FEATURES ?= tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-otf,tvg-lottie-expressions,tvg-threads
 LINUX_DEFAULT_FEATURES = tvg,tvg-cpu,c_api,dotlottie,state-machines,theming
 
@@ -6,46 +5,37 @@ ifdef FEATURES
 	LINUX_FEATURES = $(FEATURES)
 endif
 
-# Release and packaging variables
 RELEASE_DIR ?= release
 LINUX_RELEASE_DIR ?= $(RELEASE_DIR)/linux
 DOTLOTTIE_PLAYER_DIR ?= dotlottie-player
 
-# Library names
 LINUX_FFI_LIB_BASE ?= libdotlottie_rs
 LINUX_STATIC_LIB := $(LINUX_FFI_LIB_BASE).a
 LINUX_SHARED_LIB := $(LINUX_FFI_LIB_BASE).so
 LINUX_HEADER_FILE := dotlottie_player.h
 LINUX_HEADER_DIR := dotlottie-rs/build
 
-# Get version information
 CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-rs/Cargo.toml | grep -o '[0-9][0-9.]*')
 COMMIT_HASH := $(shell git rev-parse --short HEAD)
 
-# Linux target mapping
 LINUX_TARGET_x86_64 = x86_64-unknown-linux-gnu
 LINUX_TARGET_arm64 = aarch64-unknown-linux-gnu
 
-# Linux targets list
 LINUX_TARGETS = x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
 
-# Detect host platform
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 
-# Function to check platform support - only called when Linux targets are invoked
 define check_linux_platform_support
 $(if $(filter Linux,$(UNAME_S)),,$(error "Linux builds require a Linux host system. Current system: $(UNAME_S)"))
 endef
 
-# Function to package Linux architecture builds
 # Args: $(1) = architecture (x86_64, arm64)
 define LINUX_PACKAGE_ARCH
 	@echo "→ Packaging Linux $(1)..."
 	@mkdir -p $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/include
 	@mkdir -p $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib
 
-	# Copy header file
 	@if [ -f "$(LINUX_HEADER_DIR)/$(LINUX_HEADER_FILE)" ]; then \
 		cp $(LINUX_HEADER_DIR)/$(LINUX_HEADER_FILE) $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/include/$(LINUX_HEADER_FILE); \
 	else \
@@ -53,7 +43,6 @@ define LINUX_PACKAGE_ARCH
 		exit 1; \
 	fi
 
-	# Copy static library
 	@if [ -f "dotlottie-rs/target/$(LINUX_TARGET_$(1))/release/$(LINUX_STATIC_LIB)" ]; then \
 		cp dotlottie-rs/target/$(LINUX_TARGET_$(1))/release/$(LINUX_STATIC_LIB) \
 		   $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/; \
@@ -61,7 +50,6 @@ define LINUX_PACKAGE_ARCH
 		echo "Warning: $(LINUX_STATIC_LIB) not found for $(1)"; \
 	fi
 
-	# Copy shared library and strip it
 	@if [ -f "dotlottie-rs/target/$(LINUX_TARGET_$(1))/release/$(LINUX_SHARED_LIB)" ]; then \
 		cp dotlottie-rs/target/$(LINUX_TARGET_$(1))/release/$(LINUX_SHARED_LIB) \
 		   $(LINUX_RELEASE_DIR)/$(1)/$(DOTLOTTIE_PLAYER_DIR)/lib/; \
@@ -80,20 +68,16 @@ define LINUX_PACKAGE_ARCH
 		echo "Warning: $(LINUX_SHARED_LIB) not found for $(1)"; \
 	fi
 
-	# Create version file
 	@echo "dlplayer-version=$(CRATE_VERSION)-$(COMMIT_HASH)" > $(LINUX_RELEASE_DIR)/$(1)/version.txt
 
 	@echo "✓ Linux $(1) packaging complete"
 endef
 
-# Linux-specific phony targets
 .PHONY: linux linux-x86_64 linux-arm64 linux-setup linux-clean linux-check-deps
 
-# Build all Linux targets
 linux: $(addprefix linux-,x86_64 arm64)
 	@echo "✓ All Linux builds complete"
 
-# Build for Linux x86_64
 linux-x86_64: linux-check-deps
 	$(call check_linux_platform_support)
 	@echo "→ Building Linux x86_64..."
@@ -113,7 +97,6 @@ linux-x86_64: linux-check-deps
 	@$(call LINUX_PACKAGE_ARCH,x86_64)
 	@echo "✓ Linux x86_64 build complete"
 
-# Build for Linux ARM64
 linux-arm64: linux-check-deps
 	$(call check_linux_platform_support)
 	@echo "→ Building Linux ARM64..."
@@ -154,7 +137,6 @@ linux-arm64: linux-check-deps
 	@$(call LINUX_PACKAGE_ARCH,arm64)
 	@echo "✓ Linux ARM64 build complete"
 
-# Check for required dependencies
 linux-check-deps:
 	@echo "→ Checking Linux build dependencies..."
 	@# Check for required build tools
@@ -175,7 +157,6 @@ linux-check-deps:
 	fi
 	@echo "✓ Build dependencies check complete"
 
-# Install Linux targets and dependencies
 linux-setup:
 	@echo "→ Setting up Linux build environment..."
 	@# Install Rust targets
@@ -191,7 +172,6 @@ linux-setup:
 	@echo "  Arch Linux: sudo pacman -S base-devel"
 	@echo "  For ARM64 cross-compilation: sudo pacman -S aarch64-linux-gnu-gcc"
 
-# Clean Linux builds
 linux-clean:
 	@echo "→ Cleaning Linux builds..."
 	@rm -rf $(LINUX_RELEASE_DIR)

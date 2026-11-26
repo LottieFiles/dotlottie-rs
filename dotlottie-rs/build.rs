@@ -360,8 +360,8 @@ mod thorvg {
             "deps/thorvg/inc",
             "deps/thorvg/src/common",
             "deps/thorvg/src/bindings/capi",
-            "deps/thorvg/src/loaders/lottie",
-            "deps/thorvg/src/loaders/raw",
+            "deps/thorvg/src/modules/lottie",
+            "deps/thorvg/src/modules/raw",
             "deps/thorvg/src/renderer",
         ];
 
@@ -372,7 +372,7 @@ mod thorvg {
             .write(true)
             .open(out_dir.join("config.h"))?;
 
-        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.3\"")?;
+        writeln!(thorvg_config_h, "#define THORVG_VERSION_STRING \"1.1.4\"")?;
         writeln!(thorvg_config_h, "#define THORVG_LOTTIE_LOADER_SUPPORT")?;
         writeln!(thorvg_config_h, "#define TVG_STATIC")?;
         writeln!(thorvg_config_h, "#define WIN32_LEAN_AND_MEAN")?;
@@ -418,26 +418,26 @@ mod thorvg {
 
         if cfg!(feature = "tvg-jpg") {
             writeln!(thorvg_config_h, "#define THORVG_JPG_LOADER_SUPPORT")?;
-            src.push("deps/thorvg/src/loaders/jpg");
+            src.push("deps/thorvg/src/modules/jpg/static");
         }
 
         if cfg!(feature = "tvg-png") {
             writeln!(thorvg_config_h, "#define THORVG_PNG_LOADER_SUPPORT")?;
-            src.push("deps/thorvg/src/loaders/png");
+            src.push("deps/thorvg/src/modules/png/static");
         }
 
         if cfg!(feature = "tvg-webp") {
             writeln!(thorvg_config_h, "#define THORVG_WEBP_LOADER_SUPPORT")?;
-            src.push("deps/thorvg/src/loaders/webp");
-            src.push("deps/thorvg/src/loaders/webp/dec");
-            src.push("deps/thorvg/src/loaders/webp/dsp");
-            src.push("deps/thorvg/src/loaders/webp/utils");
-            src.push("deps/thorvg/src/loaders/webp/webp");
+            src.push("deps/thorvg/src/modules/webp/static");
+            src.push("deps/thorvg/src/modules/webp/static/dec");
+            src.push("deps/thorvg/src/modules/webp/static/dsp");
+            src.push("deps/thorvg/src/modules/webp/static/utils");
+            src.push("deps/thorvg/src/modules/webp/static/webp");
         }
 
         if cfg!(any(feature = "tvg-ttf", feature = "tvg-otf")) {
             writeln!(thorvg_config_h, "#define THORVG_SFNT_LOADER_SUPPORT")?;
-            src.push("deps/thorvg/src/loaders/sfnt");
+            src.push("deps/thorvg/src/modules/sfnt");
         }
 
         if cfg!(feature = "tvg-ttf") {
@@ -450,22 +450,22 @@ mod thorvg {
 
         if cfg!(feature = "tvg-lottie-expressions") {
             writeln!(thorvg_config_h, "#define THORVG_LOTTIE_EXPRESSIONS_SUPPORT")?;
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/api");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/ecma/base");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/ecma/builtin-objects");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/api");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/ecma/base");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/ecma/builtin-objects");
             src.push(
-                "deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/ecma/builtin-objects/typedarray",
+                "deps/thorvg/src/modules/lottie/jerryscript/jerry-core/ecma/builtin-objects/typedarray",
             );
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/ecma/operations");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/include");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/jcontext");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/jmem");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/jrt");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/lit");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/parser/js");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/parser/regexp");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-core/vm");
-            src.push("deps/thorvg/src/loaders/lottie/jerryscript/jerry-port/common");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/ecma/operations");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/include");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/jcontext");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/jmem");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/jrt");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/lit");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/parser/js");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/parser/regexp");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-core/vm");
+            src.push("deps/thorvg/src/modules/lottie/jerryscript/jerry-port/common");
         }
 
         // SIMD — skip entirely for wasm32-unknown-unknown (no SIMD support there yet)

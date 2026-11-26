@@ -266,6 +266,11 @@ pub unsafe extern "C" fn glTexParameteri(target: GLenum, pname: GLenum, param: G
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn glPixelStorei(pname: GLenum, param: GLint) {
+    get_context().pixel_storei(pname, param);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn glFramebufferTexture2D(
     target: GLenum,
     attachment: GLenum,
@@ -830,6 +835,16 @@ pub unsafe extern "C" fn glBlitFramebuffer(
 #[no_mangle]
 pub unsafe extern "C" fn glBlendFunc(sfactor: GLenum, dfactor: GLenum) {
     get_context().blend_func(sfactor, dfactor);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn glBlendFuncSeparate(
+    src_rgb: GLenum,
+    dst_rgb: GLenum,
+    src_alpha: GLenum,
+    dst_alpha: GLenum,
+) {
+    get_context().blend_func_separate(src_rgb, dst_rgb, src_alpha, dst_alpha);
 }
 
 #[no_mangle]

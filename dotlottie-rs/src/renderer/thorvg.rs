@@ -747,6 +747,7 @@ impl Animation for TvgAnimation {
                 self.raw_paint,
                 Some(asset_resolver_trampoline),
                 data,
+                false,
             )
         }
         .into_result()?;

@@ -36,6 +36,8 @@ Adds experimental bezier path slots (`set_bezier_path_slot`, `"BezierPath"` them
 
 ## 0.1.59 (2026-08-22)
 
+This version was never published because its release build failed. Its changes shipped in 0.1.60.
+
 ### Features
 
 #### single src field for image rules (#585)

@@ -1,6 +1,8 @@
+use js_sys::JsNullable;
 use std::ffi::{c_char, CStr};
 use std::ptr::NonNull;
 use wasm_bindgen::prelude::JsValue;
+use wasm_bindgen::JsCast;
 use web_sys::*;
 
 // -------------------- Primitive Types --------------------
@@ -925,21 +927,23 @@ fn set_descriptor_label(descriptor: &js_sys::Object, label: &WGPUStringView) {
 
 fn convert_wgpu_buffer_binding(buffer: &GpuBuffer, offset: u64, size: u64) -> GpuBufferBinding {
     let out = GpuBufferBinding::new(buffer);
-    out.set_offset(offset as f64);
-    out.set_size(size as f64);
+    out.set_offset_f64(offset as f64);
+    out.set_size_f64(size as f64);
     out
 }
 
 fn convert_wgpu_bind_group_entry(entry: &WGPUBindGroupEntry) -> GpuBindGroupEntry {
     if let Some(buffer) = entry.buffer {
-        GpuBindGroupEntry::new(
+        GpuBindGroupEntry::new_with_gpu_buffer_binding(
             entry.binding,
             &convert_wgpu_buffer_binding(unsafe { &*buffer.as_ptr() }, entry.offset, entry.size),
         )
     } else if let Some(sampler) = entry.sampler {
         GpuBindGroupEntry::new(entry.binding, unsafe { &*sampler.as_ptr() })
     } else if let Some(texture_view) = entry.texture_view {
-        GpuBindGroupEntry::new(entry.binding, unsafe { &*texture_view.as_ptr() })
+        GpuBindGroupEntry::new_with_gpu_texture_view(entry.binding, unsafe {
+            &*texture_view.as_ptr()
+        })
     } else {
         panic!("No available type for binding group entry");
     }
@@ -957,12 +961,12 @@ fn convert_wgpu_buffer_binding_layout(layout: &WGPUBufferBindingLayout) -> GpuBu
     let out = GpuBufferBindingLayout::new();
     out.set_type(enum_wgpu_buffer_binding_type(layout.type_));
     out.set_has_dynamic_offset(layout.has_dynamic_offset != 0);
-    out.set_min_binding_size(layout.min_binding_size as f64);
+    out.set_min_binding_size_f64(layout.min_binding_size as f64);
     out
 }
 
 fn convert_wgpu_buffer_descriptor(descriptor: &WGPUBufferDescriptor) -> GpuBufferDescriptor {
-    let out = GpuBufferDescriptor::new(descriptor.size as f64, descriptor.usage as u32);
+    let out = GpuBufferDescriptor::new_with_f64(descriptor.size as f64, descriptor.usage as u32);
     set_descriptor_label(&out, &&descriptor.label);
     out.set_mapped_at_creation(descriptor.mapped_at_creation != 0);
 
@@ -1025,18 +1029,19 @@ fn convert_wgpu_compute_state(descriptor: &WGPUComputeState) -> GpuProgrammableS
     out
 }
 
-fn convert_wgpu_constants(constants: *const WGPUConstantEntry, count: usize) -> js_sys::Map {
-    let out = js_sys::Map::new();
-    if constants.is_null() {
-        return out;
+fn convert_wgpu_constants(
+    constants: *const WGPUConstantEntry,
+    count: usize,
+) -> js_sys::Object<js_sys::Number> {
+    let out = js_sys::Object::new();
+    if !constants.is_null() {
+        let constants_slice = unsafe { std::slice::from_raw_parts(constants, count) };
+        for constant in constants_slice {
+            let key = convert_wgpu_string_view(&constant.key).expect("Could not convert key");
+            js_sys::Reflect::set(&out, &key.into(), &constant.value.into()).unwrap();
+        }
     }
-
-    let constants_slice = unsafe { std::slice::from_raw_parts(constants, count) };
-    for constant in constants_slice {
-        let key = convert_wgpu_string_view(&constant.key).expect("Could not convert key");
-        out.set(&key.into(), &constant.value.into());
-    }
-    out
+    out.unchecked_into()
 }
 
 fn convert_wgpu_extent_3d(extent: &WGPUExtent3D) -> GpuExtent3dDict {
@@ -1054,19 +1059,15 @@ fn convert_wgpu_multisample_state(state: &WGPUMultisampleState) -> GpuMultisampl
     out
 }
 
-fn convert_wgpu_origin_3d(origin: &WGPUOrigin3D) -> js_sys::Array {
-    let arr = js_sys::Array::new();
-    arr.push(&origin.x.into());
-    arr.push(&origin.y.into());
-    arr.push(&origin.z.into());
-    arr
+fn convert_wgpu_origin_3d(origin: &WGPUOrigin3D) -> [js_sys::Number; 3] {
+    [origin.x.into(), origin.y.into(), origin.z.into()]
 }
 
 fn convert_wgpu_pipeline_layout_descriptor(
     descriptor: &WGPUPipelineLayoutDescriptor,
 ) -> GpuPipelineLayoutDescriptor {
     // Create layouts array
-    let layouts_array = js_sys::Array::new();
+    let mut layouts_array = Vec::new();
     if descriptor.bind_group_layout_count > 0 && !descriptor.bind_group_layouts.is_null() {
         let layouts = unsafe {
             std::slice::from_raw_parts(
@@ -1076,12 +1077,12 @@ fn convert_wgpu_pipeline_layout_descriptor(
         };
 
         for &layout in layouts {
-            layouts_array.push(unsafe { &*layout });
+            layouts_array.push(JsNullable::wrap(unsafe { &*layout }.clone()));
         }
     }
 
     // Create descriptor
-    let out = GpuPipelineLayoutDescriptor::new(&layouts_array.into());
+    let out = GpuPipelineLayoutDescriptor::new(&layouts_array);
     set_descriptor_label(&out, &descriptor.label);
 
     out
@@ -1100,7 +1101,9 @@ fn convert_wgpu_primitive_state(state: &WGPUPrimitiveState) -> GpuPrimitiveState
 fn convert_wgpu_render_pass_depth_stencil_attachment(
     attachment: &WGPURenderPassDepthStencilAttachment,
 ) -> GpuRenderPassDepthStencilAttachment {
-    let out = GpuRenderPassDepthStencilAttachment::new(unsafe { &*attachment.view });
+    let out = GpuRenderPassDepthStencilAttachment::new_with_gpu_texture_view(unsafe {
+        &*attachment.view
+    });
     out.set_depth_load_op(enum_wgpu_load_op(attachment.depth_load_op));
     out.set_depth_store_op(enum_wgpu_store_op(attachment.depth_store_op));
     out.set_depth_clear_value(attachment.depth_clear_value);
@@ -1217,7 +1220,7 @@ fn convert_wgpu_texture_binding_layout(
 
 fn convert_wgpu_texture_data_layout(layout: &WGPUTextureDataLayout) -> GpuTexelCopyBufferLayout {
     let out = GpuTexelCopyBufferLayout::new();
-    out.set_offset(layout.offset as f64);
+    out.set_offset_f64(layout.offset as f64);
     out.set_bytes_per_row(layout.bytes_per_row);
     out.set_rows_per_image(layout.rows_per_image);
     out
@@ -1241,7 +1244,7 @@ fn convert_wgpu_texture_view_descriptor(
 }
 
 fn convert_wgpu_vertex_attribute(attribute: &WGPUVertexAttribute) -> GpuVertexAttribute {
-    GpuVertexAttribute::new(
+    GpuVertexAttribute::new_with_f64(
         enum_wgpu_vertex_format(attribute.format),
         attribute.offset as f64,
         attribute.shader_location,
@@ -1252,17 +1255,15 @@ fn convert_wgpu_bind_group_descriptor(
     descriptor: &WGPUBindGroupDescriptor,
 ) -> GpuBindGroupDescriptor {
     // Create entries array
-    let entries_array = js_sys::Array::new();
     let entries_slice =
         unsafe { std::slice::from_raw_parts(descriptor.entries, descriptor.entry_count) };
-
-    for entry in entries_slice {
-        let converted_entry = convert_wgpu_bind_group_entry(entry);
-        entries_array.push(&converted_entry);
-    }
+    let entries_array: Vec<_> = entries_slice
+        .iter()
+        .map(convert_wgpu_bind_group_entry)
+        .collect();
 
     // Create descriptor
-    let out = GpuBindGroupDescriptor::new(&entries_array.into(), unsafe { &*descriptor.layout });
+    let out = GpuBindGroupDescriptor::new(&entries_array, unsafe { &*descriptor.layout });
     set_descriptor_label(&out, &descriptor.label);
 
     out
@@ -1332,12 +1333,12 @@ fn convert_wgpu_render_pass_color_attachment(
         panic!("No texture view found");
     };
 
-    let out = GpuRenderPassColorAttachment::new(
+    let out = GpuRenderPassColorAttachment::new_with_gpu_texture_view(
         enum_wgpu_load_op(attachment.load_op),
         enum_wgpu_store_op(attachment.store_op),
         view,
     );
-    out.set_clear_value(&convert_wgpu_color(&attachment.clear_value));
+    out.set_clear_value_gpu_color_dict(&convert_wgpu_color(&attachment.clear_value));
 
     // Set depth slice if not max value
     if attachment.depth_slice != u32::MAX {
@@ -1346,7 +1347,7 @@ fn convert_wgpu_render_pass_color_attachment(
 
     // Set resolve target if present
     if let Some(resolve_target) = attachment.resolve_target {
-        out.set_resolve_target(unsafe { &*resolve_target.as_ptr() });
+        out.set_resolve_target_gpu_texture_view(unsafe { &*resolve_target.as_ptr() });
     }
 
     out
@@ -1354,7 +1355,7 @@ fn convert_wgpu_render_pass_color_attachment(
 
 fn convert_wgpu_texture_descriptor(descriptor: &WGPUTextureDescriptor) -> GpuTextureDescriptor {
     // Create descriptor
-    let out = GpuTextureDescriptor::new(
+    let out = GpuTextureDescriptor::new_with_gpu_extent_3d_dict(
         enum_wgpu_texture_format(descriptor.format),
         &convert_wgpu_extent_3d(&descriptor.size),
         descriptor.usage as u32,
@@ -1371,11 +1372,11 @@ fn convert_wgpu_texture_descriptor(descriptor: &WGPUTextureDescriptor) -> GpuTex
         let view_formats = unsafe {
             std::slice::from_raw_parts(descriptor.view_formats, descriptor.view_format_count)
         };
-        let formats_array = js_sys::Array::new();
-        for &format in view_formats {
-            formats_array.push(&format.into());
-        }
-        out.set_view_formats(&formats_array.into());
+        let formats_array: Vec<js_sys::JsString> = view_formats
+            .iter()
+            .map(|&format| JsValue::from(enum_wgpu_texture_format(format)).unchecked_into())
+            .collect();
+        out.set_view_formats(&formats_array);
     }
 
     out
@@ -1391,12 +1392,11 @@ fn convert_wgpu_surface_configuration(config: &WGPUSurfaceConfiguration) -> GpuC
     if !config.view_formats.is_null() && config.view_format_count > 0 {
         let view_formats =
             unsafe { std::slice::from_raw_parts(config.view_formats, config.view_format_count) };
-        let formats_array = js_sys::Array::new();
-        for &format in view_formats {
-            let format_str: JsValue = enum_wgpu_texture_format(format).into();
-            formats_array.push(&format_str);
-        }
-        out.set_view_formats(&formats_array.into());
+        let formats_array: Vec<js_sys::JsString> = view_formats
+            .iter()
+            .map(|&format| JsValue::from(enum_wgpu_texture_format(format)).unchecked_into())
+            .collect();
+        out.set_view_formats(&formats_array);
     }
 
     out
@@ -1404,15 +1404,15 @@ fn convert_wgpu_surface_configuration(config: &WGPUSurfaceConfiguration) -> GpuC
 
 fn convert_wgpu_vertex_buffer_layout(layout: &WGPUVertexBufferLayout) -> GpuVertexBufferLayout {
     // Create attributes array
-    let attributes = js_sys::Array::new();
     let attributes_slice =
         unsafe { std::slice::from_raw_parts(layout.attributes, layout.attribute_count) };
-    for attribute in attributes_slice {
-        attributes.push(&convert_wgpu_vertex_attribute(attribute));
-    }
+    let attributes: Vec<_> = attributes_slice
+        .iter()
+        .map(convert_wgpu_vertex_attribute)
+        .collect();
 
     // Create layout
-    let out = GpuVertexBufferLayout::new(layout.array_stride as f64, &attributes.into());
+    let out = GpuVertexBufferLayout::new_with_f64(layout.array_stride as f64, &attributes);
     out.set_step_mode(enum_wgpu_vertex_step_mode(layout.step_mode));
     out
 }
@@ -1421,17 +1421,15 @@ fn convert_wgpu_bind_group_layout_descriptor(
     descriptor: &WGPUBindGroupLayoutDescriptor,
 ) -> GpuBindGroupLayoutDescriptor {
     // Create entries array
-    let entries = js_sys::Array::new();
     let entries_slice =
         unsafe { std::slice::from_raw_parts(descriptor.entries, descriptor.entry_count) };
-
-    for entry in entries_slice {
-        let converted_entry = convert_wgpu_bind_group_layout_entry(entry);
-        entries.push(&converted_entry);
-    }
+    let entries: Vec<_> = entries_slice
+        .iter()
+        .map(convert_wgpu_bind_group_layout_entry)
+        .collect();
 
     // Create descriptor
-    let out = GpuBindGroupLayoutDescriptor::new(&entries.into());
+    let out = GpuBindGroupLayoutDescriptor::new(&entries);
     set_descriptor_label(&out, &descriptor.label);
 
     out
@@ -1466,7 +1464,7 @@ fn convert_wgpu_render_pass_descriptor(
     descriptor: &WGPURenderPassDescriptor,
 ) -> GpuRenderPassDescriptor {
     // Set color attachments if present
-    let color_array = js_sys::Array::new();
+    let mut color_array = Vec::new();
     if descriptor.color_attachment_count > 0 && !descriptor.color_attachments.is_null() {
         let attachments_slice = unsafe {
             std::slice::from_raw_parts(
@@ -1477,12 +1475,12 @@ fn convert_wgpu_render_pass_descriptor(
 
         for attachment in attachments_slice {
             let wgpu_attachment = convert_wgpu_render_pass_color_attachment(attachment);
-            color_array.push(&wgpu_attachment);
+            color_array.push(JsNullable::wrap(wgpu_attachment));
         }
     }
 
     // Create descriptor
-    let out = GpuRenderPassDescriptor::new(&color_array.into());
+    let out = GpuRenderPassDescriptor::new(&color_array);
     set_descriptor_label(&out, &descriptor.label);
 
     // Set occlusion query set if present
@@ -1520,15 +1518,13 @@ fn convert_wgpu_vertex_state(state: &WGPUVertexState) -> GpuVertexState {
 
     // Set vertex buffer layouts if present
     if !state.buffers.is_null() {
-        let buffer_layouts = js_sys::Array::new();
         let buffers_slice =
             unsafe { std::slice::from_raw_parts(state.buffers, state.buffer_count) };
-
-        for buffer in buffers_slice {
-            let buffer_layout = convert_wgpu_vertex_buffer_layout(buffer);
-            buffer_layouts.push(&buffer_layout);
-        }
-        out.set_buffers(&buffer_layouts.into());
+        let buffer_layouts: Vec<_> = buffers_slice
+            .iter()
+            .map(|buffer| JsNullable::wrap(convert_wgpu_vertex_buffer_layout(buffer)))
+            .collect();
+        out.set_buffers(&buffer_layouts);
     }
 
     out
@@ -1536,15 +1532,14 @@ fn convert_wgpu_vertex_state(state: &WGPUVertexState) -> GpuVertexState {
 
 fn convert_wgpu_fragment_state(state: &WGPUFragmentState) -> GpuFragmentState {
     // Create targets array
-    let targets = js_sys::Array::new();
     let targets_slice = unsafe { std::slice::from_raw_parts(state.targets, state.target_count) };
-    for target in targets_slice {
-        let target_state = convert_wgpu_color_target_state(target);
-        targets.push(&target_state);
-    }
+    let targets: Vec<_> = targets_slice
+        .iter()
+        .map(|target| JsNullable::wrap(convert_wgpu_color_target_state(target)))
+        .collect();
 
     // Create fragment state
-    let out = GpuFragmentState::new(unsafe { &*state.module }, &targets.into());
+    let out = GpuFragmentState::new(unsafe { &*state.module }, &targets);
     out.set_constants(&convert_wgpu_constants(
         state.constants,
         state.constant_count,
@@ -1727,11 +1722,8 @@ unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     let bind_group = bind_group.map(|b| b.as_ref());
     if !dynamic_offsets.is_null() && dynamic_offsets_count > 0 {
         let offsets = unsafe { std::slice::from_raw_parts(dynamic_offsets, dynamic_offsets_count) };
-        let js_offsets = js_sys::Array::new();
-        for &offset in offsets {
-            js_offsets.push(&JsValue::from(offset));
-        }
-        pass.set_bind_group_with_u32_sequence(index, bind_group, &js_offsets.into());
+        let js_offsets: Vec<js_sys::Number> = offsets.iter().map(|&offset| offset.into()).collect();
+        pass.set_bind_group_with_u32_sequence(index, bind_group, &js_offsets);
     } else {
         pass.set_bind_group(index, bind_group);
     }
@@ -1905,18 +1897,13 @@ unsafe extern "C" fn wgpuQueueSubmit(
 
     // Handle zero command count case
     if command_count == 0 {
-        queue.submit(&js_sys::Array::new());
+        queue.submit(&[]);
         return;
     }
 
-    // Create array to hold command buffers
-    let cmd_array = js_sys::Array::new();
-    // Convert each command buffer pointer to a JsValue and add to array
     let commands_slice = std::slice::from_raw_parts(commands, command_count);
-    for &cmd in commands_slice {
-        let command_buffer = &*cmd;
-        cmd_array.push(command_buffer);
-    }
+    let cmd_array: Vec<GpuCommandBuffer> =
+        commands_slice.iter().map(|&cmd| (*cmd).clone()).collect();
 
     queue.submit(&cmd_array);
 }
@@ -2011,11 +1998,8 @@ unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     let bind_group = bind_group.map(|b| b.as_ref());
     if !dynamic_offsets.is_null() && dynamic_offsets_count > 0 {
         let offsets = unsafe { std::slice::from_raw_parts(dynamic_offsets, dynamic_offsets_count) };
-        let js_offsets = js_sys::Array::new();
-        for &offset in offsets {
-            js_offsets.push(&JsValue::from(offset));
-        }
-        pass.set_bind_group_with_u32_sequence(index, bind_group, &js_offsets.into());
+        let js_offsets: Vec<js_sys::Number> = offsets.iter().map(|&offset| offset.into()).collect();
+        pass.set_bind_group_with_u32_sequence(index, bind_group, &js_offsets);
     } else {
         pass.set_bind_group(index, bind_group);
     }

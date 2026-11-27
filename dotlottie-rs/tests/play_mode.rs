@@ -35,7 +35,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut observed_loops = 0;
@@ -94,7 +94,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut observed_loops = 0;
@@ -145,7 +145,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut observed_loops = 0;
@@ -238,7 +238,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut observed_loops = 0;
@@ -337,7 +337,7 @@ mod play_mode_tests {
 
             // Set software rendering target
             assert!(player
-                .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+                .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
                 .is_ok());
 
             assert_eq!(
@@ -397,7 +397,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(
@@ -452,7 +452,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut observed_loops = 0;
@@ -512,7 +512,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(
@@ -565,7 +565,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut observed_loops = 0;
@@ -625,7 +625,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert_eq!(
@@ -696,7 +696,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut observed_loops = 0;
@@ -755,7 +755,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(
@@ -825,7 +825,7 @@ mod play_mode_tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut observed_loops = 0;

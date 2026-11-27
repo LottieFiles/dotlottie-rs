@@ -1,0 +1,91 @@
+name: Build
+description: Set up the toolchain for one platform and run a make target. Check out the repo with submodules first.
+
+inputs:
+  platform:
+    description: apple, android, wasm, linux, macos or windows
+    required: true
+  target:
+    description: Make target to build. Defaults to the platform, which builds every architecture.
+    default: ""
+  upload:
+    description: Upload release/<platform> as a tar.gz artifact
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@stable
+
+    - name: Install nightly Rust
+      if: inputs.platform == 'apple'
+      shell: bash
+      run: rustup toolchain install nightly --profile minimal --no-self-update
+
+    - name: Install the ARM64 cross toolchain
+      if: inputs.platform == 'linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+    - name: Install the Android NDK
+      if: inputs.platform == 'android'
+      id: ndk
+      uses: nttld/setup-ndk@v1.5.0
+      with:
+        ndk-version: r28b
+        local-cache: true
+
+    - name: Export the Android NDK path
+      if: inputs.platform == 'android'
+      shell: bash
+      run: echo "ANDROID_NDK_HOME=${{ steps.ndk.outputs.ndk-path }}" >> "$GITHUB_ENV"
+
+    - name: Install GNU Make and LLVM
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: |
+        choco install make -y
+        choco install llvm -y
+        echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
+
+    - name: Install the ARM64 build tools
+      if: inputs.platform == 'windows'
+      shell: pwsh
+      run: |
+        $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -products '*' -latest -property installationPath
+        Write-Host "VS install path: $vsPath"
+        & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
+          --installPath "$vsPath" `
+          --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
+          --quiet --norestart --wait
+        $arm64cl = Get-ChildItem "$vsPath\VC\Tools\MSVC\*\bin\Hostx64\arm64\cl.exe" -ErrorAction SilentlyContinue
+        if ($arm64cl) { Write-Host "ARM64 cl.exe found: $($arm64cl.FullName)" }
+        else { Write-Warning "ARM64 cl.exe not found after install" }
+
+    - name: Set up
+      shell: bash
+      run: make ${{ inputs.platform }}-setup
+
+    - name: Build
+      shell: bash
+      run: make ${{ inputs.target || inputs.platform }}
+
+    - name: Create the archive
+      if: inputs.upload == 'true'
+      id: archive
+      shell: bash
+      working-directory: release/${{ inputs.platform }}
+      run: |
+        name="dotlottie-player.${{ inputs.platform == 'apple' && 'darwin' || inputs.platform }}.tar.gz"
+        tar -czf "$name" *
+        echo "name=$name" >> "$GITHUB_OUTPUT"
+
+    - name: Upload the archive
+      if: inputs.upload == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.archive.outputs.name }}
+        path: release/${{ inputs.platform }}/${{ steps.archive.outputs.name }}
+        if-no-files-found: error

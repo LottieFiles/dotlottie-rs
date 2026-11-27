@@ -18,7 +18,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert_eq!(
@@ -54,7 +54,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert_eq!(
@@ -96,7 +96,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(player
@@ -128,7 +128,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(player
@@ -149,7 +149,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert_eq!(
@@ -190,7 +190,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         assert_eq!(
@@ -227,7 +227,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let valid_theme_id = CString::new("test_theme").expect("Failed to create CString");
@@ -265,7 +265,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         // Load a .lottie with two animations (circle, rect) and two themes (red, yellow)
@@ -300,7 +300,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let data = CString::new(include_str!("../assets/animations/lottie/bouncy_ball.json"))
@@ -358,7 +358,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .unwrap();
 
         let data = CString::new(include_str!("../assets/animations/lottie/bezier_path.json"))

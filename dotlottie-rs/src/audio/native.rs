@@ -1,6 +1,6 @@
 //! Native audio through rodio. A playback rate change shifts pitch.
 
-use rodio::{mixer::Mixer, Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
+use rodio::{mixer::Mixer, Decoder, DeviceSinkBuilder, MixerDeviceSink, Source};
 use std::io::Cursor;
 use std::sync::Arc;
 use std::time::Duration;
@@ -9,36 +9,34 @@ use super::{AudioClip, Cue, Gain};
 
 /// The audio device. It opens on the first clip and stays open after that.
 #[derive(Default)]
-pub struct Device(Option<OutputStream>);
+pub struct Device(Option<MixerDeviceSink>);
 
 impl Device {
     /// `None` if no audio device is available.
     fn mixer(&mut self) -> Option<&Mixer> {
         if self.0.is_none() {
-            self.0 = OutputStreamBuilder::open_default_stream()
-                .ok()
-                .map(|mut stream| {
-                    stream.log_on_drop(false);
-                    stream
-                });
+            self.0 = DeviceSinkBuilder::open_default_sink().ok().map(|mut sink| {
+                sink.log_on_drop(false);
+                sink
+            });
         }
-        self.0.as_ref().map(OutputStream::mixer)
+        self.0.as_ref().map(MixerDeviceSink::mixer)
     }
 }
 
-pub struct Clip(Sink);
+pub struct Clip(rodio::Player);
 
 impl AudioClip for Clip {
     type Device = Device;
 
     fn start(device: &mut Device, data: &Arc<[u8]>, cue: Cue) -> Option<Self> {
         let source = decode(data.clone())?;
-        let sink = Sink::connect_new(device.mixer()?);
-        sink.set_volume(sink_volume(cue.gain));
-        sink.set_speed(cue.rate);
+        let player = rodio::Player::connect_new(device.mixer()?);
+        player.set_volume(player_volume(cue.gain));
+        player.set_speed(cue.rate);
         // skip_duration approximates a mid-clip start.
-        sink.append(source.skip_duration(Duration::from_secs_f32(cue.offset.max(0.0))));
-        Some(Clip(sink))
+        player.append(source.skip_duration(Duration::from_secs_f32(cue.offset.max(0.0))));
+        Some(Clip(player))
     }
 
     fn pause(&self) {
@@ -50,7 +48,7 @@ impl AudioClip for Clip {
     }
 
     fn set_gain(&self, gain: Gain) {
-        self.0.set_volume(sink_volume(gain));
+        self.0.set_volume(player_volume(gain));
     }
 
     fn set_rate(&self, rate: f32) {
@@ -58,7 +56,7 @@ impl AudioClip for Clip {
     }
 }
 
-fn sink_volume(gain: Gain) -> f32 {
+fn player_volume(gain: Gain) -> f32 {
     gain.layer * gain.global
 }
 

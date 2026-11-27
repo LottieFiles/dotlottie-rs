@@ -1,135 +1,126 @@
+// C API demo: plays an animation in an SDL2 window.
+//
+//   make native                       (from the repository root)
+//   make -C dotlottie-rs/examples/c_api run ANIMATION_PATH=path/to/animation.lottie   (or .json)
+//
+//   P  play      S  stop      Q  quit
+
 #include <SDL.h>
-#include <SDL_image.h>
-#include <SDL_pixels.h>
-#include <libgen.h> // For dirname
-#include <limits.h> // For PATH_MAX
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h> // For readlink
+#include <unistd.h>
 
 #include "dotlottie_player.h"
 
 #define WIDTH 1000
 #define HEIGHT 1000
 
-void usage(char *app) {
-  fprintf(stderr, "usage: %s <animation-file>\n", app);
-  exit(1);
+static bool load_animation(DotLottiePlayer *player, const char *path) {
+  const char *extension = strrchr(path, '.');
+  if (!extension || strcmp(extension, ".lottie") != 0) {
+    return dotlottie_load_animation_path(player, path) == DOTLOTTIE_SUCCESS;
+  }
+
+  FILE *file = fopen(path, "rb");
+  if (!file) {
+    return false;
+  }
+  fseek(file, 0, SEEK_END);
+  long size = ftell(file);
+  rewind(file);
+
+  bool loaded = false;
+  char *data = size > 0 ? malloc((size_t)size) : NULL;
+  if (data && fread(data, 1, (size_t)size, file) == (size_t)size) {
+    loaded = dotlottie_load_dotlottie_data(player, data, (size_t)size) == DOTLOTTIE_SUCCESS;
+  }
+
+  free(data);
+  fclose(file);
+  return loaded;
 }
 
 int main(int argc, char **argv) {
   SDL_Window *window = NULL;
   SDL_Renderer *renderer = NULL;
   SDL_Texture *texture = NULL;
-  SDL_Event e;
+  DotLottiePlayer *player = NULL;
+  uint32_t *buffer = NULL;
+  int status = 1;
 
-  DotLottiePlayer *player;
-
-  const char *animation_path;
-  int screen;
-  uint32_t *buffer;
-  int len;
-  char key_pressed[255];
-  int ret;
-  int ready;
-  float current_frame;
-  float next_frame;
-
-  // Ensure a file path has been provided
-  if (argc != 2) {
-    usage(argv[0]);
-  }
-  // Ensure the file path is readable
-  animation_path = argv[1];
-  ret = access(animation_path, R_OK);
-  if (ret != 0) {
-    fprintf(stderr, "Invalid animation path\n\n");
-    usage(argv[0]);
+  if (argc != 2 || access(argv[1], R_OK) != 0) {
+    fprintf(stderr, "usage: %s <animation-file>\n", argv[0]);
+    return 1;
   }
 
-  // Setup dotlottie player (0 threads = auto-detect)
   player = dotlottie_new_player(0);
   if (!player) {
     fprintf(stderr, "Could not create dotlottie player\n");
     return 1;
   }
 
-  // Allocate our own buffer for software rendering
-  buffer = (uint32_t *)malloc(WIDTH * HEIGHT * sizeof(uint32_t));
+  buffer = malloc(WIDTH * HEIGHT * sizeof(uint32_t));
   if (!buffer) {
     fprintf(stderr, "Could not allocate buffer\n");
-    return 1;
+    goto quit;
   }
 
-  // Set up software rendering target - tell player to render into our buffer
-  ret = dotlottie_set_sw_target(player, buffer, WIDTH, HEIGHT, ABGR8888);
-  if (ret != DOTLOTTIE_SUCCESS) {
+  if (dotlottie_set_sw_target(player, buffer, WIDTH, WIDTH, HEIGHT, ABGR8888) != DOTLOTTIE_SUCCESS) {
     fprintf(stderr, "Could not set software rendering target\n");
-    free(buffer);
-    return 1;
+    goto quit;
   }
 
-  // Configure the player
   dotlottie_set_loop(player, true);
-  dotlottie_set_background(player, 255, 255, 255, 255);
   dotlottie_set_autoplay(player, true);
+  dotlottie_set_background(player, 255, 255, 255, 255);
 
-  // Load the animation file
-  ret = dotlottie_load_animation_path(player, animation_path);
-  if (ret != DOTLOTTIE_SUCCESS) {
-    fprintf(stderr, "Could not load dotlottie animation file\n");
-    free(buffer);
-    return 1;
+  if (!load_animation(player, argv[1])) {
+    fprintf(stderr, "Could not load animation file\n");
+    goto quit;
   }
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     fprintf(stderr, "Could not initialize SDL: %s\n", SDL_GetError());
-    return 1;
+    goto quit;
   }
 
-  // Setup SDL window
-  window = SDL_CreateWindow("demo-player-c", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                            WIDTH, HEIGHT, SDL_WINDOW_SHOWN | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_INPUT_FOCUS);
+  window = SDL_CreateWindow("dotLottie C API demo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                            WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
   if (!window) {
     fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
-    ret = 1;
     goto quit;
   }
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
   if (!renderer) {
     fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
-    ret = 1;
     goto quit;
   }
-  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGRA32, SDL_TEXTUREACCESS_STREAMING, WIDTH,
-                              HEIGHT);
+  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
+                              WIDTH, HEIGHT);
   if (!texture) {
     fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
-    ret = 1;
     goto quit;
   }
-  SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(Uint32));
 
-  current_frame = 0;
+  status = 0;
+  Uint64 last = SDL_GetTicks64();
+
   while (1) {
-    // Process events
-    while (SDL_PollEvent(&e) != 0) {
-      if (e.type == SDL_QUIT) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event) != 0) {
+      if (event.type == SDL_QUIT) {
         goto quit;
-      } else if (e.type == SDL_KEYDOWN) {
-        switch (e.key.keysym.sym) {
+      }
+      if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
         case SDLK_p:
-          ret = dotlottie_play(player);
-          if (ret != DOTLOTTIE_SUCCESS) {
-            fprintf(stderr, "Could not start dotlottie player\n");
-          }
+          dotlottie_play(player);
           break;
         case SDLK_s:
-          ret = dotlottie_stop(player);
-          if (ret != DOTLOTTIE_SUCCESS) {
-            fprintf(stderr, "Could not stop dotlottie player\n");
-          }
+          dotlottie_stop(player);
           break;
         case SDLK_q:
           goto quit;
@@ -137,22 +128,25 @@ int main(int argc, char **argv) {
       }
     }
 
-    next_frame = 0;
-    dotlottie_tick(player);
-    dotlottie_get_current_frame(player, &next_frame);
-    if (next_frame != current_frame) {
-      // Render the image in the window
-      SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(Uint32));
-      SDL_RenderCopy(renderer, texture, NULL, NULL);
-      SDL_RenderPresent(renderer);
-      current_frame = next_frame;
+    Uint64 now = SDL_GetTicks64();
+    float dt = (float)(now - last);
+    last = now;
+
+    bool rendered = false;
+    dotlottie_tick(player, dt, &rendered);
+    if (rendered) {
+      SDL_UpdateTexture(texture, NULL, buffer, WIDTH * sizeof(uint32_t));
     }
+
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
   }
 
 quit:
-  // Clean up
-  if (buffer)
-    free(buffer);
+  // The player holds a pointer into the buffer, so destroy it first.
+  if (player)
+    dotlottie_destroy(player);
+  free(buffer);
   if (texture)
     SDL_DestroyTexture(texture);
   if (renderer)
@@ -161,5 +155,5 @@ quit:
     SDL_DestroyWindow(window);
   SDL_Quit();
 
-  return ret;
+  return status;
 }

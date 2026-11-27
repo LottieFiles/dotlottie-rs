@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_PROFILE_RELEASE_OPT_LEVEL: "0"
+
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Fmt
+            cmd: cargo fmt --manifest-path=./dotlottie-rs/Cargo.toml --all -- --check
+          - name: Test
+            cmd: cargo test --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" -- --test-threads=1
+            native: true
+          - name: Lint
+            cmd: cargo clippy --manifest-path=./dotlottie-rs/Cargo.toml --features="dev" --all-targets -- -D clippy::print_stdout
+            native: true
+            rustflags: "-Dwarnings"
+          - name: Package
+            cmd: >-
+              cargo package --manifest-path=./dotlottie-rs/Cargo.toml --features="c_api" &&
+              cargo package --manifest-path=./dotlottie-rs/Cargo.toml --list | grep -x deps/thorvg/src/bindings/capi/thorvg_capi.h > /dev/null
+            native: true
+    env:
+      CC: clang
+      CXX: clang++
+      AR: llvm-ar
+      RANLIB: llvm-ranlib
+      CFLAGS: -O2
+      CXXFLAGS: -O2
+      BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/include"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: ${{ matrix.native == true }}
+          fetch-depth: ${{ matrix.native && 0 || 1 }}
+
+      - name: Install LLVM tools
+        if: matrix.native
+        run: sudo apt-get update && sudo apt-get install -y llvm
+
+      - name: Set up Rust
+        uses: ningenMe/setup-rustup@v1.1.0
+
+      - name: Cache cargo
+        if: matrix.native
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: dotlottie-rs
+          shared-key: ${{ matrix.name }}
+          cache-on-failure: true
+
+      - name: ${{ matrix.name }}
+        run: ${{ matrix.cmd }}
+        env:
+          RUSTFLAGS: ${{ matrix.rustflags }}
+
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+            platform: linux
+          - name: macOS
+            os: macos-latest
+            platform: macos
+          - name: Windows
+            os: windows-latest
+            platform: windows
+          - name: Apple macOS
+            os: macos-latest
+            platform: apple
+            target: apple-macos-arm64
+          - name: Apple iOS
+            os: macos-latest
+            platform: apple
+            target: apple-ios-arm64
+          - name: Android arm64-v8a
+            os: ubuntu-latest
+            platform: android
+            target: android-aarch64
+          - name: Android armeabi-v7a
+            os: ubuntu-latest
+            platform: android
+            target: android-armv7
+          - name: WASM software
+            os: ubuntu-latest
+            platform: wasm
+            target: wasm
+          - name: WASM WebGL
+            os: ubuntu-latest
+            platform: wasm
+            target: wasm-webgl
+          - name: WASM WebGPU
+            os: ubuntu-latest
+            platform: wasm
+            target: wasm-webgpu
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - uses: ./.github/actions/build
+        with:
+          platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
+
+  ci:
+    name: CI
+    if: always()
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to pass
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

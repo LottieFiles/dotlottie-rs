@@ -19,7 +19,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (500 * 500) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, 500, 500, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, 500, 500, 500, ColorSpace::ABGR8888)
             .is_ok());
 
         let mut markers =
@@ -346,7 +346,7 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(player
@@ -391,7 +391,7 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(player
@@ -437,7 +437,7 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(player
@@ -496,7 +496,7 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(player
@@ -552,7 +552,7 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
 
         assert!(player
@@ -676,7 +676,7 @@ mod tests {
 
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         std::mem::forget(buffer);
 
@@ -824,7 +824,13 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; SIZE * SIZE];
         assert!(player
-            .set_sw_target(&mut buffer, SIZE as u32, SIZE as u32, ColorSpace::ABGR8888)
+            .set_sw_target(
+                &mut buffer,
+                SIZE as u32,
+                SIZE as u32,
+                SIZE as u32,
+                ColorSpace::ABGR8888
+            )
             .is_ok());
 
         assert!(player
@@ -906,7 +912,13 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; SIZE * SIZE];
         assert!(player
-            .set_sw_target(&mut buffer, SIZE as u32, SIZE as u32, ColorSpace::ABGR8888)
+            .set_sw_target(
+                &mut buffer,
+                SIZE as u32,
+                SIZE as u32,
+                SIZE as u32,
+                ColorSpace::ABGR8888
+            )
             .is_ok());
         assert!(player
             .load_dotlottie_data(include_bytes!(
@@ -1007,7 +1019,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; 300 * 300];
         assert!(player
-            .set_sw_target(&mut buffer, 300, 300, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 300, 300, 300, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player
             .load_dotlottie_data(include_bytes!(
@@ -1086,7 +1098,13 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; SIZE * SIZE];
         assert!(player
-            .set_sw_target(&mut buffer, SIZE as u32, SIZE as u32, ColorSpace::ABGR8888)
+            .set_sw_target(
+                &mut buffer,
+                SIZE as u32,
+                SIZE as u32,
+                SIZE as u32,
+                ColorSpace::ABGR8888
+            )
             .is_ok());
         assert!(player
             .load_dotlottie_data(include_bytes!(
@@ -1140,7 +1158,13 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; SIZE * SIZE];
         assert!(player
-            .set_sw_target(&mut buffer, SIZE as u32, SIZE as u32, ColorSpace::ABGR8888)
+            .set_sw_target(
+                &mut buffer,
+                SIZE as u32,
+                SIZE as u32,
+                SIZE as u32,
+                ColorSpace::ABGR8888
+            )
             .is_ok());
         assert!(player
             .load_dotlottie_data(include_bytes!(
@@ -1220,7 +1244,13 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; SIZE * SIZE];
         assert!(player
-            .set_sw_target(&mut buffer, SIZE as u32, SIZE as u32, ColorSpace::ABGR8888)
+            .set_sw_target(
+                &mut buffer,
+                SIZE as u32,
+                SIZE as u32,
+                SIZE as u32,
+                ColorSpace::ABGR8888
+            )
             .is_ok());
         assert!(player
             .load_dotlottie_data(include_bytes!(
@@ -1336,7 +1366,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player
             .load_dotlottie_data(include_bytes!(

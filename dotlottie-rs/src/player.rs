@@ -1049,24 +1049,29 @@ impl Player {
 
     /// Set software rendering target using a safe Rust slice.
     ///
-    /// This is the preferred safe API. The buffer must be large enough to hold
-    /// width * height pixels.
+    /// `stride` is the number of pixels between the start of consecutive rows.
+    /// Pass `width` when the buffer holds only this target. A larger stride
+    /// targets a region of a wider buffer that starts at `buffer[0]`, so
+    /// several players can draw into separate regions of one buffer. The
+    /// buffer must hold at least `stride * (height - 1) + width` pixels.
     ///
     /// # Returns
-    /// `Err(InvalidParameter)` if the buffer is too small, `Err` on setup failure.
+    /// `Err(InvalidParameter)` if `width` exceeds `stride` or the buffer is too
+    /// small, `Err` on setup failure.
     pub fn set_sw_target(
         &mut self,
         buffer: &mut [u32],
+        stride: u32,
         width: u32,
         height: u32,
         color_space: ColorSpace,
     ) -> Result<()> {
-        let required_size = (width * height) as usize;
-        if buffer.len() < required_size {
+        if crate::renderer::sw_target_len(stride, width, height)
+            .is_none_or(|len| buffer.len() < len)
+        {
             return Err(Error::InvalidParameter);
         }
 
-        let stride = width;
         self.renderer
             .set_sw_target(buffer, stride, width, height, color_space)?;
 
@@ -1861,7 +1866,7 @@ mod asset_resolver_tests {
         let mut player = Player::new();
         let mut buffer = vec![0u32; 128 * 128];
         player
-            .set_sw_target(&mut buffer, 128, 128, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 128, 128, 128, ColorSpace::ABGR8888)
             .unwrap();
         player
             .set_asset_resolver(|src: &str| src.starts_with("https://").then(|| RED_PNG.to_vec()));
@@ -1880,7 +1885,7 @@ mod asset_resolver_tests {
         let mut player = Player::new();
         let mut buffer = vec![0u32; 256 * 256];
         player
-            .set_sw_target(&mut buffer, 256, 256, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 256, 256, 256, ColorSpace::ABGR8888)
             .unwrap();
         let data = include_bytes!("../assets/animations/dotlottie/v2/image.lottie");
         player.load_dotlottie_data(data).unwrap();
@@ -1897,7 +1902,7 @@ mod asset_resolver_tests {
         let mut player = Player::new();
         let mut buffer = vec![0u32; 256 * 256];
         player
-            .set_sw_target(&mut buffer, 256, 256, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 256, 256, 256, ColorSpace::ABGR8888)
             .unwrap();
         let data = include_bytes!("../assets/animations/dotlottie/v2/elapsed_time.lottie");
         player.load_dotlottie_data(data).unwrap();
@@ -1913,7 +1918,7 @@ mod asset_resolver_tests {
         let mut player = Player::new();
         let mut buffer = vec![0u32; 128 * 128];
         player
-            .set_sw_target(&mut buffer, 128, 128, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 128, 128, 128, ColorSpace::ABGR8888)
             .unwrap();
         let data = CString::new(EXTERNAL_ASSETS_JSON).unwrap();
         player.load_animation_data(&data).unwrap();
@@ -1964,7 +1969,7 @@ mod image_slot_tests {
         let mut player = Player::new();
         let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
         player
-            .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, SIZE, SIZE, SIZE, ColorSpace::ABGR8888)
             .unwrap();
         player.set_asset_resolver(|src: &str| match src {
             s if s.ends_with("blue.png") => Some(BLUE_PNG.to_vec()),
@@ -1989,7 +1994,7 @@ mod image_slot_tests {
         let mut player = Player::new();
         let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
         player
-            .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, SIZE, SIZE, SIZE, ColorSpace::ABGR8888)
             .unwrap();
         player.set_asset_resolver(|src: &str| match src {
             s if s.ends_with("blue.png") => Some(BLUE_PNG.to_vec()),
@@ -2040,7 +2045,7 @@ mod image_slot_tests {
             let mut player = Player::new();
             let mut buffer = vec![0u32; (SIZE * SIZE) as usize];
             player
-                .set_sw_target(&mut buffer, SIZE, SIZE, ColorSpace::ABGR8888)
+                .set_sw_target(&mut buffer, SIZE, SIZE, SIZE, ColorSpace::ABGR8888)
                 .unwrap();
             player.set_asset_resolver(|_: &str| Some(RED_PNG.to_vec()));
             player
@@ -2072,7 +2077,7 @@ mod audio_render_tests {
         let mut player = Player::new();
         let mut buffer = vec![0u32; 512 * 512];
         player
-            .set_sw_target(&mut buffer, 512, 512, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 512, 512, 512, ColorSpace::ABGR8888)
             .unwrap();
 
         let data = include_bytes!("../assets/animations/dotlottie/v2/happy_birthday_audio.lottie");
@@ -2104,7 +2109,7 @@ mod audio_render_tests {
         let mut player = Player::new();
         let mut buffer = vec![0u32; 64 * 64];
         player
-            .set_sw_target(&mut buffer, 64, 64, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 64, 64, 64, ColorSpace::ABGR8888)
             .unwrap();
 
         let data = include_bytes!("../assets/animations/dotlottie/v2/audio_formats.lottie");
@@ -2128,7 +2133,7 @@ mod audio_render_tests {
     fn loaded_audio_player(buffer: &mut [u32]) -> Player {
         let mut player = Player::new();
         player
-            .set_sw_target(buffer, 512, 512, ColorSpace::ABGR8888)
+            .set_sw_target(buffer, 512, 512, 512, ColorSpace::ABGR8888)
             .unwrap();
         let data = include_bytes!("../assets/animations/dotlottie/v2/happy_birthday_audio.lottie");
         assert!(player.load_dotlottie_data(data).is_ok());
@@ -2203,7 +2208,7 @@ mod audio_render_tests {
         let mut buffer = vec![0u32; 512 * 512];
         let mut player = Player::new();
         player
-            .set_sw_target(&mut buffer, 512, 512, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 512, 512, 512, ColorSpace::ABGR8888)
             .unwrap();
         player.set_speed(2.0);
 
@@ -2331,7 +2336,7 @@ mod audio_render_tests {
     fn full_span_audio_player(buffer: &mut [u32], frame: f32) -> Player {
         let mut player = Player::new();
         player
-            .set_sw_target(buffer, 64, 64, ColorSpace::ABGR8888)
+            .set_sw_target(buffer, 64, 64, 64, ColorSpace::ABGR8888)
             .unwrap();
         let data = include_bytes!("../assets/animations/dotlottie/v2/audio_formats.lottie");
         assert!(player.load_dotlottie_data(data).is_ok());

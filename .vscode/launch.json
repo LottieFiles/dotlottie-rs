@@ -23,18 +23,12 @@
       "type": "pickString",
       "description": "Select the example to debug",
       "options": [
-        "simple_player",
-        "state_machine",
-        "apply_theme",
-        "color_slot",
-        "gradient_slot",
-        "position_slot",
-        "scalar_slot",
-        "text_slot",
-        "vector_slot",
-        "sm_playground"
+        "player",
+        "slots",
+        "external_assets",
+        "state_machine"
       ],
-      "default": "simple_player"
+      "default": "player"
     }
   ]
 }

@@ -374,7 +374,13 @@ impl DotLottiePlayerWasm {
             self.sw_buffer.resize(required, 0);
         }
         self.player
-            .set_sw_target(&mut self.sw_buffer, width, height, ColorSpace::ABGR8888S)
+            .set_sw_target(
+                &mut self.sw_buffer,
+                width,
+                width,
+                height,
+                ColorSpace::ABGR8888S,
+            )
             .is_ok()
     }
 

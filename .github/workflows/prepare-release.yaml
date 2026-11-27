@@ -39,7 +39,7 @@ jobs:
       - uses: knope-dev/action@v2.1.2
         if: steps.changesets.outputs.pending == 'true'
         with:
-          version: 0.22.3
+          version: 0.24.0
 
       - run: knope prepare-release --verbose
         if: steps.changesets.outputs.pending == 'true'

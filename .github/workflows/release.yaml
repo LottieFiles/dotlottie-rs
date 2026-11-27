@@ -68,7 +68,7 @@ jobs:
       - name: Install Knope
         uses: knope-dev/action@v2.1.2
         with:
-          version: 0.22.3
+          version: 0.24.0
       - run: knope release --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

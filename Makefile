@@ -9,6 +9,7 @@ include make/android.mk
 include make/apple.mk
 include make/wasm.mk
 include make/linux.mk
+include make/macos.mk
 include make/windows.mk
 
 help:
@@ -19,6 +20,7 @@ help:
 	@echo "  make apple                      Build all Apple platforms and the XCFramework"
 	@echo "  make wasm                       Build the WASM module (software renderer)"
 	@echo "  make linux                      Build Linux x86_64 and ARM64"
+	@echo "  make macos                      Build the native macOS libraries (ARM64, x86_64)"
 	@echo "  make windows                    Build Windows x86_64 and ARM64"
 	@echo "  make native                     Build the native library for this host"
 	@echo "  make native-opengl              Build the native library with the OpenGL renderer"
@@ -63,6 +65,10 @@ help:
 	@echo "  make linux-x86_64               x86_64"
 	@echo "  make linux-arm64                ARM64"
 	@echo ""
+	@echo "macOS targets:"
+	@echo "  make macos-arm64                ARM64"
+	@echo "  make macos-x86_64               x86_64"
+	@echo ""
 	@echo "Windows targets:"
 	@echo "  make windows-x86_64             x86_64"
 	@echo "  make windows-arm64              ARM64"
@@ -73,6 +79,7 @@ help:
 	@echo "  make apple-setup                Install the Apple Rust targets"
 	@echo "  make wasm-setup                 Install the wasm32 target and wasm-bindgen-cli"
 	@echo "  make linux-setup                Install the Linux Rust targets"
+	@echo "  make macos-setup                Install the macOS Rust targets"
 	@echo "  make windows-setup              Install the Windows Rust targets and MSVC tools"
 	@echo ""
 	@echo "Development targets:"
@@ -87,6 +94,7 @@ help:
 	@echo "  make apple-clean                Remove Apple artifacts"
 	@echo "  make wasm-clean                 Remove WASM artifacts"
 	@echo "  make linux-clean                Remove Linux artifacts"
+	@echo "  make macos-clean                Remove macOS artifacts"
 	@echo "  make windows-clean              Remove Windows artifacts"
 	@echo "  make native-clean               Remove native artifacts"
 	@echo ""
@@ -97,6 +105,7 @@ list-platforms:
 	@echo "  apple       Apple (macOS, iOS, tvOS, visionOS, watchOS, Mac Catalyst)"
 	@echo "  wasm        WebAssembly (wasm-bindgen)"
 	@echo "  linux       Linux (x86_64, ARM64)"
+	@echo "  macos       macOS native libraries (ARM64, x86_64)"
 	@echo "  windows     Windows (x86_64, ARM64)"
 	@echo "  native      Native (this host)"
 	@echo ""
@@ -131,7 +140,7 @@ DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR = $(RELEASE)/$(NATIVE)/$(DOTLOTTIE_PLAYER)
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_INCLUDE_DIR = $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)/include
 DOTLOTTIE_PLAYER_NATIVE_RELEASE_LIB_DIR = $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)/lib
 
-NATIVE_FEATURES = tvg,tvg-cpu,c_api
+NATIVE_FEATURES = dotlottie,state-machines,theming,tvg,tvg-cpu,c_api
 
 define NATIVE_RELEASE
 	rm -rf $(DOTLOTTIE_PLAYER_NATIVE_RELEASE_DIR)
@@ -145,22 +154,22 @@ endef
 
 native-opengl:
 	@echo "→ Building native library with the OpenGL renderer..."
-	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --no-default-features --features dotlottie,state-machines,theming,c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
 	$(NATIVE_RELEASE)
 	@echo "✓ Native OpenGL build complete"
 
 native-webgpu:
 	@echo "→ Building native library with the WebGPU renderer..."
-	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --features c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
+	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --no-default-features --features dotlottie,state-machines,theming,c_api,tvg,tvg-wg,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions --release
 	$(NATIVE_RELEASE)
 	@echo "✓ Native WebGPU build complete"
 
 native:
 	@echo "→ Building native library..."
 ifeq ($(OS),Windows_NT)
-	$(call WINDOWS_CARGO_BUILD,x64,x86_64-pc-windows-msvc,$(NATIVE_FEATURES),)
+	$(call WINDOWS_CARGO_BUILD,x64,x86_64-pc-windows-msvc,$(NATIVE_FEATURES),--no-default-features)
 else
-	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --features $(NATIVE_FEATURES) --release
+	cargo rustc --manifest-path $(DOTLOTTIE_ROOT)/Cargo.toml --crate-type cdylib --no-default-features --features $(NATIVE_FEATURES) --release
 endif
 	$(NATIVE_RELEASE)
 	@echo "✓ Native build complete"

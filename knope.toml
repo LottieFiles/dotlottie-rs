@@ -5,23 +5,18 @@ repo = 'dotlottie-rs'
 [package]
 versioned_files = ["dotlottie-rs/Cargo.toml"]
 changelog = "CHANGELOG.md"
-ignore_conventional_commits = true
-
-[[package.assets]]
-path = "release/dotlottie-player.darwin.tar.gz"
-name = "dotlottie-player.darwin.tar.gz"
-
-[[package.assets]]
-path = "release/dotlottie-player.android.tar.gz"
-name = "dotlottie-player.android.tar.gz"
-
-[[package.assets]]
-path = "release/dotlottie-player.wasm.tar.gz"
-name = "dotlottie-player.wasm.tar.gz"
 
 [[package.assets]]
 path = "release/dotlottie-player.linux.tar.gz"
 name = "dotlottie-player.linux.tar.gz"
+
+[[package.assets]]
+path = "release/dotlottie-player.macos.tar.gz"
+name = "dotlottie-player.macos.tar.gz"
+
+[[package.assets]]
+path = "release/dotlottie-player.windows.tar.gz"
+name = "dotlottie-player.windows.tar.gz"
 
 [[workflows]]
 name = "prepare-release"
@@ -32,6 +27,7 @@ command = "git switch -c release"
 
 [[workflows.steps]]
 type = "PrepareRelease"
+ignore_conventional_commits = true
 
 [[workflows.steps]]
 type = "Command"

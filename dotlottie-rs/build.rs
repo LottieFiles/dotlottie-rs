@@ -66,21 +66,9 @@ mod wgpu_native {
         let file = fs::File::open(zip_path)?;
         let mut archive = zip::ZipArchive::new(file)
             .map_err(|e| io::Error::other(format!("Failed to read zip: {e}")))?;
-        for i in 0..archive.len() {
-            let mut entry = archive
-                .by_index(i)
-                .map_err(|e| io::Error::other(format!("Failed to read zip entry: {e}")))?;
-            let out_path = dest_dir.join(entry.mangled_name());
-            if entry.is_dir() {
-                fs::create_dir_all(&out_path)?;
-            } else {
-                if let Some(parent) = out_path.parent() {
-                    fs::create_dir_all(parent)?;
-                }
-                let mut out_file = fs::File::create(&out_path)?;
-                io::copy(&mut entry, &mut out_file)?;
-            }
-        }
+        archive
+            .extract(dest_dir)
+            .map_err(|e| io::Error::other(format!("Failed to extract zip: {e}")))?;
         Ok(())
     }
 
@@ -138,7 +126,7 @@ mod wgpu_native {
 
 mod thorvg {
     use std::env;
-    use std::fs::{self, create_dir_all, OpenOptions};
+    use std::fs::{self, OpenOptions};
     use std::io::{self, Write};
     use std::path::{Path, PathBuf};
 
@@ -322,7 +310,6 @@ mod thorvg {
 
     pub fn build() -> io::Result<()> {
         let target_triple = env::var("TARGET").unwrap_or_default();
-        let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
         let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
         let is_wasm = target_triple.starts_with("wasm32-unknown-");
@@ -433,6 +420,11 @@ mod thorvg {
             src.push("deps/thorvg/src/modules/webp/static/dsp");
             src.push("deps/thorvg/src/modules/webp/static/utils");
             src.push("deps/thorvg/src/modules/webp/static/webp");
+        }
+
+        if cfg!(feature = "tvg-gif") {
+            writeln!(thorvg_config_h, "#define THORVG_GIF_LOADER_SUPPORT")?;
+            src.push("deps/thorvg/src/modules/gif/load");
         }
 
         if cfg!(any(feature = "tvg-ttf", feature = "tvg-otf")) {
@@ -682,9 +674,17 @@ namespace tvg
         bindings.write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))?;
 
         // cbindgen — only for native builds with c_api feature
-        if cfg!(feature = "c_api") && !is_wasm_unknown {
-            create_dir_all(PathBuf::from(&crate_dir).join("build")).unwrap();
-            let header_path = PathBuf::from(&crate_dir).join("build/dotlottie_player.h");
+        #[cfg(feature = "c_api")]
+        if !is_wasm_unknown {
+            let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+            // A crate built from crates.io must not write outside OUT_DIR.
+            let header_dir = if Path::new(&crate_dir).join("Cargo.toml.orig").exists() {
+                out_dir.clone()
+            } else {
+                PathBuf::from(&crate_dir).join("build")
+            };
+            fs::create_dir_all(&header_dir).unwrap();
+            let header_path = header_dir.join("dotlottie_player.h");
             let config_path = PathBuf::from(&crate_dir).join("cbindgen.toml");
             let config = cbindgen::Config::from_file(config_path).unwrap();
 

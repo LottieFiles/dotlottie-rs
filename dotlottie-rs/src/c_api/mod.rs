@@ -862,25 +862,35 @@ pub unsafe extern "C" fn dotlottie_is_complete(ptr: *mut Player) -> bool {
 ///
 /// # Parameters
 /// - `ptr`: Pointer to the Player instance
-/// - `buffer`: Pointer to the pixel buffer (must be width * height in size)
-/// - `width`: Width of the buffer in pixels
-/// - `height`: Height of the buffer in pixels
+/// - `buffer`: Pointer to the first pixel of the target (must hold at least
+///   stride * (height - 1) + width pixels)
+/// - `stride`: Number of pixels between the start of consecutive rows. Pass
+///   `width` unless the target is a region of a wider buffer
+/// - `width`: Width of the target in pixels
+/// - `height`: Height of the target in pixels
 /// - `color_space`: Color space for the buffer
 ///
 /// # Returns
 /// - `DotLottieResult::Success` on success
-/// - `DotLottieResult::InvalidParameter` if buffer is too small or pointer is invalid
+/// - `DotLottieResult::InvalidParameter` if width exceeds stride or pointer is invalid
 #[no_mangle]
 pub unsafe extern "C" fn dotlottie_set_sw_target(
     ptr: *mut Player,
     buffer: *mut u32,
+    stride: u32,
     width: u32,
     height: u32,
     color_space: ColorSpace,
 ) -> DotLottieResult {
+    let Some(len) = crate::renderer::sw_target_len(stride, width, height) else {
+        return DotLottieResult::InvalidParameter;
+    };
+    if buffer.is_null() {
+        return DotLottieResult::InvalidParameter;
+    }
     exec_dotlottie_player_op!(ptr, |dotlottie_player| {
-        let buffer_slice = std::slice::from_raw_parts_mut(buffer, (width * height) as usize);
-        dotlottie_player.set_sw_target(buffer_slice, width, height, color_space)
+        let buffer_slice = std::slice::from_raw_parts_mut(buffer, len);
+        dotlottie_player.set_sw_target(buffer_slice, stride, width, height, color_space)
     })
 }
 
@@ -1193,12 +1203,8 @@ pub unsafe extern "C" fn dotlottie_set_image_slot_src(
 
 unsafe fn points_from_raw(data: *const f32, count: usize) -> Option<Vec<[f32; 2]>> {
     let len = count.checked_mul(2)?;
-    Some(
-        slice::from_raw_parts(data, len)
-            .chunks_exact(2)
-            .map(|p| [p[0], p[1]])
-            .collect(),
-    )
+    let (points, _) = slice::from_raw_parts(data, len).as_chunks::<2>();
+    Some(points.to_vec())
 }
 
 /// Set a bezier path slot. `vertices`, `in_tangents` and
@@ -2931,6 +2937,99 @@ pub unsafe extern "C" fn dotlottie_init_android(
 
 #[cfg(test)]
 #[cfg(feature = "tvg")]
+mod sw_target_tests {
+    use super::*;
+    use std::ffi::CString;
+
+    const TEST_JSON: &str = include_str!("../../assets/animations/lottie/test.json");
+
+    #[test]
+    fn c_set_sw_target_rejects_invalid_buffer() {
+        unsafe {
+            let player = dotlottie_new_player(0);
+            let mut buffer = vec![0u32; 64 * 64];
+
+            assert_eq!(
+                dotlottie_set_sw_target(
+                    player,
+                    std::ptr::null_mut(),
+                    64,
+                    64,
+                    64,
+                    ColorSpace::ABGR8888
+                ),
+                DotLottieResult::InvalidParameter
+            );
+            assert_eq!(
+                dotlottie_set_sw_target(
+                    player,
+                    buffer.as_mut_ptr(),
+                    u32::MAX,
+                    u32::MAX,
+                    u32::MAX,
+                    ColorSpace::ABGR8888
+                ),
+                DotLottieResult::InvalidParameter
+            );
+            assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
+        }
+    }
+
+    #[test]
+    fn c_set_sw_target_draws_only_inside_region() {
+        const STRIDE: usize = 64;
+        const SIZE: usize = 32;
+        unsafe {
+            let player = dotlottie_new_player(0);
+            let mut buffer = vec![0u32; STRIDE * STRIDE];
+            let region = buffer.as_mut_ptr().add(16 * STRIDE + 16);
+
+            assert_eq!(
+                dotlottie_set_sw_target(
+                    player,
+                    region,
+                    (SIZE - 1) as u32,
+                    SIZE as u32,
+                    SIZE as u32,
+                    ColorSpace::ABGR8888
+                ),
+                DotLottieResult::InvalidParameter
+            );
+            assert_eq!(
+                dotlottie_set_sw_target(
+                    player,
+                    region,
+                    STRIDE as u32,
+                    SIZE as u32,
+                    SIZE as u32,
+                    ColorSpace::ABGR8888
+                ),
+                DotLottieResult::Success
+            );
+            assert_eq!(
+                dotlottie_set_background(player, 255, 0, 0, 255),
+                DotLottieResult::Success
+            );
+            let data = CString::new(TEST_JSON).unwrap();
+            assert_eq!(
+                dotlottie_load_animation_data(player, data.as_ptr()),
+                DotLottieResult::Success
+            );
+            let _ = dotlottie_set_frame(player, 1.0);
+            assert_eq!(dotlottie_render(player), DotLottieResult::Success);
+
+            for (i, pixel) in buffer.iter().enumerate() {
+                let (x, y) = (i % STRIDE, i / STRIDE);
+                let inside = (16..48).contains(&x) && (16..48).contains(&y);
+                assert_eq!(*pixel != 0, inside, "pixel ({x}, {y})");
+            }
+            assert_eq!(dotlottie_destroy(player), DotLottieResult::Success);
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "tvg")]
 mod asset_resolver_tests {
     use super::*;
     use std::ffi::{c_void, CString};
@@ -2964,6 +3063,7 @@ mod asset_resolver_tests {
                 dotlottie_set_sw_target(
                     player,
                     buffer.as_mut_ptr(),
+                    128,
                     128,
                     128,
                     ColorSpace::ABGR8888
@@ -3018,8 +3118,14 @@ mod bezier_path_slot_tests {
         unsafe {
             let player = dotlottie_new_player(0);
             let mut buffer = vec![0u32; 64 * 64];
-            let _ =
-                dotlottie_set_sw_target(player, buffer.as_mut_ptr(), 64, 64, ColorSpace::ABGR8888);
+            let _ = dotlottie_set_sw_target(
+                player,
+                buffer.as_mut_ptr(),
+                64,
+                64,
+                64,
+                ColorSpace::ABGR8888,
+            );
             let data = CString::new(BEZIER_PATH_JSON).unwrap();
             assert_eq!(
                 dotlottie_load_animation_data(player, data.as_ptr()),
@@ -3133,7 +3239,14 @@ mod state_machine_parity_tests {
         let player = dotlottie_new_player(0);
         // The player keeps this pointer as its render target, so it must outlive the test.
         let buffer = Box::leak(vec![0u32; 64 * 64].into_boxed_slice());
-        let _ = dotlottie_set_sw_target(player, buffer.as_mut_ptr(), 64, 64, ColorSpace::ABGR8888);
+        let _ = dotlottie_set_sw_target(
+            player,
+            buffer.as_mut_ptr(),
+            64,
+            64,
+            64,
+            ColorSpace::ABGR8888,
+        );
         let data = CString::new(ANIMATION_JSON).unwrap();
         assert_eq!(
             dotlottie_load_animation_data(player, data.as_ptr()),

@@ -1,4 +1,12 @@
 <!doctype html>
+<!--
+  Web demo: the wasm-bindgen build on the software, WebGL and WebGPU renderers.
+
+    make wasm wasm-webgl wasm-webgpu       (from the repository root)
+    python3 -m http.server                 (from the repository root)
+
+  Then open http://localhost:8000/dotlottie-rs/examples/web/
+-->
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -291,12 +299,12 @@
 
     <script type="module">
       const ANIMATION_URL =
-        "./dotlottie-rs/assets/animations/lottie/toggle.json";
+        "../../assets/animations/lottie/toggle.json";
 
       const EXTERNAL_ASSETS_URL =
-        "./dotlottie-rs/assets/animations/lottie/external_assets.json";
-      const RED_PNG_URL = "./dotlottie-rs/assets/images/red.png";
-      const BLUE_PNG_URL = "./dotlottie-rs/assets/images/blue.png";
+        "../../assets/animations/lottie/external_assets.json";
+      const RED_PNG_URL = "../../assets/images/red.png";
+      const BLUE_PNG_URL = "../../assets/images/blue.png";
 
       function fetchBytes(url) {
         return fetch(url)
@@ -517,8 +525,8 @@
             H = canvas.height;
 
           if (rendererType === 'sw') {
-            const mod = await import('./release/wasm/dotlottie_rs.js');
-            await mod.default({ module_or_path: "./release/wasm/dotlottie_rs_bg.wasm" });
+            const mod = await import('../../../release/wasm/dotlottie_rs.js');
+            await mod.default({ module_or_path: "../../../release/wasm/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             Status = mod.Status;
             // Grab the 2D context after the canvas is fresh.
@@ -527,8 +535,8 @@
           } else if (rendererType === 'webgl') {
             const gl = canvas.getContext('webgl2');
             if (!gl) throw new Error('WebGL2 not available in this browser');
-            const mod = await import('./release/wasm-webgl/dotlottie_rs.js');
-            await mod.default({ module_or_path: "./release/wasm-webgl/dotlottie_rs_bg.wasm" });
+            const mod = await import('../../../release/wasm-webgl/dotlottie_rs.js');
+            await mod.default({ module_or_path: "../../../release/wasm-webgl/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             Status = mod.Status;
             // Pass the WebGL2 context into the WASM layer before loading.
@@ -549,8 +557,8 @@
               format: navigator.gpu.getPreferredCanvasFormat(),
               alphaMode: "premultiplied",
             });
-            const mod = await import('./release/wasm-webgpu/dotlottie_rs.js');
-            await mod.default({ module_or_path: "./release/wasm-webgpu/dotlottie_rs_bg.wasm" });
+            const mod = await import('../../../release/wasm-webgpu/dotlottie_rs.js');
+            await mod.default({ module_or_path: "../../../release/wasm-webgpu/dotlottie_rs_bg.wasm" });
             newPlayer = new mod.DotLottiePlayerWasm();
             Status = mod.Status;
             newPlayer.set_webgpu_device(gpuDevice);

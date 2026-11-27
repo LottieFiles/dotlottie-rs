@@ -10,7 +10,7 @@ fn setup_player() -> (Player, Vec<u32>) {
     let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
     player
-        .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+        .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
         .expect("set_sw_target should succeed");
 
     let path = CString::new("assets/animations/lottie/test.json").unwrap();

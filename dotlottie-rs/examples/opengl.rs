@@ -21,12 +21,12 @@ mod opengl_impl {
     use glutin::prelude::*;
     use glutin::surface::{Surface, SurfaceAttributesBuilder, WindowSurface};
     use glutin_winit::DisplayBuilder;
-    use raw_window_handle::HasWindowHandle;
     use std::ffi::CString;
     use std::num::NonZeroU32;
     use winit::application::ApplicationHandler;
     use winit::event::WindowEvent;
     use winit::event_loop::ActiveEventLoop;
+    use winit::raw_window_handle::HasWindowHandle;
     use winit::window::{Window, WindowId};
 
     #[cfg(target_os = "macos")]
@@ -354,7 +354,7 @@ mod opengl_impl {
                 unsafe {
                     FRAME_COUNT += 1;
                     let frame_count = FRAME_COUNT;
-                    if frame_count % 60 == 0 {
+                    if frame_count.is_multiple_of(60) {
                         println!(
                             "Frame {frame_count}: rendered={rendered}, current_frame={:.1}",
                             player.current_frame()
@@ -451,5 +451,5 @@ fn main() {
     eprintln!("  - Feature 'tvg-gl' to be enabled");
     eprintln!();
     eprintln!("Run with:");
-    eprintln!("  cargo run --example opengl --features c_api,tvg,tvg-gl,tvg-webp,tvg-png,tvg-jpg,tvg-ttf,tvg-threads,tvg-lottie-expressions");
+    eprintln!("  cargo run --example opengl --features tvg-gl");
 }

@@ -47,6 +47,21 @@ pub enum Error {
     InvalidSlotValue,
 }
 
+/// Pixels a software target spans: `stride * (height - 1) + width`. `None` if
+/// `width` exceeds `stride` or the span cannot be a `[u32]` slice.
+pub(crate) fn sw_target_len(stride: u32, width: u32, height: u32) -> Option<usize> {
+    if width > stride {
+        return None;
+    }
+    (stride as usize)
+        .checked_mul(height.saturating_sub(1) as usize)?
+        .checked_add(width as usize)
+        .filter(|len| {
+            len.checked_mul(size_of::<u32>())
+                .is_some_and(|b| b <= isize::MAX as usize)
+        })
+}
+
 #[inline]
 fn into_lottie<R: Renderer>(_err: R::Error) -> Error {
     Error::RendererError
@@ -415,13 +430,13 @@ impl<R: Renderer> LottieRendererImpl<R> {
         let cstr = CStr::from_bytes_with_nul(&self.slot_json_buffer)
             .map_err(|_| Error::InvalidArgument)?;
 
-        // 6. Generate new batch slot code (1 FFI call)
-        let new_code = animation.gen_slot(cstr).map_err(into_lottie::<R>)?;
+        // 6. Generate and apply the new batch (2 FFI calls). Generation fails
+        // when none of the slot ids exist in the animation: nothing to override.
+        if let Ok(new_code) = animation.gen_slot(cstr) {
+            animation.apply_slot(new_code).map_err(into_lottie::<R>)?;
+            self.batch_slot_code = Some(new_code);
+        }
 
-        // 7. Apply the batch (1 FFI call)
-        animation.apply_slot(new_code).map_err(into_lottie::<R>)?;
-
-        self.batch_slot_code = Some(new_code);
         self.slots_dirty = false;
         self.updated = true;
 

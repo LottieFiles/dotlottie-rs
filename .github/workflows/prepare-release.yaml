@@ -1,20 +1,54 @@
 name: Create Release PR
-on: workflow_dispatch
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
 jobs:
   prepare-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Look for pending changesets
+        id: changesets
+        run: |
+          if ls .changeset/*.md >/dev/null 2>&1; then
+            echo "pending=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No changesets, nothing to release"
+          fi
+
       - name: Configure Git
+        if: steps.changesets.outputs.pending == 'true'
         run: |
           git config --global user.name GitHub Actions
           git config user.email github-actions@github.com
-      - uses: knope-dev/action@v2.0.0
+
+      - uses: knope-dev/action@v2.1.2
+        if: steps.changesets.outputs.pending == 'true'
         with:
-          version: 0.13.0
+          version: 0.22.3
+
       - run: knope prepare-release --verbose
+        if: steps.changesets.outputs.pending == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # A PR opened with GITHUB_TOKEN does not start workflows, so CI is started here.
+      - name: Run CI on the release branch
+        if: steps.changesets.outputs.pending == 'true'
+        run: gh workflow run ci.yaml --ref release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,22 +2,35 @@
 name = "dotlottie-rs"
 version = "0.1.60"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.89"
 description = "A high-performance Lottie and dotLottie player built with Rust"
 license = "MIT"
 repository = "https://github.com/LottieFiles/dotlottie-rs"
 homepage = "https://docs.lottiefiles.com/en/runtimes"
 keywords = ["lottie", "dotlottie", "animation", "graphics", "rendering"]
 categories = ["graphics", "multimedia", "rendering"]
+readme = "../README.md"
 links = "thorvg"
+include = [
+    "/Cargo.toml",
+    "/build.rs",
+    "/cbindgen.toml",
+    "/src/**",
+    "/deps/thorvg/LICENSE",
+    "/deps/thorvg/inc/**",
+    "/deps/thorvg/src/**",
+]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
 
 [lib]
 crate-type = ["rlib"]
 
 [features]
-default = ["dotlottie", "state-machines", "theming"]
-dev = ["tvg", "tvg-cpu", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf", "tvg-otf", "c_api"]
-c_api = ["dep:bitflags"]
+default = ["dotlottie", "state-machines", "theming", "tvg-cpu", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-ttf", "tvg-lottie-expressions", "tvg-threads"]
+dev = ["tvg", "tvg-cpu", "tvg-lottie-expressions", "tvg-threads", "tvg-png", "tvg-jpg", "tvg-webp", "tvg-gif", "tvg-ttf", "tvg-otf", "c_api"]
+c_api = ["dep:bitflags", "dep:cbindgen"]
 tvg = []
 tvg-log = []
 tvg-cpu = ["tvg"]
@@ -27,6 +40,7 @@ tvg-lottie-expressions = []
 tvg-jpg = []
 tvg-png = []
 tvg-webp = []
+tvg-gif = []
 tvg-ttf = []
 tvg-otf = []
 tvg-threads = []
@@ -48,17 +62,17 @@ audio-m4a = ["audio", "rodio?/mp4"]
 rustc-hash = "2.1.1"
 thiserror = "2"
 oorandom = "11"
-miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"], optional = true }
+miniz_oxide = { version = "0.9", default-features = false, features = ["with-alloc"], optional = true }
 bitflags = { version = "2.6", optional = true }
 
 [target.'cfg(target_os = "android")'.dependencies]
 ndk-context = { version = "0.1", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-rodio = { version = "0.21", optional = true, default-features = false, features = ["playback", "mp3"] }
+rodio = { version = "0.23", optional = true, default-features = false, features = ["playback", "mp3"] }
 
 [target.wasm32-unknown-unknown.dependencies]
-wasm-bindgen = "0.2.100"
+wasm-bindgen = "0.2.130"
 js-sys = "0.3"
 nostd-printf = "0.1.4"
 tinyrlibc = { version = "0.5.1", default-features = false, features = [
@@ -77,69 +91,40 @@ tinyrlibc = { version = "0.5.1", default-features = false, features = [
     "strtol",
     "strtoul",
 ] }
-web-sys = { version = "=0.3.77", optional = true }
+web-sys = { version = "=0.3.107", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }
 
 [build-dependencies]
-bindgen = "0.72.0"
-cbindgen = "0.29.2"
-cc = "1.2"
-minreq = { version = "2.14.1", features = ["https-native"] }
-zip = { version = "2.4.2", default-features = false, features = ["deflate"] }
+bindgen = "0.73"
+cbindgen = { version = "0.29.2", optional = true }
+cc = { version = "1.2", features = ["parallel"] }
+minreq = { version = "3", features = ["https-native-tls"] }
+zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [dev-dependencies]
-criterion = "0.5.1"
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 dotlottie-rs = { path = ".", features = ["dev"] }
-minifb = "0.25"
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
 winit = "0.30"
-raw-window-handle = "0.6"
 glutin = "0.32"
 glutin-winit = "0.5"
 gl = "0.14"
-eframe = "0.31"
-rfd = "0.15"
-
-[target.'cfg(target_os = "macos")'.dev-dependencies]
-core-foundation = "0.9"
-objc2 = "0.5"
-objc2-foundation = { version = "0.2" }
-objc2-app-kit = { version = "0.2", features = ["NSWindow", "NSView", "NSOpenGL"] }
-objc2-quartz-core = { version = "0.2", features = ["CAMetalLayer", "CALayer"] }
-
-[profile.release]
-opt-level = 2
-lto = "fat"
-codegen-units = 1
-panic = "abort"
-strip = "symbols"
 
 [[example]]
 name = "opengl"
 required-features = ["tvg-gl"]
 
 [[example]]
-name = "webgpu"
-required-features = ["tvg-wg"]
+name = "player"
+required-features = ["theming"]
 
 [[example]]
-name = "apply_theme"
-required-features = ["theming"]
+name = "slots"
+test = true
 
 [[example]]
 name = "state_machine"
 required-features = ["state-machines"]
-
-[[example]]
-name = "sm_playground"
-required-features = ["state-machines"]
-
-[[example]]
-name = "audio_player"
-required-features = ["audio", "dev"]
-
-[[example]]
-name = "bezier_path_slot"
-test = true
 
 [[bench]]
 name = "benchmarks"

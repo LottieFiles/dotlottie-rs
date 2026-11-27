@@ -56,7 +56,6 @@ LIPO := lipo
 PLISTBUDDY_EXEC := /usr/libexec/PlistBuddy
 INSTALL_NAME_TOOL := install_name_tool
 XCODEBUILD := xcodebuild
-CODESIGN := codesign
 
 CRATE_VERSION = $(shell grep -m 1 'version =' dotlottie-rs/Cargo.toml | grep -o '[0-9][0-9.]*')
 

@@ -1,206 +1,66 @@
 name: Release
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
+    paths: [CHANGELOG.md]
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}
 
 jobs:
-  build-apple:
-    runs-on: macos-latest-large
-    if: github.head_ref == 'release' && github.event.pull_request.merged == true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
-
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: dtolnay/rust-toolchain@nightly
-
-      - name: Set up Apple
-        run: make apple-setup
-
-      - name: Build Apple
-        run: make apple
-
-      - name: Create Apple archive
-        run: |
-          cd release/apple
-          tar -czf dotlottie-player.darwin.tar.gz *
-
-      - name: Upload Apple artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.darwin.tar.gz
-          path: release/apple/dotlottie-player.darwin.tar.gz
-          if-no-files-found: error
-
-      - name: Clean up keychain
-        if: always()
-        run: |
-          security delete-keychain build.keychain || true
-
-  build-android:
+  check:
+    name: Check for an unreleased version
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: github.head_ref == 'release' && github.event.pull_request.merged == true
+    outputs:
+      pending: ${{ steps.tag.outputs.pending }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Look for the version tag
+        id: tag
+        run: |
+          tag="v$(grep -m1 '^version' dotlottie-rs/Cargo.toml | cut -d'"' -f2)"
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null || status=$?
+          case "$status" in
+            0) echo "$tag is already released" ;;
+            2) echo "$tag is not released yet"; echo "pending=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$status" ;;
+          esac
+
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: check
+    if: needs.check.outputs.pending == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+          - platform: macos
+            os: macos-latest-large
+          - platform: windows
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@v5
         with:
           submodules: true
           fetch-depth: 0
 
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: nttld/setup-ndk@v1.5.0
-        id: setup-ndk
+      - uses: ./.github/actions/build
         with:
-          ndk-version: r28b
-          local-cache: true
-
-      - name: Set up Android
-        run: make android-setup
-
-      - name: Build Android
-        run: make android
-        env:
-          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-
-      - name: Create Android archive
-        run: |
-          cd release/android
-          tar -czf dotlottie-player.android.tar.gz *
-
-      - name: Upload Android artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.android.tar.gz
-          path: release/android/dotlottie-player.android.tar.gz
-          if-no-files-found: error
-
-  build-wasm:
-    runs-on: ubuntu-latest
-    if: github.head_ref == 'release' && github.event.pull_request.merged == true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Set up WASM
-        run: make wasm-setup
-
-      - name: Build WASM
-        run: make wasm
-
-      - name: Create WASM archive
-        run: |
-          cd release/wasm
-          tar -czf dotlottie-player.wasm.tar.gz *
-
-      - name: Upload WASM artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.wasm.tar.gz
-          path: release/wasm/dotlottie-player.wasm.tar.gz
-          if-no-files-found: error
-
-  build-linux:
-    runs-on: ubuntu-latest
-    if: github.head_ref == 'release' && github.event.pull_request.merged == true
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cross-compilation toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-
-      - name: Set up Linux
-        run: make linux-setup
-
-      - name: Build Linux
-        run: make linux
-
-      - name: Create Linux archive
-        run: |
-          cd release/linux
-          tar -czf dotlottie-player.linux.tar.gz *
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.linux.tar.gz
-          path: release/linux/dotlottie-player.linux.tar.gz
-          if-no-files-found: error
-
-  build-windows:
-    runs-on: windows-latest
-    if: github.head_ref == 'release' && github.event.pull_request.merged == true
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install GNU Make and LLVM
-        shell: pwsh
-        run: |
-          choco install make -y
-          choco install llvm -y
-          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
-
-      - name: Install ARM64 build tools
-        shell: pwsh
-        run: |
-          $vsPath = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -products '*' -latest -property installationPath
-          Write-Host "VS install path: $vsPath"
-          & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
-            --installPath "$vsPath" `
-            --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
-            --quiet --norestart --wait
-          $arm64cl = Get-ChildItem "$vsPath\VC\Tools\MSVC\*\bin\Hostx64\arm64\cl.exe" -ErrorAction SilentlyContinue
-          if ($arm64cl) { Write-Host "ARM64 cl.exe found: $($arm64cl.FullName)" }
-          else { Write-Warning "ARM64 cl.exe not found after install" }
-
-      - name: Set up Windows
-        run: make windows-setup
-
-      - name: Build Windows
-        run: make windows
-
-      - name: Create Windows archive
-        run: |
-          cd release/windows
-          tar -czf dotlottie-player.windows.tar.gz *
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotlottie-player.windows.tar.gz
-          path: release/windows/dotlottie-player.windows.tar.gz
-          if-no-files-found: error
+          platform: ${{ matrix.platform }}
+          upload: true
 
   release:
-    needs: [build-apple, build-android, build-wasm, build-linux, build-windows]
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4.1.7
         with:
           path: release
@@ -212,3 +72,40 @@ jobs:
       - run: knope release --verbose
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-crate:
+    needs: release
+    runs-on: ubuntu-latest
+    environment: crates-io
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CC: clang
+      CXX: clang++
+      AR: llvm-ar
+      RANLIB: llvm-ranlib
+      BINDGEN_EXTRA_CLANG_ARGS: "-I/usr/include"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Install LLVM tools
+        run: sudo apt-get update && sudo apt-get install -y llvm
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+
+      - name: Check ThorVG is packaged
+        run: |
+          cargo package --manifest-path=./dotlottie-rs/Cargo.toml --list \
+            | grep -x deps/thorvg/src/bindings/capi/thorvg_capi.h > /dev/null
+
+      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+        id: auth
+
+      - run: cargo publish --manifest-path=./dotlottie-rs/Cargo.toml
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}

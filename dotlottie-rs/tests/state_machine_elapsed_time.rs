@@ -13,7 +13,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 
@@ -41,7 +41,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 
@@ -62,7 +62,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 
@@ -87,7 +87,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 
@@ -114,7 +114,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 
@@ -157,7 +157,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 
@@ -185,7 +185,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 
@@ -219,7 +219,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (100 * 100) as usize];
         assert!(player
-            .set_sw_target(&mut buffer, 100, 100, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
             .is_ok());
         assert!(player.load_dotlottie_data(STAR_RATING_LOTTIE).is_ok());
 

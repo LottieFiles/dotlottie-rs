@@ -8,11 +8,13 @@ use crate::test_utils::{HEIGHT, WIDTH};
 mod tests {
     use super::*;
 
+    const SLOTLESS_ANIMATION: &str = r#"{"v":"5.5.7","fr":60,"ip":0,"op":60,"w":100,"h":100,"nm":"Test","ddd":0,"assets":[],"layers":[],"markers":[]}"#;
+
     fn load_bouncy_ball() -> Player {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .unwrap();
 
         let data = include_str!("../assets/animations/lottie/bouncy_ball.json");
@@ -311,7 +313,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .unwrap();
 
         let data = include_str!("../assets/animations/lottie/bezier_path.json");
@@ -405,7 +407,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .unwrap();
 
         let data = include_str!("../assets/animations/lottie/bezier_path.json");
@@ -444,7 +446,7 @@ mod tests {
         let mut player = Player::new();
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
         player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .unwrap();
 
         let data = include_str!("../assets/animations/lottie/bezier_path.json");
@@ -485,5 +487,48 @@ mod tests {
 
         assert_ne!(frames[0], frames[1], "path should interpolate over time");
         assert_ne!(frames[1], frames[2], "path should interpolate over time");
+    }
+
+    #[test]
+    fn unmatched_slot_does_not_break_rendering() {
+        let mut player = Player::new();
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        player
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = CString::new(SLOTLESS_ANIMATION).unwrap();
+        player.load_animation_data(&data).unwrap();
+
+        player
+            .set_color_slot("missing", dotlottie_rs::ColorSlot::new([0.0, 1.0, 0.0]))
+            .unwrap();
+
+        for frame in [1.0, 2.0, 3.0] {
+            player.set_frame(frame).unwrap();
+            assert_eq!(player.render(), Ok(()));
+        }
+    }
+
+    #[cfg(feature = "theming")]
+    #[test]
+    fn theme_with_unmatched_rule_does_not_break_rendering() {
+        let mut player = Player::new();
+        let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
+        player
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .unwrap();
+
+        let data = CString::new(SLOTLESS_ANIMATION).unwrap();
+        player.load_animation_data(&data).unwrap();
+
+        let theme =
+            CString::new(r#"{"rules":[{"id":"missing","type":"Color","value":[0,1,0]}]}"#).unwrap();
+        player.set_theme_data(&theme).unwrap();
+
+        for frame in [1.0, 2.0, 3.0] {
+            player.set_frame(frame).unwrap();
+            assert_eq!(player.render(), Ok(()));
+        }
     }
 }

@@ -34,7 +34,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888,)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();
@@ -63,7 +63,7 @@ mod tests {
         let mut buffer: Vec<u32> = vec![0; (WIDTH * HEIGHT) as usize];
 
         assert!(player
-            .set_sw_target(&mut buffer, WIDTH, HEIGHT, ColorSpace::ABGR8888)
+            .set_sw_target(&mut buffer, WIDTH, WIDTH, HEIGHT, ColorSpace::ABGR8888)
             .is_ok());
 
         let path = CString::new("assets/animations/lottie/test.json").unwrap();

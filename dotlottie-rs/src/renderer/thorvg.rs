@@ -201,6 +201,10 @@ impl Renderer for TvgRenderer {
         height: u32,
         color_space: ColorSpace,
     ) -> Result<(), TvgError> {
+        if super::sw_target_len(stride, width, height).is_none_or(|len| frame_ptr.len() < len) {
+            return Err(TvgError::InvalidArgument);
+        }
+
         if self.raw_canvas.is_none() {
             self.create_sw_canvas()?;
         }
@@ -1076,6 +1080,55 @@ mod tests {
         for handle in handles {
             handle.join().expect("Thread panicked");
         }
+    }
+
+    #[test]
+    fn set_sw_target_rejects_undersized_buffer() {
+        let mut renderer = TvgRenderer::new(0);
+        let mut buffer = vec![0u32; 16];
+
+        assert!(renderer
+            .set_sw_target(&mut buffer, 100, 100, 100, ColorSpace::ABGR8888)
+            .is_err());
+        assert!(renderer
+            .set_sw_target(&mut buffer, 2, 4, 4, ColorSpace::ABGR8888)
+            .is_err());
+        assert!(renderer
+            .set_sw_target(&mut buffer, 4, 4, 4, ColorSpace::ABGR8888)
+            .is_ok());
+    }
+
+    #[test]
+    fn set_sw_target_accepts_window_into_wider_buffer() {
+        const STRIDE: usize = 8;
+        let mut renderer = TvgRenderer::new(0);
+        let mut buffer = vec![0u32; STRIDE * 8];
+
+        // 4x4 window at (2, 2): three full strides plus the last row's 4 pixels.
+        let start = 2 * STRIDE + 2;
+        let window = &mut buffer[start..start + 3 * STRIDE + 4];
+        assert!(renderer
+            .set_sw_target(window, STRIDE as u32, 4, 4, ColorSpace::ABGR8888)
+            .is_ok());
+
+        let mut shape = TvgShape::default();
+        shape.append_rect(0.0, 0.0, 4.0, 4.0, 0.0, 0.0).unwrap();
+        shape.fill(Rgba::new(255, 0, 0, 255)).unwrap();
+        renderer.push(Drawable::Shape(&shape)).unwrap();
+        renderer.update().unwrap();
+        renderer.draw(true).unwrap();
+        renderer.sync().unwrap();
+
+        for (i, pixel) in buffer.iter().enumerate() {
+            let (x, y) = (i % STRIDE, i / STRIDE);
+            let inside = (2..6).contains(&x) && (2..6).contains(&y);
+            assert_eq!(*pixel != 0, inside, "pixel ({x}, {y})");
+        }
+
+        let short = &mut buffer[start..start + 3 * STRIDE + 3];
+        assert!(renderer
+            .set_sw_target(short, STRIDE as u32, 4, 4, ColorSpace::ABGR8888)
+            .is_err());
     }
 
     /// Load test.json (1500×1500, layers: "B" solid, "R"/"E" shapes) into a fresh TvgAnimation.

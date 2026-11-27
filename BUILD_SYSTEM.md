@@ -1,6 +1,6 @@
 ## Build system
 
-GNU `make` builds all artifacts for the `android`, `apple`, `wasm`, `linux`, `windows`, and `native` targets.
+GNU `make` builds all artifacts for the `android`, `apple`, `wasm`, `linux`, `macos`, `windows`, and `native` targets.
 The top-level `Makefile` defines the native, test, and setup targets and includes one makefile per platform from `make/`.
 This document describes how those makefiles work so you can change or extend them.
 
@@ -9,19 +9,20 @@ A platform build runs these steps:
 1. Check the platform toolchain: the Android NDK, Xcode, MSVC, or clang plus wasm-bindgen-cli for WASM.
 2. Generate the C header with cbindgen from the `c_api` feature. WASM builds run wasm-bindgen-cli instead.
 3. Build the `dotlottie-rs` library once per target architecture.
-4. Package the platform artifacts: `jniLibs/` for Android, an XCFramework for Apple, JS and WASM modules for the web.
+4. Package the platform artifacts: `jniLibs/` for Android, an XCFramework for Apple, and JS and WASM modules for the web.
 5. Write everything to `release/`, along with a version file.
 
 ### Platform makefiles
 
-- `Makefile` holds the native, test, clippy, setup, and help targets and includes the files below.
+- `Makefile` defines the native, test, clippy, setup, and help targets and includes the files below.
 - `make/android.mk` builds Android for ARM64, x86_64, x86, and ARMv7.
 - `make/apple.mk` builds macOS, iOS, tvOS, visionOS, watchOS, and Mac Catalyst.
 - `make/wasm.mk` builds WebAssembly with cargo and wasm-bindgen-cli.
 - `make/linux.mk` builds Linux x86_64 and ARM64.
+- `make/macos.mk` builds the native macOS libraries for ARM64 and x86_64, without the Xcode frameworks.
 - `make/windows.mk` builds Windows x86_64 and ARM64 with the MSVC toolchain.
 
-Each platform makefile checks its toolchain, sets up cross-compilation, produces the C header (or wasm-bindgen output), and packages the release.
+Each platform makefile checks its toolchain, sets up cross-compilation, produces the C header or the wasm-bindgen output, and packages the release.
 
 #### Android (`make/android.mk`)
 
@@ -48,7 +49,7 @@ Targets:
 
 The Apple build covers macOS, iOS, tvOS, visionOS, watchOS, and Mac Catalyst.
 It builds a framework per platform and SDK, merges architectures with `lipo`, and combines the frameworks into one XCFramework.
-The cbindgen header is the bridge for Swift and Objective-C.
+Each framework's module map names the cbindgen header as its umbrella header, so Swift and Objective-C can import it.
 Mac Catalyst, tvOS, visionOS, and watchOS build with `cargo +nightly` and `-Z build-std`.
 
 Targets:
@@ -66,7 +67,7 @@ It compiles with `cargo rustc`, generates bindings with wasm-bindgen-cli, and ru
 - The `wasm-bindgen-api` feature produces JS and TypeScript bindings for the software, WebGL, and WebGPU renderers.
 - wasm-bindgen-cli writes the TypeScript definitions with `--typescript`.
 - The output is the `.wasm` binary plus a wasm-bindgen glue file. There is no Emscripten runtime.
-- Stable Rust is enough, with no nightly and no EMSDK. ThorVG's C++ needs a clang that can target wasm. The build prefers Homebrew LLVM's clang if it is installed.
+- The build needs only stable Rust, not nightly or EMSDK. ThorVG's C++ needs a clang that can target wasm. The build prefers Homebrew LLVM's clang if it is installed.
 
 Targets:
 
@@ -113,17 +114,18 @@ Prerequisites:
 
 #### Feature flags
 
-The Android, Apple, Linux, and Windows builds read a `FEATURES` variable that replaces their default extra features.
+The Android, Apple, Linux, macOS, and Windows builds read a `FEATURES` variable that replaces their default extra features.
 On Apple, the tvOS, visionOS, and watchOS targets ignore it and always use `APPLE_BASE_FEATURES`.
 The WASM and native builds use fixed feature lists.
 
-The features you are most likely to change:
+You are most likely to change these features:
 
 - `c_api`: C API and cbindgen header (Android, Apple, Linux, Windows, native)
 - `wasm-bindgen-api`: wasm-bindgen bindings for JS and TS (all WASM builds)
 - `webgl`: WebGL renderer, used with `wasm-bindgen-api`
 - `webgpu`: WebGPU renderer, used with `wasm-bindgen-api`
 - `tvg-webp`, `tvg-png`, `tvg-jpg`: WebP, PNG, and JPEG images
+- `tvg-gif`: GIF images. It is off by default because the loader does not limit the image size a GIF declares. Enable it only for trusted assets.
 - `tvg-ttf`, `tvg-otf`: TrueType and OpenType fonts
 - `tvg-threads`: multi-threaded rendering
 - `tvg-lottie-expressions`: Lottie expressions
@@ -166,6 +168,7 @@ Run `make help` for the full list.
 - `make native-opengl`: native library with the OpenGL renderer
 - `make native-webgpu`: native library with the WebGPU renderer
 - `make linux`: Linux x86_64 and ARM64
+- `make macos`: native macOS libraries, ARM64 and x86_64
 - `make windows`: Windows x86_64 and ARM64
 
 #### Architecture targets
@@ -173,6 +176,7 @@ Run `make help` for the full list.
 - Android: `android-aarch64`, `android-x86_64`, `android-x86`, `android-armv7`
 - Apple: `apple-macos-arm64`, `apple-ios-arm64`, `apple-tvos-sim-arm64`, and the rest of `apple-{platform}-{arch}`
 - Linux: `linux-x86_64`, `linux-arm64`
+- macOS: `macos-arm64`, `macos-x86_64`
 - Windows: `windows-x86_64`, `windows-arm64`
 
 #### Development targets

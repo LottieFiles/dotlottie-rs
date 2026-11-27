@@ -1,3 +1,72 @@
+## 0.1.61 (2026-11-27)
+
+### Features
+
+- feat: bump thorvg to v1.1.4
+
+#### feat: state machine override, input reset and input listing in the C API
+
+Adds `dotlottie_state_machine_override_current_state`, `dotlottie_state_machine_reset_input`, `dotlottie_state_machine_get_inputs_count`, `dotlottie_state_machine_get_input_name` and `dotlottie_state_machine_get_input_type` to the C API. The WASM bindings already had these, so native wrappers can now offer them too.
+
+#### feat: GIF image assets
+
+Adds a `tvg-gif` feature that enables ThorVG's GIF loader. GIF image assets then render, embedded or external. An animated GIF shows its first frame only.
+
+The feature is off by default. The loader does not limit the image size a GIF declares, so enable it only for trusted assets.
+
+#### feat: stride for the software target
+
+`Player::set_sw_target` and `dotlottie_set_sw_target` take a `stride` argument before `width`. Pass the width to keep the old behaviour. A larger stride targets a region of a wider pixel buffer, so several players can share one buffer.
+
+This changes both signatures: existing callers must add the argument.
+
+#### feat: typed bezier path slot setters for C and WASM
+
+Adds `dotlottie_set_bezier_path_slot` to the C API and `set_bezier_path_slot` to the WASM bindings. Bezier path slots and the `"BezierPath"` theme rule are no longer marked experimental.
+
+#### feat: wav, flac, ogg and m4a audio
+
+Adds opt-in `audio-wav`, `audio-flac`, `audio-ogg` and `audio-m4a` features alongside the default MP3. Each enables the matching rodio decoder on native targets and the format's blob MIME type on the web. rodio is bumped to 0.21, which decodes `.m4a` files that rodio 0.17 panicked on.
+
+#### feat: publish to crates.io
+
+The crate is now published to crates.io on every release. Default features include the ThorVG software renderer (`tvg-cpu`) with PNG, JPEG, WebP, TTF, expressions and threads. Use `default-features = false` to choose your own set.
+
+### Fixes
+
+#### chore: Rust 1.89 and dependency upgrades
+
+The minimum supported Rust version is now 1.89. rodio moves to 0.23, miniz_oxide to 0.9 and wasm-bindgen to 0.2.130. `cbindgen` is only built when the `c_api` feature is on.
+
+#### fix: replay full-span audio on loop, seek and stop
+
+An audio layer that spans the whole animation played once and then stayed silent on later loops, after `stop()` then `play()`, and after seeking back to the start.
+
+#### fix: audio volume uses the left channel
+
+Static audio levels such as `[100, 0]` played silent because ThorVG read the right channel. ThorVG now reads the left one, like lottie-web.
+
+#### fix: regenerate the C header when the C API changes
+
+`build/dotlottie_player.h` was only regenerated when ThorVG sources changed, so an incremental build after a C API change kept the old header.
+
+#### fix: renderer crashes and stalled rendering
+
+- `set_sw_target` rejects a buffer that is too small or a size that overflows, and `dotlottie_set_sw_target` returns `InvalidParameter` for a NULL buffer.
+- A slot or theme rule whose id is not in the animation is ignored. Before, every later render failed.
+
+#### fix: state machines skip unknown entries and keep events pending
+
+Unknown state, transition, guard, action, interaction and input entries are now skipped instead of failing the whole file. A fired event stays pending until a transition is taken or the state exits, so a transition that waits for a later input change can still see it.
+
+#### fix: mute web audio at volume 0
+
+On iOS Safari, `set_audio_volume(0)` did not silence a playing animation, because script cannot change `HTMLMediaElement.volume` there. A volume of 0 now also sets `muted`.
+
+#### fix: web audio levels outside 0–100% no longer break the player
+
+An audio layer above 100% or below 0 made `HTMLMediaElement.volume` throw, which left the player unusable. The web backend now clamps the level to [0, 1].
+
 ## 0.1.60 (2026-10-26)
 
 ### Features
